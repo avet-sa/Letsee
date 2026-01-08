@@ -32,6 +32,7 @@
             <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
             </button>
+            <button class="nav-btn" onclick="toggleLanguage()" title="Toggle language">EN/РУ</button>
         </div>
     </header>
 
@@ -42,6 +43,21 @@
                 <div class="section-header">
                     <h2>Handover</h2>
                     <button class="btn-primary" onclick="openAddNote()">+ Add</button>
+                </div>
+                
+                <!-- Search, Sort, Filter Controls -->
+                <div class="controls-bar">
+                    <input type="text" id="search-input" class="search-input" placeholder="Search notes...">
+                    <select id="sort-select" class="sort-select">
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="room">Room number</option>
+                    </select>
+                    <select id="filter-select" class="filter-select">
+                        <option value="all">All</option>
+                        <option value="promised">Promised</option>
+                        <option value="followup">Follow-up</option>
+                    </select>
                 </div>
                 
                 <!-- Unresolved / Important -->
@@ -78,6 +94,10 @@
                 </div>
                 <form id="note-form" onsubmit="saveNote(event)">
                     <div class="form-group">
+                        <label>Guest Name <span class="optional-label">(Optional)</span></label>
+                        <input type="text" id="note-guest" placeholder="Optional">
+                    </div>
+                    <div class="form-group">
                         <label>Room Number</label>
                         <input type="text" id="note-room" placeholder="Optional">
                     </div>
@@ -112,6 +132,16 @@
                     <div class="form-group" id="promise-text-group" style="display: none;">
                         <label>What was promised?</label>
                         <input type="text" id="promise-text" placeholder="e.g., Call back in 30 minutes">
+                    </div>
+                    <div class="form-group">
+                        <label>Attachments <span class="optional-label">(Optional - paste image URLs)</span></label>
+                        <div id="attachments-list" class="attachments-list"></div>
+                        <div class="attachment-inputs">
+                            <input type="text" id="attachment-url" placeholder="https://example.com/image.jpg">
+                            <input type="file" id="attachment-file" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('attachment-file').click()" style="margin-top: 8px;">Browse</button>
+                            <button type="button" class="btn-secondary" onclick="addAttachment()" style="margin-top: 8px;">+ Add URL</button>
+                        </div>
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn-cancel" onclick="closeNoteModal()">Cancel</button>

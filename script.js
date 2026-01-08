@@ -3,6 +3,104 @@ const STORAGE_KEY_PEOPLE = 'letsee_people';
 const STORAGE_KEY_SCHEDULE = 'letsee_schedule';
 const STORAGE_KEY_HANDOVER = 'letsee_handover';
 const STORAGE_KEY_THEME = 'letsee_theme';
+const STORAGE_KEY_LANGUAGE = 'letsee_language';
+
+// Translations
+const TRANSLATIONS = {
+    en: {
+        handover: 'Handover',
+        addNote: '+ Add',
+        unresolvedImportant: 'UNRESOLVED / IMPORTANT',
+        generalNotes: 'GENERAL NOTES',
+        actionItems: 'ACTION ITEMS',
+        noUnresolved: 'No unresolved items',
+        noGeneral: 'No general notes',
+        noCompleted: 'No completed actions',
+        addNoteTitle: 'Add Note',
+        editNoteTitle: 'Edit Note',
+        guestName: 'Guest Name',
+        roomNumber: 'Room Number',
+        type: 'Type',
+        note: 'Note',
+        followupRequired: 'Follow-up required',
+        promisedToGuest: 'Promised to guest',
+        whatPromised: 'What was promised?',
+        attachments: 'Attachments',
+        cancel: 'Cancel',
+        save: 'Save',
+        edit: 'Edit',
+        delete: 'Delete',
+        deleteConfirm: 'Delete this note?',
+        edited: 'Edited',
+        shift: 'Shift',
+        search: 'Search notes...',
+        sortBy: 'Sort by',
+        filterBy: 'Filter',
+        sortNewest: 'Newest first',
+        sortOldest: 'Oldest first',
+        sortRoom: 'Room number',
+        filterAll: 'All',
+        filterPromised: 'Promised',
+        filterFollowup: 'Follow-up',
+        optional: 'Optional',
+        complaint: 'Complaint',
+        request: 'Request',
+        billing: 'Billing',
+        lateCheckout: 'Late Checkout',
+        vip: 'VIP',
+        incident: 'Incident',
+        info: 'Info'
+    },
+    ru: {
+        handover: 'Передача смены',
+        addNote: '+ Добавить',
+        unresolvedImportant: 'НЕРЕШЁННОЕ / ВАЖНОЕ',
+        generalNotes: 'ОБЩИЕ ЗАМЕТКИ',
+        actionItems: 'ВЫПОЛНЕННЫЕ ЗАДАЧИ',
+        noUnresolved: 'Нет нерешённых задач',
+        noGeneral: 'Нет общих заметок',
+        noCompleted: 'Нет выполненных задач',
+        addNoteTitle: 'Добавить заметку',
+        editNoteTitle: 'Редактировать заметку',
+        guestName: 'Имя гостя',
+        roomNumber: 'Номер комнаты',
+        type: 'Тип',
+        note: 'Заметка',
+        followupRequired: 'Требуется дальнейшая работа',
+        promisedToGuest: 'Обещано гостю',
+        whatPromised: 'Что было обещано?',
+        attachments: 'Вложения',
+        cancel: 'Отмена',
+        save: 'Сохранить',
+        edit: 'Редактировать',
+        delete: 'Удалить',
+        deleteConfirm: 'Удалить эту заметку?',
+        edited: 'Изменено',
+        shift: 'Смена',
+        search: 'Поиск заметок...',
+        sortBy: 'Сортировать',
+        filterBy: 'Фильтр',
+        sortNewest: 'Сначала новые',
+        sortOldest: 'Сначала старые',
+        sortRoom: 'По номеру комнаты',
+        filterAll: 'Все',
+        filterPromised: 'Обещанные',
+        filterFollowup: 'К исполнению',
+        optional: 'Необязательно',
+        complaint: 'Жалоба',
+        request: 'Запрос',
+        billing: 'Оплата',
+        lateCheckout: 'Поздний выезд',
+        vip: 'VIP',
+        incident: 'Инцидент',
+        info: 'Информация'
+    }
+};
+
+let currentLanguage = 'en';
+let searchQuery = '';
+let currentSort = 'newest';
+let currentFilter = 'all';
 
 // Shift colors
 const SHIFT_COLORS = {
@@ -13,6 +111,35 @@ const SHIFT_COLORS = {
 };
 
 let currentEditingNoteId = null;
+
+// Translation helper
+function t(key) {
+    return TRANSLATIONS[currentLanguage][key] || key;
+}
+
+// Toggle language
+function toggleLanguage() {
+    currentLanguage = currentLanguage === 'en' ? 'ru' : 'en';
+    localStorage.setItem(STORAGE_KEY_LANGUAGE, currentLanguage);
+    updateLanguageUI();
+    renderHandoverNotes();
+}
+
+// Update UI text
+function updateLanguageUI() {
+    document.querySelector('.section-header h2').textContent = t('handover');
+    document.querySelector('.btn-primary').textContent = t('addNote');
+    document.querySelectorAll('.group-header')[0].textContent = t('unresolvedImportant');
+    document.querySelectorAll('.group-header')[1].textContent = t('generalNotes');
+    document.querySelectorAll('.group-header')[2].textContent = t('actionItems');
+    document.getElementById('search-input').placeholder = t('search');
+    document.getElementById('sort-select').options[0].text = t('sortNewest');
+    document.getElementById('sort-select').options[1].text = t('sortOldest');
+    document.getElementById('sort-select').options[2].text = t('sortRoom');
+    document.getElementById('filter-select').options[0].text = t('filterAll');
+    document.getElementById('filter-select').options[1].text = t('filterPromised');
+    document.getElementById('filter-select').options[2].text = t('filterFollowup');
+}
 
 // Get people from localStorage
 function getPeople() {
@@ -46,12 +173,43 @@ function getNotesForDate(dateKey) {
 // Render handover notes with grouping
 function renderHandoverNotes() {
     const dateKey = currentDate.toISOString().split('T')[0];
-    const notes = getNotesForDate(dateKey);
+    let notes = getNotesForDate(dateKey);
     
     const unresolvedList = document.getElementById('unresolved-list');
     const generalList = document.getElementById('general-list');
     const actionsList = document.getElementById('actions-list');
     const emptyState = document.getElementById('empty-state');
+    
+    // Apply search filter
+    if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        notes = notes.filter(n => 
+            n.text.toLowerCase().includes(query) ||
+            (n.room && n.room.toLowerCase().includes(query)) ||
+            (n.guestName && n.guestName.toLowerCase().includes(query)) ||
+            n.category.toLowerCase().includes(query)
+        );
+    }
+    
+    // Apply category filter
+    if (currentFilter === 'promised') {
+        notes = notes.filter(n => n.promised);
+    } else if (currentFilter === 'followup') {
+        notes = notes.filter(n => n.followup);
+    }
+    
+    // Apply sorting
+    if (currentSort === 'newest') {
+        notes.sort((a, b) => b.timestamp - a.timestamp);
+    } else if (currentSort === 'oldest') {
+        notes.sort((a, b) => a.timestamp - b.timestamp);
+    } else if (currentSort === 'room') {
+        notes.sort((a, b) => {
+            const roomA = a.room || '';
+            const roomB = b.room || '';
+            return roomA.localeCompare(roomB, undefined, { numeric: true });
+        });
+    }
     
     if (notes.length === 0) {
         unresolvedList.innerHTML = '';
@@ -69,9 +227,9 @@ function renderHandoverNotes() {
     const actions = notes.filter(n => n.completed);
     
     // Render each group
-    unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(renderNote).join('') : '<div class="empty-group">No unresolved items</div>';
-    generalList.innerHTML = general.length > 0 ? general.map(renderNote).join('') : '<div class="empty-group">No general notes</div>';
-    actionsList.innerHTML = actions.length > 0 ? actions.map(renderNote).join('') : '<div class="empty-group">No completed actions</div>';
+    unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(renderNote).join('') : `<div class="empty-group">${t('noUnresolved')}</div>`;
+    generalList.innerHTML = general.length > 0 ? general.map(renderNote).join('') : `<div class="empty-group">${t('noGeneral')}</div>`;
+    actionsList.innerHTML = actions.length > 0 ? actions.map(renderNote).join('') : `<div class="empty-group">${t('noCompleted')}</div>`;
 }
 
 // Render individual note
@@ -85,13 +243,21 @@ function renderNote(note) {
     if (note.followup) classes.push('has-followup');
     
     const badges = [];
-    badges.push(`<span class="category-badge">${note.category}</span>`);
+    badges.push(`<span class="category-badge">${t(note.category)}</span>`);
     if (note.room) badges.push(`<span class="room-badge">${note.room}</span>`);
-    if (note.promised) badges.push(`<span class="promise-badge">PROMISED</span>`);
-    if (note.followup) badges.push(`<span class="followup-badge">FOLLOW-UP</span>`);
+    if (note.guestName) badges.push(`<span class="guest-badge">${note.guestName}</span>`);
+    if (note.promised) badges.push(`<span class="promise-badge">${t('promisedToGuest').toUpperCase()}</span>`);
+    if (note.followup) badges.push(`<span class="followup-badge">${t('followupRequired').toUpperCase()}</span>`);
     
     const shiftInfo = note.shift || 'A';
-    const editInfo = note.editedAt ? `<div class="edit-info">Edited: ${new Date(note.editedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${note.editedBy || 'Staff'}</div>` : '';
+    const editInfo = note.editedAt ? `<div class="edit-info">${t('edited')}: ${new Date(note.editedAt).toLocaleString(currentLanguage === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${note.editedBy || 'Staff'}</div>` : '';
+    const attachments = note.attachments && note.attachments.length > 0 ? `<div class="attachments">${note.attachments.map(att => {
+        if (att.url.startsWith('data:image')) {
+            return `<a href="${att.url}" target="_blank" class="attachment-link" title="${att.name}">🖼️ ${att.name}</a>`;
+        } else {
+            return `<a href="${att.url}" target="_blank" class="attachment-link">📎 ${att.name}</a>`;
+        }
+    }).join('')}</div>` : '';
     
     return `
         <div class="${classes.join(' ')}" data-note-id="${note.id}">
@@ -121,9 +287,10 @@ function renderNote(note) {
             </div>
             <div class="handover-text">${note.text}</div>
             ${note.promiseText ? `<div class="promise-text">→ ${note.promiseText}</div>` : ''}
+            ${attachments}
             ${editInfo}
             <div class="handover-footer">
-                <span>${timeStr} | ${shiftInfo} Shift</span>
+                <span>${timeStr} | ${shiftInfo} ${t('shift')}</span>
                 <span>${getCurrentShiftPeople()}</span>
             </div>
         </div>
@@ -133,10 +300,59 @@ function renderNote(note) {
 // Open add note modal
 function openAddNote() {
     currentEditingNoteId = null;
-    document.getElementById('modal-title').textContent = 'Add Note';
+    document.getElementById('modal-title').textContent = t('addNoteTitle');
     document.getElementById('note-form').reset();
     document.getElementById('promise-text-group').style.display = 'none';
+    document.getElementById('attachments-list').innerHTML = '';
     document.getElementById('note-modal').classList.remove('hidden');
+}
+
+// Add attachment
+function addAttachment() {
+    const url = document.getElementById('attachment-url').value.trim();
+    if (!url) return;
+    
+    const attachmentsList = document.getElementById('attachments-list');
+    const name = url.split('/').pop().substring(0, 30);
+    const attachmentDiv = document.createElement('div');
+    attachmentDiv.className = 'attachment-item';
+    attachmentDiv.innerHTML = `
+        <span>📎 ${name}</span>
+        <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
+    `;
+    attachmentDiv.dataset.url = url;
+    attachmentsList.appendChild(attachmentDiv);
+    document.getElementById('attachment-url').value = '';
+}
+
+// Handle file selection and convert to data URL
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        const attachmentsList = document.getElementById('attachments-list');
+        const attachmentDiv = document.createElement('div');
+        attachmentDiv.className = 'attachment-item';
+        attachmentDiv.innerHTML = `
+            <span>📎 ${file.name}</span>
+            <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
+        `;
+        attachmentDiv.dataset.url = dataUrl;
+        attachmentsList.appendChild(attachmentDiv);
+        
+        // Reset file input
+        event.target.value = '';
+    };
+    reader.readAsDataURL(file);
 }
 
 // Close note modal
@@ -156,14 +372,23 @@ function saveNote(event) {
     const daySchedule = schedule[dateKey] || {};
     const currentShift = daySchedule.shift || 'A';
     
+    // Collect attachments
+    const attachmentItems = document.querySelectorAll('#attachments-list .attachment-item');
+    const attachments = Array.from(attachmentItems).map(item => ({
+        url: item.dataset.url,
+        name: item.querySelector('span').textContent.replace('📎 ', '')
+    }));
+    
     const noteData = {
         id: currentEditingNoteId || Date.now().toString(),
         category: document.getElementById('note-category').value,
         room: document.getElementById('note-room').value,
+        guestName: document.getElementById('note-guest').value,
         text: document.getElementById('note-text').value,
         followup: document.getElementById('note-followup').checked,
         promised: document.getElementById('note-promised').checked,
         promiseText: document.getElementById('note-promised').checked ? document.getElementById('promise-text').value : '',
+        attachments: attachments,
         timestamp: currentEditingNoteId ? 
             dateNotes.find(n => n.id === currentEditingNoteId)?.timestamp || Date.now() : 
             Date.now(),
@@ -201,13 +426,30 @@ function editNote(noteId) {
     if (!note) return;
     
     currentEditingNoteId = noteId;
-    document.getElementById('modal-title').textContent = 'Edit Note';
+    document.getElementById('modal-title').textContent = t('editNoteTitle');
     document.getElementById('note-category').value = note.category;
     document.getElementById('note-room').value = note.room || '';
+    document.getElementById('note-guest').value = note.guestName || '';
     document.getElementById('note-text').value = note.text;
     document.getElementById('note-followup').checked = note.followup || false;
     document.getElementById('note-promised').checked = note.promised || false;
     document.getElementById('promise-text').value = note.promiseText || '';
+    
+    // Load attachments
+    const attachmentsList = document.getElementById('attachments-list');
+    attachmentsList.innerHTML = '';
+    if (note.attachments && note.attachments.length > 0) {
+        note.attachments.forEach(att => {
+            const attachmentDiv = document.createElement('div');
+            attachmentDiv.className = 'attachment-item';
+            attachmentDiv.innerHTML = `
+                <span>📎 ${att.name}</span>
+                <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
+            `;
+            attachmentDiv.dataset.url = att.url;
+            attachmentsList.appendChild(attachmentDiv);
+        });
+    }
     
     if (note.promised) {
         document.getElementById('promise-text-group').style.display = 'block';
@@ -218,7 +460,7 @@ function editNote(noteId) {
 
 // Delete note
 function deleteNote(noteId) {
-    if (!confirm('Delete this note?')) return;
+    if (!confirm(t('deleteConfirm'))) return;
     
     const dateKey = currentDate.toISOString().split('T')[0];
     const allNotes = getHandoverNotes();
@@ -377,6 +619,10 @@ function selectDate(dateString) {
 document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
     
+    // Load language
+    currentLanguage = localStorage.getItem(STORAGE_KEY_LANGUAGE) || 'en';
+    updateLanguageUI();
+    
     document.getElementById('note-modal')?.addEventListener('click', (e) => {
         if (e.target.id === 'note-modal') {
             closeNoteModal();
@@ -386,6 +632,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Toggle promise text field visibility
     document.getElementById('note-promised')?.addEventListener('change', (e) => {
         document.getElementById('promise-text-group').style.display = e.target.checked ? 'block' : 'none';
+    });
+    
+    // Search handler
+    document.getElementById('search-input')?.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderHandoverNotes();
+    });
+    
+    // Sort handler
+    document.getElementById('sort-select')?.addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        renderHandoverNotes();
+    });
+    
+    // Filter handler
+    document.getElementById('filter-select')?.addEventListener('change', (e) => {
+        currentFilter = e.target.value;
+        renderHandoverNotes();
     });
 });
 
