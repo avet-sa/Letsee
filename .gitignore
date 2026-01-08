@@ -1,0 +1,9 @@
+# PocketBase data
+pb_data/
+pocketbase.exe
+
+# IndexedDB doesn't need these
+*.db
+*.db-shm
+*.db-wal
+pb_migrations/
