@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="config-style.css">
+    <title>Letsee - Configuration</title>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">← Back</a>
+        </div>
+        <h1>Configuration</h1>
+        <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+    </header>
+
+    <main class="main-content">
+        <section class="config-section">
+            <h2>People</h2>
+            <div id="people-list" class="people-list"></div>
+            <div class="add-person">
+                <input type="text" id="new-person-name" placeholder="Enter name">
+                <button onclick="addPerson()">Add Person</button>
+            </div>
+        </section>
+
+        <div id="color-picker-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Select Color</h3>
+                <div id="color-palette" class="color-palette"></div>
+                <button onclick="closeColorPicker()">Cancel</button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        LETSEE
+    </footer>
+
+    <script src="config-script.js"></script>
+</body>
+
+</html>
