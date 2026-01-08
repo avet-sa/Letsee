@@ -315,26 +315,45 @@ function renderNote(note, shiftPeople = '') {
     }).join('')}</div>` : '';
 
     // Due label
-    let dueLabel = '';
+    let dueLabel = 'No Set Due Date';
     if (note.dueDate) {
         const dueDt = new Date(`${note.dueDate}T${note.dueTime || '00:00'}`);
         const now = new Date();
-        if (dueDt < now) {
-            dueLabel = `<span class="due-label">OVERDUE ${dueDt.toLocaleString()}</span>`;
+        const diffMs = dueDt - now;
+        const hrs = diffMs / (1000 * 60 * 60);
+        
+        let className = 'due-label';
+        let text = '';
+        
+        if (diffMs < 0) {
+            // Overdue - red
+            className += ' due-overdue';
+            const absDiffMs = Math.abs(diffMs);
+            const absHrs = Math.floor(absDiffMs / (1000 * 60 * 60));
+            text = `OVERDUE by ${absHrs}h`;
+        } else if (hrs <= 1) {
+            // Close (1 hour or less) - orange
+            className += ' due-close';
+            const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            text = `Due in ${mins}m`;
+        } else if (hrs <= 48) {
+            // Within 48 hours - show hours
+            const floorHrs = Math.floor(hrs);
+            text = `Due in ${floorHrs}h`;
         } else {
-            const diffMs = dueDt - now;
-            const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-            dueLabel = `<span class="due-label">Due in ${hrs}h</span>`;
+            // More than 48 hours - show full date and time
+            const dateStr = dueDt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const timeStr = dueDt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            text = `Due ${dateStr} ${timeStr}`;
         }
+        
+        dueLabel = `<span class="${className}">${text}</span>`;
     }
 
-    const isChecked = selectedNotes.has(note.id) ? 'checked' : '';
-
     return `
-        <div class="${classes.join(' ')}" data-note-id="${note.id}" draggable="true" ondragstart="onDragStart(event)" ondragenter="onDragEnter(event)" ondragleave="onDragLeave(event)" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragend="onDragEnd(event)">
+        <div class="${classes.join(' ')}" data-note-id="${note.id}" draggable="true" onclick="toggleSelect('${note.id}', this)" ondragstart="onDragStart(event)" ondragenter="onDragEnter(event)" ondragleave="onDragLeave(event)" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragend="onDragEnd(event)">
             <div class="handover-header">
                 <div class="handover-meta">
-                    <input type="checkbox" class="select-checkbox" ${isChecked} onchange="toggleSelect('${note.id}', this.checked)">
                     ${topBadges.join('')}
                 </div>
                 <div class="handover-actions">
@@ -357,14 +376,14 @@ function renderNote(note, shiftPeople = '') {
                     </button>
                 </div>
             </div>
+            <div class="handover-text">${note.text}</div>
             ${inlineBadges.length > 0 ? `<div class="inline-badges">${inlineBadges.join('')}</div>` : ''}
-            <div class="handover-text">${note.text} ${dueLabel}</div>
             ${note.promiseText ? `<div class="promise-text">→ ${note.promiseText}</div>` : ''}
             ${attachments}
             ${editInfo}
             <div class="handover-footer">
-                <span>${timeStr} | ${shiftInfo} ${t('shift')}</span>
-                <span>${peopleDisplay}</span>
+                <span>${timeStr} | ${shiftInfo} ${t('shift')} | ${peopleDisplay}</span>
+                <span>${dueLabel}</span>
             </div>
         </div>
     `;
@@ -524,7 +543,8 @@ async function saveNote(event) {
 // Edit note
 async function editNote(noteId) {
     const dateKey = currentDate.toISOString().split('T')[0];
-    const notes = await getNotesForDate(dateKey);
+    const dateData = await getNotesForDate(dateKey);
+    const notes = Array.isArray(dateData) ? dateData : (dateData.notes || []);
     const note = notes.find(n => n.id === noteId);
     
     if (!note) return;
@@ -669,15 +689,20 @@ function updateBulkUI() {
     }
 }
 
-function toggleSelect(id, checked) {
-    if (checked) selectedNotes.add(id);
-    else selectedNotes.delete(id);
+function toggleSelect(id, element) {
+    if (selectedNotes.has(id)) {
+        selectedNotes.delete(id);
+        if (element) element.classList.remove('selected');
+    } else {
+        selectedNotes.add(id);
+        if (element) element.classList.add('selected');
+    }
     updateBulkUI();
 }
 
 function clearSelection() {
     selectedNotes.clear();
-    // Re-render to remove check marks
+    // Re-render to remove selection borders
     renderHandoverNotes();
 }
 
@@ -847,14 +872,14 @@ document.addEventListener('keydown', (e) => {
                           document.activeElement.tagName === 'TEXTAREA' ||
                           document.activeElement.tagName === 'SELECT';
     
-    // Ctrl/Cmd + N: Add new note
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n' && !isInputFocused) { 
+    // Alt + N: Add new note
+    if (e.altKey && e.key.toLowerCase() === 'n' && !isInputFocused) { 
         e.preventDefault(); 
         openAddNote(); 
     }
     
-    // Ctrl/Cmd + F: Focus search (allow in input fields)
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { 
+    // Alt + F: Focus search (allow in input fields)
+    if (e.altKey && e.key.toLowerCase() === 'f') { 
         e.preventDefault(); 
         document.getElementById('search-input').focus(); 
     }
@@ -865,35 +890,21 @@ document.addEventListener('keydown', (e) => {
         closeShortcutsModal();
     }
     
-    // Quick category selection while modal open (1-7 for categories)
-    if (!document.getElementById('note-modal').classList.contains('hidden')) {
-        const n = parseInt(e.key, 10);
-        if (!isNaN(n) && n >=1 && n <=7) {
-            const sel = document.getElementById('note-category');
-            if (sel && sel.options[n-1]) {
-                sel.selectedIndex = n-1;
-                // Visual feedback
-                sel.classList.add('category-selected');
-                setTimeout(() => sel.classList.remove('category-selected'), 300);
-            }
-        }
-    }
-    
-    // Ctrl/Cmd + S: Save note (when modal is open)
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && 
+    // Alt + S: Save note (when modal is open)
+    if (e.altKey && e.key.toLowerCase() === 's' && 
         !document.getElementById('note-modal').classList.contains('hidden')) {
         e.preventDefault();
         document.getElementById('note-form').dispatchEvent(new Event('submit'));
     }
     
-    // Ctrl/Cmd + D: Toggle date picker
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+    // Alt + D: Toggle date picker
+    if (e.altKey && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         toggleDatePicker();
     }
     
-    // Ctrl/Cmd + K: Toggle theme
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    // Alt + K: Toggle theme
+    if (e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         toggleTheme();
     }

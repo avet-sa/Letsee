@@ -189,14 +189,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('keydown', (e) => {
         const isInputFocused = document.activeElement === input;
         
-        // Ctrl/Cmd + N: Add new person (focus input)
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        // Alt + N: Add new person (focus input)
+        if (e.altKey && e.key.toLowerCase() === 'n') {
             e.preventDefault();
             input.focus();
         }
         
-        // Ctrl/Cmd + K: Toggle theme
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        // Alt + K: Toggle theme
+        if (e.altKey && e.key.toLowerCase() === 'k') {
             e.preventDefault();
             toggleTheme();
         }
