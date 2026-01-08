@@ -140,7 +140,7 @@ async function toggleLanguage() {
 
 // Update UI text
 function updateLanguageUI() {
-    document.querySelector('.section-header h2').textContent = t('handover');
+    document.querySelector('.section-header h2').textContent = t('Letsee');
     document.querySelector('.btn-primary').textContent = t('addNote');
     document.querySelectorAll('.group-header')[0].textContent = t('unresolvedImportant');
     document.querySelectorAll('.group-header')[1].textContent = t('generalNotes');
@@ -698,14 +698,11 @@ function applyQuickFilter(filter) {
 
 // Bulk selection UI
 function updateBulkUI() {
-    const bulk = document.getElementById('bulk-actions');
     const count = selectedNotes.size;
     const bulkCount = document.getElementById('bulk-count');
     if (count > 0) {
-        bulk.classList.remove('hidden');
         bulkCount.textContent = `${count} selected`;
     } else {
-        bulk.classList.add('hidden');
         bulkCount.textContent = '0 selected';
     }
 }

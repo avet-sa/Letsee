@@ -27,15 +27,14 @@
             <div class="header-info">
                 <span id="people-names">Avet &amp; Erik</span>
                 <span class="separator">|</span>
-                <span id="shift-name">C SHIFT</span>
+                <span id="shift-name"></span>
             </div>
             <div class="time-display" id="current-time">02:38</div>
             <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme (Ctrl+K)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
             </button>
             <button class="help-btn" onclick="openShortcutsModal()" title="Show keyboard shortcuts (?)">
-                Alt
-                <!-- <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v.01"/><path d="M12 12a2 2 0 0 0-1.95-2 2 2 0 1 0-1.82 3"/></svg> -->
+                Alt +
             </button>
             <button class="nav-btn" onclick="toggleLanguage()" title="Toggle language">EN/РУ</button>
         </div>
@@ -46,13 +45,28 @@
             <!-- Handover Notes Section -->
             <section class="handover-section">
                 <div class="section-header">
-                    <h2>Handover</h2>
-                    <button class="btn-primary" onclick="openAddNote()" title="Add new note (Alt+N)">+ Add <span class="keyboard-hint">Alt+N</span></button>
+                    <h2></h2>
                 </div>
                 
-                <!-- Search, Sort, Filter Controls -->
+                <!-- Search and Bulk actions toolbar -->
                 <div class="controls-bar">
+                    <button class="btn-primary add-note" onclick="openAddNote()" title="Add new note (Alt+N)">+ Add</button>
                     <input type="text" id="search-input" class="search-input" placeholder="Search notes... (Alt+F)" title="Search (Alt+F)">
+                    <div id="bulk-actions" class="bulk-actions">
+                        <span id="bulk-count">0 selected</span>
+                        <div class="bulk-controls">
+                            <button class="btn-icon btn-complete" onclick="bulkToggleComplete()" title="Toggle Complete">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="bulkDelete()" title="Delete">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sort, Filter and Quick Filters -->
+                <div class="controls-bar">
                     <select id="sort-select" class="sort-select">
                         <option value="newest">Newest first</option>
                         <option value="oldest">Oldest first</option>
@@ -70,17 +84,6 @@
                         <button class="btn-primary" data-filter="openItems" onclick="applyQuickFilter('openItems')">Open Items</button>
                         <button class="btn-primary" data-filter="clear" onclick="applyQuickFilter('')">Clear</button>
                     </div>
-                </div>
-
-                <!-- Bulk actions toolbar -->
-                <div id="bulk-actions" class="bulk-actions hidden">
-                    <span id="bulk-count">0 selected</span>
-                    <button class="btn-icon btn-complete" onclick="bulkToggleComplete()" title="Toggle Complete">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="bulkDelete()" title="Delete">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    </button>
                 </div>
                 
                 <!-- Unresolved / Important -->
@@ -103,7 +106,7 @@
 
                 <div class="empty-state" id="empty-state">
                     <p>No notes for this date</p>
-                    <button class="btn-secondary" onclick="openAddNote()">Add Note</button>
+                    <button class="btn-primary" onclick="openAddNote()">Add Note</button>
                 </div>
             </section>
         </div>
@@ -170,8 +173,8 @@
                         <div class="attachment-inputs">
                             <input type="text" id="attachment-url" placeholder="https://example.com/image.jpg">
                             <input type="file" id="attachment-file" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
-                            <button type="button" class="btn-secondary" onclick="document.getElementById('attachment-file').click()" style="margin-top: 8px;">Browse</button>
-                            <button type="button" class="btn-secondary" onclick="addAttachment()" style="margin-top: 8px;">+ Add URL</button>
+                            <button type="button" class="btn-primary" onclick="document.getElementById('attachment-file').click()" style="margin-top: 8px;">Browse</button>
+                            <button type="button" class="btn-primary" onclick="addAttachment()" style="margin-top: 8px;">+ Add URL</button>
                         </div>
                     </div>
                     <div class="modal-actions">
