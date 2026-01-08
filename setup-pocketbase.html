@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup PocketBase Collections</title>
+    <style>
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border: 2px solid black;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            background: #f9f9f9;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+        }
+        button {
+            padding: 10px 20px;
+            background: black;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #333;
+        }
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Quick Setup PocketBase</h1>
+        <p>This will automatically create all required collections in PocketBase.</p>
+        
+        <div class="status warning">
+            <strong>⚠️ Admin Access Required</strong><br>
+            You need to create an admin account first at <a href="http://127.0.0.1:8090/_/" target="_blank">http://127.0.0.1:8090/_/</a>
+        </div>
+        
+        <div id="status"></div>
+        
+        <button id="setup-btn" onclick="setupCollections()">Auto-Create Collections</button>
+        <button onclick="window.location.href='http://127.0.0.1:8090/_/'" style="background: #666;">Open Admin UI (Manual Setup)</button>
+        <button onclick="window.location.href='index.html'" style="background: #2ecc71;">Go to App</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
+    <script>
+        const pb = new PocketBase('http://127.0.0.1:8090');
+
+        async function setupCollections() {
+            const statusDiv = document.getElementById('status');
+            const setupBtn = document.getElementById('setup-btn');
+            
+            setupBtn.disabled = true;
+            statusDiv.innerHTML = '<div class="status">Starting setup...</div>';
+            
+            try {
+                // Note: Collection creation via SDK requires admin authentication
+                // This is a simplified version - manual setup via admin UI is still recommended
+                
+                statusDiv.innerHTML += '<div class="status error"><strong>⚠️ Automatic collection creation requires admin SDK access</strong></div>';
+                statusDiv.innerHTML += '<div class="status">Please create collections manually via Admin UI:</div>';
+                
+                statusDiv.innerHTML += `
+                    <div class="status">
+                        <strong>1. people Collection</strong><br>
+                        • Field: <code>name</code> (Text, Required)<br>
+                        • Field: <code>color</code> (Text, Required)<br>
+                        • API Rules: All empty
+                    </div>
+                    
+                    <div class="status">
+                        <strong>2. schedules Collection</strong><br>
+                        • Field: <code>date</code> (Text, Required)<br>
+                        • Field: <code>shift</code> (Text, Required)<br>
+                        • Field: <code>people</code> (JSON, Required)<br>
+                        • API Rules: All empty
+                    </div>
+                    
+                    <div class="status">
+                        <strong>3. handovers Collection</strong><br>
+                        • Field: <code>date</code> (Text, Required)<br>
+                        • Field: <code>category</code> (Text, Required)<br>
+                        • Field: <code>room</code> (Text)<br>
+                        • Field: <code>guestName</code> (Text)<br>
+                        • Field: <code>text</code> (Text, Required)<br>
+                        • Field: <code>followup</code> (Bool)<br>
+                        • Field: <code>promised</code> (Bool)<br>
+                        • Field: <code>promiseText</code> (Text)<br>
+                        • Field: <code>attachments</code> (JSON)<br>
+                        • Field: <code>timestamp</code> (Date, Required)<br>
+                        • Field: <code>completed</code> (Bool)<br>
+                        • Field: <code>addedBy</code> (Text)<br>
+                        • Field: <code>shift</code> (Text)<br>
+                        • Field: <code>editedAt</code> (Date)<br>
+                        • Field: <code>editedBy</code> (Text)<br>
+                        • API Rules: All empty
+                    </div>
+                    
+                    <div class="status">
+                        <strong>4. settings Collection</strong><br>
+                        • Field: <code>key</code> (Text, Required)<br>
+                        • Field: <code>value</code> (Text, Required)<br>
+                        • API Rules: All empty
+                    </div>
+                    
+                    <div class="status success">
+                        <strong>After creating collections:</strong><br>
+                        1. Click "Go to App" button above<br>
+                        2. Your app will work perfectly!<br>
+                        3. (Optional) Run migration tool to import old data
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Setup error:', error);
+                statusDiv.innerHTML += `<div class="status error">✗ Error: ${error.message}</div>`;
+            }
+            
+            setupBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>

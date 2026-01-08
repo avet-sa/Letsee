@@ -27,7 +27,19 @@ const DB = {
             });
             return records.map(r => ({ name: r.name, color: r.color }));
         } catch (error) {
-            console.error('Error getting people:', error);
+            if (error.status === 400 || error.status === 404) {
+                console.warn('⚠️ Collections not set up yet. Open setup-pocketbase.html to create them.');
+                // Show user-friendly message
+                if (document.body && !document.getElementById('setup-warning')) {
+                    const warning = document.createElement('div');
+                    warning.id = 'setup-warning';
+                    warning.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff6b6b;color:white;padding:15px;text-align:center;z-index:10000;font-family:monospace;';
+                    warning.innerHTML = '⚠️ PocketBase not set up! <a href="setup-pocketbase.html" style="color:white;text-decoration:underline;">Click here to set up</a> or open <a href="http://127.0.0.1:8090/_/" target="_blank" style="color:white;text-decoration:underline;">Admin UI</a>';
+                    document.body.prepend(warning);
+                }
+            } else {
+                console.error('Error getting people:', error);
+            }
             return [];
         }
     },
