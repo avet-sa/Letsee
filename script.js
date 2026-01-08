@@ -230,19 +230,22 @@ async function renderHandoverNotes() {
     
     emptyState.classList.add('hidden');
     
+    // Get shift people once for all notes
+    const shiftPeople = await getCurrentShiftPeople();
+    
     // Group notes
     const unresolved = notes.filter(n => !n.completed && (n.promised || n.followup));
     const general = notes.filter(n => !n.completed && !n.promised && !n.followup);
     const actions = notes.filter(n => n.completed);
     
     // Render each group
-    unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(renderNote).join('') : `<div class="empty-group">${t('noUnresolved')}</div>`;
-    generalList.innerHTML = general.length > 0 ? general.map(renderNote).join('') : `<div class="empty-group">${t('noGeneral')}</div>`;
-    actionsList.innerHTML = actions.length > 0 ? actions.map(renderNote).join('') : `<div class="empty-group">${t('noCompleted')}</div>`;
+    unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noUnresolved')}</div>`;
+    generalList.innerHTML = general.length > 0 ? general.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noGeneral')}</div>`;
+    actionsList.innerHTML = actions.length > 0 ? actions.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noCompleted')}</div>`;
 }
 
 // Render individual note
-function renderNote(note) {
+function renderNote(note, shiftPeople = '') {
     const timestamp = new Date(note.timestamp);
     const timeStr = timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     
@@ -250,15 +253,22 @@ function renderNote(note) {
     if (note.completed) classes.push('completed');
     if (note.promised) classes.push('has-promise');
     if (note.followup) classes.push('has-followup');
+    if (note.promised && note.followup) classes.push('has-both-warnings');
     
-    const badges = [];
-    badges.push(`<span class="category-badge">${t(note.category)}</span>`);
-    if (note.room) badges.push(`<span class="room-badge">${note.room}</span>`);
-    if (note.guestName) badges.push(`<span class="guest-badge">${note.guestName}</span>`);
-    if (note.promised) badges.push(`<span class="promise-badge">${t('promisedToGuest').toUpperCase()}</span>`);
-    if (note.followup) badges.push(`<span class="followup-badge">${t('followupRequired').toUpperCase()}</span>`);
+    // Top badges (category, promise, followup)
+    const topBadges = [];
+    topBadges.push(`<span class="category-badge">${t(note.category)}</span>`);
+    if (note.promised) topBadges.push(`<span class="warning-badge promise">${t('promisedToGuest').toUpperCase()}</span>`);
+    if (note.followup) topBadges.push(`<span class="warning-badge followup">${t('followupRequired').toUpperCase()}</span>`);
+    
+    // Inline badges (room, guest) - will appear near the text
+    const inlineBadges = [];
+    if (note.room) inlineBadges.push(`<span class="room-badge-inline">${note.room}</span>`);
+    if (note.guestName) inlineBadges.push(`<span class="guest-badge-inline">${note.guestName}</span>`);
     
     const shiftInfo = note.shift || 'A';
+    // Use note's addedBy if shiftPeople is empty
+    const peopleDisplay = shiftPeople || note.addedBy || 'Staff';
     const editInfo = note.editedAt ? `<div class="edit-info">${t('edited')}: ${new Date(note.editedAt).toLocaleString(currentLanguage === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${note.editedBy || 'Staff'}</div>` : '';
     const attachments = note.attachments && note.attachments.length > 0 ? `<div class="attachments">${note.attachments.map(att => {
         if (att.url.startsWith('data:image')) {
@@ -272,7 +282,7 @@ function renderNote(note) {
         <div class="${classes.join(' ')}" data-note-id="${note.id}">
             <div class="handover-header">
                 <div class="handover-meta">
-                    ${badges.join('')}
+                    ${topBadges.join('')}
                 </div>
                 <div class="handover-actions">
                     <button class="btn-icon" onclick="toggleComplete('${note.id}')" title="${note.completed ? 'Mark incomplete' : 'Mark complete'}">
@@ -294,13 +304,14 @@ function renderNote(note) {
                     </button>
                 </div>
             </div>
+            ${inlineBadges.length > 0 ? `<div class="inline-badges">${inlineBadges.join('')}</div>` : ''}
             <div class="handover-text">${note.text}</div>
             ${note.promiseText ? `<div class="promise-text">→ ${note.promiseText}</div>` : ''}
             ${attachments}
             ${editInfo}
             <div class="handover-footer">
                 <span>${timeStr} | ${shiftInfo} ${t('shift')}</span>
-                <span>${getCurrentShiftPeople()}</span>
+                <span>${peopleDisplay}</span>
             </div>
         </div>
     `;
@@ -413,7 +424,15 @@ async function saveNote(event) {
         const index = dateNotes.findIndex(n => n.id === currentEditingNoteId);
         if (index !== -1) {
             noteData.editedAt = Date.now();
-            noteData.editedBy = people[0]?.name || 'Staff';
+            // Get current shift people for editedBy
+            const assignedPeople = daySchedule.people || [];
+            if (assignedPeople.length > 0) {
+                noteData.editedBy = assignedPeople.join(' & ');
+            } else if (people.length >= 2) {
+                noteData.editedBy = people.slice(0, 2).map(p => p.name).join(' & ');
+            } else {
+                noteData.editedBy = people[0]?.name || 'Staff';
+            }
             dateNotes[index] = { ...dateNotes[index], ...noteData };
         }
     } else {

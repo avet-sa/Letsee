@@ -265,7 +265,7 @@ body {
     background: var(--bg-primary);
     border-radius: 4px;
     padding: 15px;
-    border-left: 3px solid var(--border-secondary);
+    border-left: 4px solid var(--border-secondary);
     margin-bottom: 1px;
 }
 
@@ -343,40 +343,85 @@ body {
     color: var(--text-secondary);
 }
 
-.room-badge {
+/* Warning stripe badges (promise and followup) */
+.warning-badge {
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+}
+
+.warning-badge.promise {
+    background: #ff4444;
+}
+
+.warning-badge.followup {
+    background: #ff8800;
+}
+
+[data-theme="light"] .handover-item.has-both-warnings {
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(255, 136, 0, 0.22) 0px,
+        rgba(255, 136, 0, 0.22) 15px,
+        rgba(255, 68, 68, 0.22) 15px,
+        rgba(255, 68, 68, 0.22) 30px
+    ) !important;
+    border-left: 4px solid transparent;
+    border-image: repeating-linear-gradient(
+        to bottom,
+        #ff4444,
+        #ff4444 15px,
+        #ff8800 15px,
+        #ff8800 30px
+    ) 1;
+}
+
+/* Warning stripe pattern for tasks with BOTH promise AND followup */
+.handover-item.has-both-warnings {
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(255, 136, 0, 0.075) 0px,
+        rgba(255, 136, 0, 0.075) 15px,
+        rgba(255, 68, 68, 0.075) 15px,
+        rgba(255, 68, 68, 0.075) 30px
+    ) !important;
+    border-left: 4px solid transparent;
+    border-image: repeating-linear-gradient(
+        to bottom,
+        #ff4444,
+        #ff4444 15px,
+        #ff8800 15px,
+        #ff8800 30px
+    ) 1;
+}
+
+/* Inline badges (room and guest near text) */
+.inline-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.room-badge-inline,
+.guest-badge-inline {
     background: transparent;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid var(--border-primary);
+}
+
+.room-badge-inline {
     color: var(--text-primary);
-    padding: 0;
-    border-radius: 0;
-    font-size: 11px;
-    font-weight: 700;
+    border-color: var(--text-primary);
 }
 
-.guest-badge {
-    background: transparent;
+.guest-badge-inline {
     color: #2196F3;
-    padding: 0;
-    border-radius: 0;
-    font-size: 11px;
-    font-weight: 700;
-}
-
-.promise-badge {
-    background: transparent;
-    color: #ff4444;
-    padding: 0;
-    border-radius: 0;
-    font-size: 10px;
-    font-weight: 700;
-}
-
-.followup-badge {
-    background: transparent;
-    color: #ff8800;
-    padding: 0;
-    border-radius: 0;
-    font-size: 10px;
-    font-weight: 700;
+    border-color: #2196F3;
 }
 
 .promise-text {

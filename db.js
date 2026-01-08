@@ -22,9 +22,7 @@ const DB = {
     // People operations
     async getPeople() {
         try {
-            const records = await pb.collection('people').getFullList({
-                sort: 'created',
-            });
+            const records = await pb.collection('people').getFullList({});
             return records.map(r => ({ name: r.name, color: r.color }));
         } catch (error) {
             if (error.status === 400 || error.status === 404) {
