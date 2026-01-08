@@ -185,6 +185,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        const isInputFocused = document.activeElement === input;
+        
+        // Ctrl/Cmd + N: Add new person (focus input)
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+            e.preventDefault();
+            input.focus();
+        }
+        
+        // Ctrl/Cmd + K: Toggle theme
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            toggleTheme();
+        }
+        
+        // Escape: Clear input
+        if (e.key === 'Escape' && isInputFocused) {
+            input.value = '';
+            input.blur();
+        }
+    });
+    
     // Close modal on outside click
     document.getElementById('color-picker-modal').addEventListener('click', (e) => {
         if (e.target.id === 'color-picker-modal') {

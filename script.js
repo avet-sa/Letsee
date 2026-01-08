@@ -181,18 +181,26 @@ async function saveHandoverNotes(notes) {
 // Get notes for current date
 async function getNotesForDate(dateKey) {
     const allNotes = await getHandoverNotes();
-    return allNotes[dateKey] || [];
+    const dateData = allNotes[dateKey];
+    if (!dateData) return { notes: [], sortOrder: [] };
+    if (Array.isArray(dateData)) {
+        // Backward compatibility: wrap array
+        return { notes: dateData, sortOrder: dateData.map(n => n.id) };
+    }
+    return dateData;
 }
 
 async function renderHandoverNotes() {
     const dateKey = currentDate.toISOString().split('T')[0];
-    let notes = await getNotesForDate(dateKey);
-    
+    const dateData = await getNotesForDate(dateKey);
+    let notes = dateData.notes || [];
+    let sortOrder = dateData.sortOrder || [];
+
     const unresolvedList = document.getElementById('unresolved-list');
     const generalList = document.getElementById('general-list');
     const actionsList = document.getElementById('actions-list');
     const emptyState = document.getElementById('empty-state');
-    
+
     // Apply search filter
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -203,7 +211,7 @@ async function renderHandoverNotes() {
             n.category.toLowerCase().includes(query)
         );
     }
-    
+
     // Apply category filter
     if (currentFilter === 'promised') {
         notes = notes.filter(n => n.promised);
@@ -222,9 +230,16 @@ async function renderHandoverNotes() {
     } else if (currentQuickFilter === 'openItems') {
         notes = notes.filter(n => !n.completed);
     }
-    
+
     // Apply sorting
-    if (currentSort === 'newest') {
+    if (currentSort === 'custom' && sortOrder.length > 0) {
+        // Sort notes by sortOrder array
+        const notesById = Object.fromEntries(notes.map(n => [n.id, n]));
+        notes = sortOrder.map(id => notesById[id]).filter(Boolean);
+        // Add any notes not in sortOrder (new notes)
+        const missingNotes = notes.filter(n => !sortOrder.includes(n.id));
+        notes = notes.concat(missingNotes);
+    } else if (currentSort === 'newest') {
         notes.sort((a, b) => b.timestamp - a.timestamp);
     } else if (currentSort === 'oldest') {
         notes.sort((a, b) => a.timestamp - b.timestamp);
@@ -235,7 +250,7 @@ async function renderHandoverNotes() {
             return roomA.localeCompare(roomB, undefined, { numeric: true });
         });
     }
-    
+
     if (notes.length === 0) {
         unresolvedList.innerHTML = '';
         generalList.innerHTML = '';
@@ -244,18 +259,18 @@ async function renderHandoverNotes() {
         updateBulkUI();
         return;
     }
-    
+
     emptyState.classList.add('hidden');
-    
+
     // Get shift people once for all notes
     const shiftPeople = await getCurrentShiftPeople();
-    
-    // Group notes
+
+    // Sort notes into groups but keep them in saved order (don't re-sort by timestamp)
     const unresolved = notes.filter(n => !n.completed && (n.promised || n.followup));
     const general = notes.filter(n => !n.completed && !n.promised && !n.followup);
     const actions = notes.filter(n => n.completed);
-    
-    // Render each group
+
+    // Render each group, preserving note order for drag-drop
     unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noUnresolved')}</div>`;
     generalList.innerHTML = general.length > 0 ? general.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noGeneral')}</div>`;
     actionsList.innerHTML = actions.length > 0 ? actions.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noCompleted')}</div>`;
@@ -423,25 +438,37 @@ function closeNoteModal() {
     currentEditingNoteId = null;
 }
 
+// Open shortcuts modal
+function openShortcutsModal() {
+    document.getElementById('shortcuts-modal').classList.remove('hidden');
+}
+
+// Close shortcuts modal
+function closeShortcutsModal() {
+    document.getElementById('shortcuts-modal').classList.add('hidden');
+}
+
 // Save note
 async function saveNote(event) {
     event.preventDefault();
-    
     const dateKey = currentDate.toISOString().split('T')[0];
     const allNotes = await getHandoverNotes();
-    const dateNotes = allNotes[dateKey] || [];
+    let dateData = allNotes[dateKey];
+    if (!dateData || Array.isArray(dateData)) {
+        dateData = { notes: dateData || [], sortOrder: (dateData || []).map(n => n.id) };
+    }
+    const dateNotes = dateData.notes;
+    const sortOrder = dateData.sortOrder;
     const schedule = await getSchedule();
     const daySchedule = schedule[dateKey] || {};
     const currentShift = daySchedule.shift || 'A';
     const people = await getPeople();
-    
     // Collect attachments
     const attachmentItems = document.querySelectorAll('#attachments-list .attachment-item');
     const attachments = Array.from(attachmentItems).map(item => ({
         url: item.dataset.url,
         name: item.querySelector('span').textContent.replace('📎 ', '')
     }));
-    
     const assignedPeople = daySchedule.people || [];
     const noteData = {
         id: currentEditingNoteId || Date.now().toString(),
@@ -464,7 +491,6 @@ async function saveNote(event) {
             dateNotes.find(n => n.id === currentEditingNoteId)?.shift || currentShift : 
             currentShift
     };
-    
     if (currentEditingNoteId) {
         const index = dateNotes.findIndex(n => n.id === currentEditingNoteId);
         if (index !== -1) {
@@ -482,10 +508,12 @@ async function saveNote(event) {
         }
     } else {
         dateNotes.push(noteData);
+        // Add to sortOrder if not present
+        if (!sortOrder.includes(noteData.id)) sortOrder.push(noteData.id);
     }
-    
-    allNotes[dateKey] = dateNotes;
-    await saveHandoverNotes(allNotes);
+    allNotes[dateKey] = { notes: dateNotes, sortOrder };
+    // Pass only notes arrays to DB
+    await saveHandoverNotes(getNotesArrayObject(allNotes));
     // Clear draft after successful save
     localStorage.removeItem(DRAFT_KEY);
     document.getElementById('draft-indicator').classList.add('hidden');
@@ -679,20 +707,25 @@ async function bulkToggleComplete() {
     renderHandoverNotes();
 }
 
-// Reorder notes (drag-drop)
+// Reorder notes (drag-drop) - async function that saves and triggers re-render
 async function reorderNotes(draggedId, targetId) {
     if (draggedId === targetId) return;
     const dateKey = currentDate.toISOString().split('T')[0];
     const allNotes = await getHandoverNotes();
-    const dateNotes = allNotes[dateKey] || [];
-    const from = dateNotes.findIndex(n => n.id === draggedId);
-    const to = dateNotes.findIndex(n => n.id === targetId);
+    let dateData = allNotes[dateKey];
+    if (!dateData || Array.isArray(dateData)) {
+        dateData = { notes: dateData || [], sortOrder: (dateData || []).map(n => n.id) };
+    }
+    const { notes, sortOrder } = dateData;
+    const from = sortOrder.indexOf(draggedId);
+    const to = sortOrder.indexOf(targetId);
     if (from === -1 || to === -1) return;
-    const [item] = dateNotes.splice(from, 1);
-    dateNotes.splice(to, 0, item);
-    allNotes[dateKey] = dateNotes;
-    await saveHandoverNotes(allNotes);
-    renderHandoverNotes();
+    sortOrder.splice(to, 0, sortOrder.splice(from, 1)[0]);
+    allNotes[dateKey] = { notes, sortOrder };
+    // Pass only notes arrays to DB
+    await saveHandoverNotes(getNotesArrayObject(allNotes));
+    currentSort = 'custom';
+    await renderHandoverNotes();
 }
 
 // Drag handlers (delegated via attributes)
@@ -736,6 +769,21 @@ function onDrop(e) {
 function onDragEnd(e) {
     document.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
     document.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'));
+}
+
+// Utility to get notes-only object for DB
+function getNotesArrayObject(allNotes) {
+    const result = {};
+    for (const [date, value] of Object.entries(allNotes)) {
+        if (Array.isArray(value)) {
+            result[date] = value;
+        } else if (value && Array.isArray(value.notes)) {
+            result[date] = value.notes;
+        } else {
+            result[date] = [];
+        }
+    }
+    return result;
 }
 
 // Draft autosave
@@ -794,16 +842,66 @@ function attachAutosaveListeners() {
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') { e.preventDefault(); openAddNote(); }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); document.getElementById('search-input').focus(); }
-    if (e.key === 'Escape') { closeNoteModal(); }
-    // quick category selection while modal open
+    // Don't trigger shortcuts if user is typing in input fields
+    const isInputFocused = document.activeElement.tagName === 'INPUT' || 
+                          document.activeElement.tagName === 'TEXTAREA' ||
+                          document.activeElement.tagName === 'SELECT';
+    
+    // Ctrl/Cmd + N: Add new note
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n' && !isInputFocused) { 
+        e.preventDefault(); 
+        openAddNote(); 
+    }
+    
+    // Ctrl/Cmd + F: Focus search (allow in input fields)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { 
+        e.preventDefault(); 
+        document.getElementById('search-input').focus(); 
+    }
+    
+    // Escape: Close modal
+    if (e.key === 'Escape') { 
+        closeNoteModal();
+        closeShortcutsModal();
+    }
+    
+    // Quick category selection while modal open (1-7 for categories)
     if (!document.getElementById('note-modal').classList.contains('hidden')) {
         const n = parseInt(e.key, 10);
         if (!isNaN(n) && n >=1 && n <=7) {
             const sel = document.getElementById('note-category');
-            if (sel && sel.options[n-1]) sel.selectedIndex = n-1;
+            if (sel && sel.options[n-1]) {
+                sel.selectedIndex = n-1;
+                // Visual feedback
+                sel.classList.add('category-selected');
+                setTimeout(() => sel.classList.remove('category-selected'), 300);
+            }
         }
+    }
+    
+    // Ctrl/Cmd + S: Save note (when modal is open)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && 
+        !document.getElementById('note-modal').classList.contains('hidden')) {
+        e.preventDefault();
+        document.getElementById('note-form').dispatchEvent(new Event('submit'));
+    }
+    
+    // Ctrl/Cmd + D: Toggle date picker
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        toggleDatePicker();
+    }
+    
+    // Ctrl/Cmd + K: Toggle theme
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleTheme();
+    }
+    
+    // ?: Show shortcuts help
+    if ((e.shiftKey && e.key === '?') || (e.key === '?' && !isInputFocused)) {
+        e.preventDefault();
+        openShortcutsModal();
     }
 });
 
@@ -902,6 +1000,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('note-modal')?.addEventListener('click', (e) => {
         if (e.target.id === 'note-modal') {
             closeNoteModal();
+        }
+    });
+    
+    document.getElementById('shortcuts-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'shortcuts-modal') {
+            closeShortcutsModal();
         }
     });
     

@@ -81,6 +81,22 @@ body {
     opacity: 0.7;
 }
 
+.help-btn {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 8px 12px;
+    font-family: var(--primary-font);
+    font-size: 18px;
+    transition: opacity 0.2s;
+    line-height: 1;
+}
+
+.help-btn:hover {
+    opacity: 0.7;
+}
+
 .date-nav {
     display: flex;
     align-items: center;
@@ -178,41 +194,48 @@ body {
     accent-color: #7fbf7f;
 }
 
-/* Category colors */
-.category-badge {
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    margin-right: 6px;
-    color: white;
-}
+
 
 .category-complaint {
-    background: #d9534f;
+    background: rgba(231, 76, 60, 1);
 }
 
 .category-request {
-    background: #5bc0de;
+    background: rgba(52, 152, 219, 1);
 }
 
 .category-billing {
-    background: #f0ad4e;
+    background: rgba(243, 156, 18, 1);
 }
 
 .category-late-checkout {
-    background: #5cb85c;
+    background: rgba(39, 174, 96, 1);
 }
 
 .category-vip {
-    background: #8e44ad;
+    background: rgba(155, 89, 182, 1);
 }
 
 .category-incident {
-    background: #d9534f;
+    background: rgba(231, 76, 60, 1);
 }
 
 .category-info {
-    background: #3498db;
+    background: rgba(149, 165, 166, 1);
+}
+
+/* Keyboard hints */
+.keyboard-hint {
+    display: inline-block;
+    background: var(--border-secondary);
+    color: var(--text-secondary);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    font-family: var(--primary-font);
 }
 
 /* Due label */
@@ -467,13 +490,12 @@ body {
 }
 
 .category-badge {
-    background: transparent;
-    padding: 0;
+    padding: 4px 8px;
     border-radius: 0;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    color: var(--text-secondary);
+    color: white;
 }
 
 /* Warning stripe badges (promise and followup) */
@@ -884,6 +906,43 @@ body {
 
 .btn-save:hover {
     opacity: 0.8;
+}
+
+/* Shortcuts modal */
+.shortcuts-content {
+    max-width: 600px;
+}
+
+.shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.shortcut-item {
+    padding: 12px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    border: 1px solid var(--border-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.shortcut-key {
+    font-weight: 700;
+    font-size: 14px;
+    background: var(--border-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.shortcut-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
 }
 
 @media (max-width: 768px) {

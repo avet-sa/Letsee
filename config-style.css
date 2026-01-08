@@ -295,6 +295,18 @@ h1 {
     letter-spacing: 0.5px;
 }
 
+/* Keyboard shortcuts hint */
+.keyboard-hint {
+    display: inline-block;
+    background: var(--border-secondary);
+    color: var(--text-secondary);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+    font-weight: normal;
+}
+
 @media (max-width: 768px) {
     .config-section {
         padding: 20px;
@@ -311,5 +323,9 @@ h1 {
     .color-option {
         width: 50px;
         height: 50px;
+    }
+    
+    .keyboard-hint {
+        display: none;
     }
 }
