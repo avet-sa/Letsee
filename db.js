@@ -147,7 +147,9 @@ const DB = {
 
             // Process all notes
             for (const [date, dateNotes] of Object.entries(notes)) {
-                for (const note of dateNotes) {
+                // Handle both array format and {notes, sortOrder} format
+                const notesList = Array.isArray(dateNotes) ? dateNotes : (dateNotes.notes || []);
+                for (const note of notesList) {
                     currentIds.add(note.id);
                     
                     const data = {

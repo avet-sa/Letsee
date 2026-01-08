@@ -315,7 +315,7 @@ function renderNote(note, shiftPeople = '') {
     }).join('')}</div>` : '';
 
     // Due label
-    let dueLabel = 'No Due Date Set';
+    let dueLabel = 'No Due Date';
     if (note.dueDate) {
         const dueDt = new Date(`${note.dueDate}T${note.dueTime || '00:00'}`);
         const now = new Date();
@@ -401,6 +401,23 @@ function openAddNote() {
     attachAutosaveListeners();
     document.getElementById('draft-indicator').classList.toggle('hidden', !localStorage.getItem(DRAFT_KEY));
     document.getElementById('note-modal').classList.remove('hidden');
+    // Focus note field and add Enter key handler
+    const noteTextarea = document.getElementById('note-text');
+    noteTextarea.focus();
+    noteTextarea.addEventListener('keydown', handleNoteTextareaEnter, { once: true });
+}
+
+// Handle Enter key in note textarea to submit
+function handleNoteTextareaEnter(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('note-form').dispatchEvent(new Event('submit'));
+    } else if (e.key === 'Escape') {
+        closeNoteModal();
+    } else {
+        // Re-attach listener if other keys pressed
+        e.target.addEventListener('keydown', handleNoteTextareaEnter, { once: true });
+    }
 }
 
 // Add attachment
@@ -531,8 +548,8 @@ async function saveNote(event) {
         if (!sortOrder.includes(noteData.id)) sortOrder.push(noteData.id);
     }
     allNotes[dateKey] = { notes: dateNotes, sortOrder };
-    // Pass only notes arrays to DB
-    await saveHandoverNotes(getNotesArrayObject(allNotes));
+    // Save to database
+    await saveHandoverNotes(allNotes);
     // Clear draft after successful save
     localStorage.removeItem(DRAFT_KEY);
     document.getElementById('draft-indicator').classList.add('hidden');
@@ -585,6 +602,10 @@ async function editNote(noteId) {
     attachAutosaveListeners();
     
     document.getElementById('note-modal').classList.remove('hidden');
+    // Focus note field and add Enter key handler
+    const noteTextarea = document.getElementById('note-text');
+    noteTextarea.focus();
+    noteTextarea.addEventListener('keydown', handleNoteTextareaEnter, { once: true });
 }
 
 // Delete note
