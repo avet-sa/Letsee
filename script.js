@@ -102,6 +102,15 @@ let searchQuery = '';
 let currentSort = 'newest';
 let currentFilter = 'all';
 
+// Initialize database on load
+let dbInitialized = false;
+async function ensureDB() {
+    if (!dbInitialized) {
+        await DB.init();
+        dbInitialized = true;
+    }
+}
+
 // Shift colors
 const SHIFT_COLORS = {
     'A': 'rgba(255, 200, 100, 0.5)', // Morning - warm yellow
@@ -118,9 +127,9 @@ function t(key) {
 }
 
 // Toggle language
-function toggleLanguage() {
+async function toggleLanguage() {
     currentLanguage = currentLanguage === 'en' ? 'ru' : 'en';
-    localStorage.setItem(STORAGE_KEY_LANGUAGE, currentLanguage);
+    await DB.saveSetting(STORAGE_KEY_LANGUAGE, currentLanguage);
     updateLanguageUI();
     renderHandoverNotes();
 }
@@ -141,39 +150,39 @@ function updateLanguageUI() {
     document.getElementById('filter-select').options[2].text = t('filterFollowup');
 }
 
-// Get people from localStorage
-function getPeople() {
-    const stored = localStorage.getItem(STORAGE_KEY_PEOPLE);
-    return stored ? JSON.parse(stored) : [];
+// Get people from database
+async function getPeople() {
+    await ensureDB();
+    return await DB.getPeople();
 }
 
-// Get schedule from localStorage
-function getSchedule() {
-    const stored = localStorage.getItem(STORAGE_KEY_SCHEDULE);
-    return stored ? JSON.parse(stored) : {};
+// Get schedule from database
+async function getSchedule() {
+    await ensureDB();
+    return await DB.getSchedule();
 }
 
-// Get handover notes from localStorage
-function getHandoverNotes() {
-    const stored = localStorage.getItem(STORAGE_KEY_HANDOVER);
-    return stored ? JSON.parse(stored) : {};
+// Get handover notes from database
+async function getHandoverNotes() {
+    await ensureDB();
+    return await DB.getHandoverNotes();
 }
 
-// Save handover notes to localStorage
-function saveHandoverNotes(notes) {
-    localStorage.setItem(STORAGE_KEY_HANDOVER, JSON.stringify(notes));
+// Save handover notes to database
+async function saveHandoverNotes(notes) {
+    await ensureDB();
+    await DB.saveHandoverNotes(notes);
 }
 
 // Get notes for current date
-function getNotesForDate(dateKey) {
-    const allNotes = getHandoverNotes();
+async function getNotesForDate(dateKey) {
+    const allNotes = await getHandoverNotes();
     return allNotes[dateKey] || [];
 }
 
-// Render handover notes with grouping
-function renderHandoverNotes() {
+async function renderHandoverNotes() {
     const dateKey = currentDate.toISOString().split('T')[0];
-    let notes = getNotesForDate(dateKey);
+    let notes = await getNotesForDate(dateKey);
     
     const unresolvedList = document.getElementById('unresolved-list');
     const generalList = document.getElementById('general-list');
@@ -362,15 +371,16 @@ function closeNoteModal() {
 }
 
 // Save note
-function saveNote(event) {
+async function saveNote(event) {
     event.preventDefault();
     
     const dateKey = currentDate.toISOString().split('T')[0];
-    const allNotes = getHandoverNotes();
+    const allNotes = await getHandoverNotes();
     const dateNotes = allNotes[dateKey] || [];
-    const schedule = getSchedule();
+    const schedule = await getSchedule();
     const daySchedule = schedule[dateKey] || {};
     const currentShift = daySchedule.shift || 'A';
+    const people = await getPeople();
     
     // Collect attachments
     const attachmentItems = document.querySelectorAll('#attachments-list .attachment-item');
@@ -393,7 +403,7 @@ function saveNote(event) {
             dateNotes.find(n => n.id === currentEditingNoteId)?.timestamp || Date.now() : 
             Date.now(),
         completed: false,
-        addedBy: getPeople()[0]?.name || 'Staff',
+        addedBy: people[0]?.name || 'Staff',
         shift: currentEditingNoteId ? 
             dateNotes.find(n => n.id === currentEditingNoteId)?.shift || currentShift : 
             currentShift
@@ -403,7 +413,7 @@ function saveNote(event) {
         const index = dateNotes.findIndex(n => n.id === currentEditingNoteId);
         if (index !== -1) {
             noteData.editedAt = Date.now();
-            noteData.editedBy = getPeople()[0]?.name || 'Staff';
+            noteData.editedBy = people[0]?.name || 'Staff';
             dateNotes[index] = { ...dateNotes[index], ...noteData };
         }
     } else {
@@ -411,16 +421,16 @@ function saveNote(event) {
     }
     
     allNotes[dateKey] = dateNotes;
-    saveHandoverNotes(allNotes);
+    await saveHandoverNotes(allNotes);
     
     closeNoteModal();
     renderHandoverNotes();
 }
 
 // Edit note
-function editNote(noteId) {
+async function editNote(noteId) {
     const dateKey = currentDate.toISOString().split('T')[0];
-    const notes = getNotesForDate(dateKey);
+    const notes = await getNotesForDate(dateKey);
     const note = notes.find(n => n.id === noteId);
     
     if (!note) return;
@@ -459,39 +469,39 @@ function editNote(noteId) {
 }
 
 // Delete note
-function deleteNote(noteId) {
+async function deleteNote(noteId) {
     if (!confirm(t('deleteConfirm'))) return;
     
     const dateKey = currentDate.toISOString().split('T')[0];
-    const allNotes = getHandoverNotes();
+    const allNotes = await getHandoverNotes();
     const dateNotes = allNotes[dateKey] || [];
     
     allNotes[dateKey] = dateNotes.filter(n => n.id !== noteId);
-    saveHandoverNotes(allNotes);
+    await saveHandoverNotes(allNotes);
     
     renderHandoverNotes();
 }
 
 // Toggle complete status
-function toggleComplete(noteId) {
+async function toggleComplete(noteId) {
     const dateKey = currentDate.toISOString().split('T')[0];
-    const allNotes = getHandoverNotes();
+    const allNotes = await getHandoverNotes();
     const dateNotes = allNotes[dateKey] || [];
     
     const note = dateNotes.find(n => n.id === noteId);
     if (note) {
         note.completed = !note.completed;
         allNotes[dateKey] = dateNotes;
-        saveHandoverNotes(allNotes);
+        await saveHandoverNotes(allNotes);
         renderHandoverNotes();
     }
 }
 
 // Update people block with gradient
-function getCurrentShiftPeople() {
-    const people = getPeople();
+async function getCurrentShiftPeople() {
+    const people = await getPeople();
     const dateKey = currentDate.toISOString().split('T')[0];
-    const schedule = getSchedule();
+    const schedule = await getSchedule();
     const daySchedule = schedule[dateKey] || {};
     const assignedPeople = daySchedule.people || [];
     
@@ -503,10 +513,10 @@ function getCurrentShiftPeople() {
     return '';
 }
 
-function updatePeopleBlock() {
-    const people = getPeople();
+async function updatePeopleBlock() {
+    const people = await getPeople();
     const dateKey = currentDate.toISOString().split('T')[0];
-    const schedule = getSchedule();
+    const schedule = await getSchedule();
     const daySchedule = schedule[dateKey] || {};
     
     // Get current shift (default to 'A')
@@ -569,12 +579,12 @@ function changeDate(days) {
 }
 
 // Theme toggle
-function toggleTheme() {
+async function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
     document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem(STORAGE_KEY_THEME, newTheme);
+    await DB.saveSetting(STORAGE_KEY_THEME, newTheme);
     updateThemeIcon(newTheme);
 }
 
@@ -591,8 +601,8 @@ function updateThemeIcon(theme) {
 }
 
 // Load theme on startup
-function loadTheme() {
-    const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) || 'light';
+async function loadTheme() {
+    const savedTheme = await DB.getSetting(STORAGE_KEY_THEME) || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
 }
@@ -616,12 +626,17 @@ function selectDate(dateString) {
 }
 
 // Close modal on outside click
-document.addEventListener('DOMContentLoaded', () => {
-    loadTheme();
+document.addEventListener('DOMContentLoaded', async () => {
+    await ensureDB();
+    await loadTheme();
     
     // Load language
-    currentLanguage = localStorage.getItem(STORAGE_KEY_LANGUAGE) || 'en';
+    currentLanguage = await DB.getSetting(STORAGE_KEY_LANGUAGE) || 'en';
     updateLanguageUI();
+    
+    // Initial render
+    await updatePeopleBlock();
+    await renderHandoverNotes();
     
     document.getElementById('note-modal')?.addEventListener('click', (e) => {
         if (e.target.id === 'note-modal') {

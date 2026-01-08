@@ -22,13 +22,22 @@ const DEFAULT_PEOPLE = [
 const STORAGE_KEY_PEOPLE = 'letsee_people';
 const STORAGE_KEY_THEME = 'letsee_theme';
 
+// Initialize database on load
+let dbInitialized = false;
+async function ensureDB() {
+    if (!dbInitialized) {
+        await DB.init();
+        dbInitialized = true;
+    }
+}
+
 // Theme toggle
-function toggleTheme() {
+async function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
     document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem(STORAGE_KEY_THEME, newTheme);
+    await DB.saveSetting(STORAGE_KEY_THEME, newTheme);
     updateThemeIcon(newTheme);
 }
 
@@ -45,31 +54,33 @@ function updateThemeIcon(theme) {
 }
 
 // Load theme on startup
-function loadTheme() {
-    const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) || 'light';
+async function loadTheme() {
+    const savedTheme = await DB.getSetting(STORAGE_KEY_THEME) || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
 }
 
-// Get people from localStorage or use defaults
-function getPeople() {
-    const stored = localStorage.getItem(STORAGE_KEY_PEOPLE);
-    if (stored) {
-        return JSON.parse(stored);
+// Get people from database or use defaults
+async function getPeople() {
+    await ensureDB();
+    let people = await DB.getPeople();
+    if (!people || people.length === 0) {
+        // Initialize with defaults
+        await savePeople(DEFAULT_PEOPLE);
+        return DEFAULT_PEOPLE;
     }
-    // Initialize with defaults
-    savePeople(DEFAULT_PEOPLE);
-    return DEFAULT_PEOPLE;
+    return people;
 }
 
-// Save people to localStorage
-function savePeople(people) {
-    localStorage.setItem(STORAGE_KEY_PEOPLE, JSON.stringify(people));
+// Save people to database
+async function savePeople(people) {
+    await ensureDB();
+    await DB.savePeople(people);
 }
 
 // Render people list
-function renderPeople() {
-    const people = getPeople();
+async function renderPeople() {
+    const people = await getPeople();
     const listContainer = document.getElementById('people-list');
     
     listContainer.innerHTML = people.map((person, index) => `
@@ -87,7 +98,7 @@ function renderPeople() {
 }
 
 // Add new person
-function addPerson() {
+async function addPerson() {
     const input = document.getElementById('new-person-name');
     const name = input.value.trim();
     
@@ -96,7 +107,7 @@ function addPerson() {
         return;
     }
     
-    const people = getPeople();
+    const people = await getPeople();
     
     // Check for duplicate
     if (people.some(p => p.name.toLowerCase() === name.toLowerCase())) {
@@ -113,20 +124,20 @@ function addPerson() {
         : COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
     
     people.push({ name, color });
-    savePeople(people);
+    await savePeople(people);
     renderPeople();
     input.value = '';
 }
 
 // Remove person
-function removePerson(index) {
+async function removePerson(index) {
     if (!confirm('Are you sure you want to remove this person?')) {
         return;
     }
     
-    const people = getPeople();
+    const people = await getPeople();
     people.splice(index, 1);
-    savePeople(people);
+    await savePeople(people);
     renderPeople();
 }
 
@@ -151,20 +162,21 @@ function closeColorPicker() {
     currentEditingIndex = null;
 }
 
-function selectColor(color) {
+async function selectColor(color) {
     if (currentEditingIndex === null) return;
     
-    const people = getPeople();
+    const people = await getPeople();
     people[currentEditingIndex].color = color;
-    savePeople(people);
+    await savePeople(people);
     renderPeople();
     closeColorPicker();
 }
 
 // Allow Enter key to add person
-document.addEventListener('DOMContentLoaded', () => {
-    loadTheme();
-    renderPeople();
+document.addEventListener('DOMContentLoaded', async () => {
+    await ensureDB();
+    await loadTheme();
+    await renderPeople();
     
     const input = document.getElementById('new-person-name');
     input.addEventListener('keypress', (e) => {
