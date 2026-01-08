@@ -143,15 +143,6 @@ body {
     display: none;
 }
 
-/* Draggable items */
-.handover-item[draggable="true"] {
-    cursor: grab;
-}
-
-.handover-item.drag-over {
-    outline: 2px dashed rgba(0, 0, 0, 0.15);
-}
-
 /* Selection border style */
 .handover-item {
     position: relative;

@@ -315,7 +315,7 @@ function renderNote(note, shiftPeople = '') {
     }).join('')}</div>` : '';
 
     // Due label
-    let dueLabel = 'No Set Due Date';
+    let dueLabel = 'No Due Date Set';
     if (note.dueDate) {
         const dueDt = new Date(`${note.dueDate}T${note.dueTime || '00:00'}`);
         const now = new Date();
@@ -351,7 +351,7 @@ function renderNote(note, shiftPeople = '') {
     }
 
     return `
-        <div class="${classes.join(' ')}" data-note-id="${note.id}" draggable="true" onclick="toggleSelect('${note.id}', this)" ondragstart="onDragStart(event)" ondragenter="onDragEnter(event)" ondragleave="onDragLeave(event)" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragend="onDragEnd(event)">
+        <div class="${classes.join(' ')}" data-note-id="${note.id}" onclick="toggleSelect('${note.id}', this)">
             <div class="handover-header">
                 <div class="handover-meta">
                     ${topBadges.join('')}
@@ -730,85 +730,6 @@ async function bulkToggleComplete() {
     await saveHandoverNotes(allNotes);
     selectedNotes.clear();
     renderHandoverNotes();
-}
-
-// Reorder notes (drag-drop) - async function that saves and triggers re-render
-async function reorderNotes(draggedId, targetId) {
-    if (draggedId === targetId) return;
-    const dateKey = currentDate.toISOString().split('T')[0];
-    const allNotes = await getHandoverNotes();
-    let dateData = allNotes[dateKey];
-    if (!dateData || Array.isArray(dateData)) {
-        dateData = { notes: dateData || [], sortOrder: (dateData || []).map(n => n.id) };
-    }
-    const { notes, sortOrder } = dateData;
-    const from = sortOrder.indexOf(draggedId);
-    const to = sortOrder.indexOf(targetId);
-    if (from === -1 || to === -1) return;
-    sortOrder.splice(to, 0, sortOrder.splice(from, 1)[0]);
-    allNotes[dateKey] = { notes, sortOrder };
-    // Pass only notes arrays to DB
-    await saveHandoverNotes(getNotesArrayObject(allNotes));
-    currentSort = 'custom';
-    await renderHandoverNotes();
-}
-
-// Drag handlers (delegated via attributes)
-function onDragStart(e) {
-    const el = e.target.closest('.handover-item');
-    if (!el) return;
-    e.dataTransfer.setData('text/plain', el.dataset.noteId);
-    try { e.dataTransfer.effectAllowed = 'move'; } catch (err) {}
-    el.classList.add('dragging');
-}
-function onDragEnter(e) {
-    e.preventDefault();
-    const el = e.target.closest('.handover-item');
-    if (el) el.classList.add('drag-over');
-}
-
-function onDragOver(e) {
-    e.preventDefault();
-    try { e.dataTransfer.dropEffect = 'move'; } catch (err) {}
-    const el = e.target.closest('.handover-item');
-    if (el && !el.classList.contains('drag-over')) el.classList.add('drag-over');
-}
-
-function onDragLeave(e) {
-    const el = e.target.closest('.handover-item');
-    if (el) el.classList.remove('drag-over');
-}
-
-function onDrop(e) {
-    e.preventDefault();
-    const target = e.target.closest('.handover-item');
-    const draggedId = e.dataTransfer.getData('text/plain');
-    if (!target || !draggedId) return;
-    const targetId = target.dataset.noteId;
-    // remove visual
-    document.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
-    document.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'));
-    reorderNotes(draggedId, targetId);
-}
-
-function onDragEnd(e) {
-    document.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
-    document.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'));
-}
-
-// Utility to get notes-only object for DB
-function getNotesArrayObject(allNotes) {
-    const result = {};
-    for (const [date, value] of Object.entries(allNotes)) {
-        if (Array.isArray(value)) {
-            result[date] = value;
-        } else if (value && Array.isArray(value.notes)) {
-            result[date] = value.notes;
-        } else {
-            result[date] = [];
-        }
-    }
-    return result;
 }
 
 // Draft autosave
