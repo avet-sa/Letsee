@@ -59,6 +59,24 @@
                         <option value="promised">Promised</option>
                         <option value="followup">Follow-up</option>
                     </select>
+                    <!-- Quick filters -->
+                    <div class="quick-filters">
+                        <button class="btn-primary" data-filter="myShift" onclick="applyQuickFilter('myShift')">My Shift</button>
+                        <button class="btn-primary" data-filter="todaysUrgent" onclick="applyQuickFilter('todaysUrgent')">Today's Urgent</button>
+                        <button class="btn-primary" data-filter="openItems" onclick="applyQuickFilter('openItems')">Open Items</button>
+                        <button class="btn-primary" data-filter="clear" onclick="applyQuickFilter('')">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Bulk actions toolbar -->
+                <div id="bulk-actions" class="bulk-actions hidden">
+                    <span id="bulk-count">0 selected</span>
+                    <button class="btn-icon btn-complete" onclick="bulkToggleComplete()" title="Toggle Complete">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <button class="btn-icon btn-delete" onclick="bulkDelete()" title="Delete">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
                 </div>
                 
                 <!-- Unresolved / Important -->
@@ -91,6 +109,7 @@
             <div class="modal-content note-modal-content">
                 <div class="modal-header">
                     <h3 id="modal-title">Add Note</h3>
+                    <span id="draft-indicator" class="draft-indicator hidden">Draft saved</span>
                     <button class="close-btn" onclick="closeNoteModal()">×</button>
                 </div>
                 <form id="note-form" onsubmit="saveNote(event)">
@@ -133,6 +152,13 @@
                     <div class="form-group" id="promise-text-group" style="display: none;">
                         <label>What was promised?</label>
                         <input type="text" id="promise-text" placeholder="e.g., Call back in 30 minutes">
+                    </div>
+                    <div class="form-group">
+                        <label>Due date (optional)</label>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="date" id="note-due-date">
+                            <input type="time" id="note-due-time">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Attachments <span class="optional-label">(Optional - paste image URLs)</span></label>

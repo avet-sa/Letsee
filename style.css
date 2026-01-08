@@ -1,6 +1,6 @@
 :root {
     --primary-font: "JetBrains Mono", monospace;
-    
+
     /* Light theme colors */
     --bg-primary: #e8e8e8;
     --bg-secondary: #ffffff;
@@ -108,6 +108,131 @@ body {
     font-weight: 400;
 }
 
+/* Quick filters */
+.quick-filters {
+    display: inline-flex;
+    gap: 8px;
+    margin-left: 12px;
+}
+
+/* Bulk actions */
+.bulk-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+}
+
+.bulk-actions.hidden {
+    display: none;
+}
+
+/* Draggable items */
+.handover-item[draggable="true"] {
+    cursor: grab;
+}
+
+.handover-item.drag-over {
+    outline: 2px dashed rgba(0, 0, 0, 0.15);
+}
+
+/* Selection checkbox */
+.select-checkbox {
+    margin-right: 8px;
+    width: 18px;
+    height: 18px;
+    transform: scale(1.05);
+    accent-color: #2b8a3e;
+    cursor: pointer;
+}
+
+/* Polished icon button for bulk actions */
+/* .bulk-actions .btn-icon {
+    background: transparent;
+    border: 1px solid var(--border-secondary);
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+} */
+
+.btn-complete:hover {
+    background: rgba(0, 255, 4, 0.09);
+    border-color: var(--border-primary);
+}
+
+.btn-delete:hover {
+    background: rgba(255, 0, 0, 0.1);
+    border-color: var(--border-primary);
+}
+
+.btn-edit:hover {
+    background: rgba(0, 123, 255, 0.1);
+    border-color: var(--border-primary);
+}
+
+/* Make checkbox a bit more visible in dark theme */
+[data-theme="dark"] .select-checkbox {
+    accent-color: #7fbf7f;
+}
+
+/* Category colors */
+.category-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-right: 6px;
+    color: white;
+}
+
+.category-complaint {
+    background: #d9534f;
+}
+
+.category-request {
+    background: #5bc0de;
+}
+
+.category-billing {
+    background: #f0ad4e;
+}
+
+.category-late-checkout {
+    background: #5cb85c;
+}
+
+.category-vip {
+    background: #8e44ad;
+}
+
+.category-incident {
+    background: #d9534f;
+}
+
+.category-info {
+    background: #3498db;
+}
+
+/* Due label */
+.due-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 10px;
+}
+
+/* Draft indicator */
+.draft-indicator {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-left: 8px;
+}
+
+.draft-indicator.hidden {
+    display: none;
+}
+
 .nav-btn:hover {
     opacity: 0.7;
 }
@@ -210,7 +335,8 @@ body {
     border-color: var(--border-primary);
 }
 
-.sort-select, .filter-select {
+.sort-select,
+.filter-select {
     padding: 8px 12px;
     border: 1px solid var(--border-primary);
     background: var(--bg-primary);
@@ -220,7 +346,8 @@ body {
     cursor: pointer;
 }
 
-.sort-select:focus, .filter-select:focus {
+.sort-select:focus,
+.filter-select:focus {
     outline: none;
 }
 
@@ -239,7 +366,10 @@ body {
     border-bottom: 1px solid var(--border-secondary);
 }
 
-.btn-primary, .btn-secondary, .btn-save, .btn-cancel {
+.btn-primary,
+.btn-secondary,
+.btn-save,
+.btn-cancel {
     background: var(--bg-primary);
     border: 1px solid var(--border-primary);
     color: var(--text-primary);
@@ -251,7 +381,10 @@ body {
     transition: opacity 0.2s;
 }
 
-.btn-primary:hover, .btn-secondary:hover, .btn-save:hover, .btn-cancel:hover {
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-save:hover,
+.btn-cancel:hover {
     opacity: 0.7;
 }
 
@@ -361,40 +494,32 @@ body {
 }
 
 [data-theme="light"] .handover-item.has-both-warnings {
-    background: repeating-linear-gradient(
-        45deg,
-        rgba(255, 136, 0, 0.22) 0px,
-        rgba(255, 136, 0, 0.22) 15px,
-        rgba(255, 68, 68, 0.22) 15px,
-        rgba(255, 68, 68, 0.22) 30px
-    ) !important;
+    background: repeating-linear-gradient(45deg,
+            rgba(255, 136, 0, 0.22) 0px,
+            rgba(255, 136, 0, 0.22) 15px,
+            rgba(255, 68, 68, 0.22) 15px,
+            rgba(255, 68, 68, 0.22) 30px) !important;
     border-left: 4px solid transparent;
-    border-image: repeating-linear-gradient(
-        to bottom,
-        #ff4444,
-        #ff4444 15px,
-        #ff8800 15px,
-        #ff8800 30px
-    ) 1;
+    border-image: repeating-linear-gradient(to bottom,
+            #ff4444,
+            #ff4444 15px,
+            #ff8800 15px,
+            #ff8800 30px) 1;
 }
 
 /* Warning stripe pattern for tasks with BOTH promise AND followup */
 .handover-item.has-both-warnings {
-    background: repeating-linear-gradient(
-        45deg,
-        rgba(255, 136, 0, 0.075) 0px,
-        rgba(255, 136, 0, 0.075) 15px,
-        rgba(255, 68, 68, 0.075) 15px,
-        rgba(255, 68, 68, 0.075) 30px
-    ) !important;
+    background: repeating-linear-gradient(45deg,
+            rgba(255, 136, 0, 0.1) 0px,
+            rgba(255, 136, 0, 0.1) 15px,
+            rgba(255, 68, 68, 0.1) 15px,
+            rgba(255, 68, 68, 0.1) 30px) !important;
     border-left: 4px solid transparent;
-    border-image: repeating-linear-gradient(
-        to bottom,
-        #ff4444,
-        #ff4444 15px,
-        #ff8800 15px,
-        #ff8800 30px
-    ) 1;
+    border-image: repeating-linear-gradient(to bottom,
+            #ff4444,
+            #ff4444 15px,
+            #ff8800 15px,
+            #ff8800 30px) 1;
 }
 
 /* Inline badges (room and guest near text) */
@@ -523,6 +648,9 @@ body {
 .handover-actions {
     display: flex;
     gap: 10px;
+    /* background: rgba(0, 0, 0, 0.7); */
+    background: var(--bg-primary);
+    padding: 10px;
 }
 
 .btn-icon {
@@ -540,10 +668,10 @@ body {
     transition: background 0.2s, border-color 0.2s;
 }
 
-.btn-icon:hover {
+/* .btn-icon:hover {
     background: var(--bg-primary);
     border-color: var(--border-primary);
-}
+} */
 
 .handover-text {
     color: var(--text-primary);
