@@ -13,6 +13,19 @@
     --modal-overlay: rgba(0, 0, 0, 0.5);
 }
 
+.none {
+    display: none !important;
+}
+
+.hidden {
+    opacity: 0 !important;
+}
+
+.unavailable {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
 [data-theme="dark"] {
     /* Dark theme colors */
     --bg-primary: #1a1a1a;
@@ -140,6 +153,11 @@ body {
 [data-theme="dark"] .quick-filters .btn-primary.active {
     background: #7fbf7f;
     color: #1a1a1a;
+}
+
+.btn-primary.clear {
+    font-size: 20px;
+    margin-left: 12px;
 }
 
 /* Bulk actions */
@@ -385,6 +403,7 @@ body {
     gap: 20px;
     margin-bottom: 25px;
     flex-wrap: wrap;
+    justify-content: space-between;
 }
 
 .add-note {

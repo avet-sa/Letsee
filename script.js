@@ -239,7 +239,7 @@ function renderNote(note, shiftPeople = '') {
     const topBadges = [];
     topBadges.push(`<span class="category-badge ${catClass}">${(note.category)}</span>`);
     if (note.promised) topBadges.push(`<span class="warning-badge promise">${('promised To Guest').toUpperCase()}</span>`);
-    if (note.followup) topBadges.push(`<span class="warning-badge followup">${('follow up Required').toUpperCase()}</span>`);
+    if (note.followup) topBadges.push(`<span class="warning-badge followup">${('follow-up Required').toUpperCase()}</span>`);
 
     // Inline badges (room, guest) - will appear near the text
     const inlineBadges = [];
@@ -668,11 +668,14 @@ function applyQuickFilter(filter) {
 
 // Bulk selection UI
 function updateBulkUI() {
+    const bulkControls = document.querySelector('.bulk-controls');
     const count = selectedNotes.size;
     const bulkCount = document.getElementById('bulk-count');
     if (count > 0) {
+        bulkControls.classList.remove('unavailable');
         bulkCount.textContent = `${count} selected`;
     } else {
+        bulkControls.classList.add('unavailable');
         bulkCount.textContent = '0 selected';
     }
 }
