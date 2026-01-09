@@ -3,101 +3,7 @@ const STORAGE_KEY_PEOPLE = 'letsee_people';
 const STORAGE_KEY_SCHEDULE = 'letsee_schedule';
 const STORAGE_KEY_HANDOVER = 'letsee_handover';
 const STORAGE_KEY_THEME = 'letsee_theme';
-const STORAGE_KEY_LANGUAGE = 'letsee_language';
 
-// Translations
-const TRANSLATIONS = {
-    en: {
-        handover: 'Handover',
-        addNote: '+ Add',
-        unresolvedImportant: 'UNRESOLVED / IMPORTANT',
-        generalNotes: 'GENERAL NOTES',
-        actionItems: 'ACTION ITEMS',
-        noUnresolved: 'No unresolved items',
-        noGeneral: 'No general notes',
-        noCompleted: 'No completed actions',
-        addNoteTitle: 'Add Note',
-        editNoteTitle: 'Edit Note',
-        guestName: 'Guest Name',
-        roomNumber: 'Room Number',
-        type: 'Type',
-        note: 'Note',
-        followupRequired: 'Follow-up required',
-        promisedToGuest: 'Promised to guest',
-        whatPromised: 'What was promised?',
-        attachments: 'Attachments',
-        cancel: 'Cancel',
-        save: 'Save',
-        edit: 'Edit',
-        delete: 'Delete',
-        deleteConfirm: 'Delete this note?',
-        edited: 'Edited',
-        shift: 'Shift',
-        search: 'Search notes...',
-        sortBy: 'Sort by',
-        filterBy: 'Filter',
-        sortNewest: 'Newest first',
-        sortOldest: 'Oldest first',
-        sortRoom: 'Room number',
-        filterAll: 'All',
-        filterPromised: 'Promised',
-        filterFollowup: 'Follow-up',
-        optional: 'Optional',
-        complaint: 'Complaint',
-        request: 'Request',
-        billing: 'Billing',
-        lateCheckout: 'Late Checkout',
-        vip: 'VIP',
-        incident: 'Incident',
-        info: 'Info'
-    },
-    ru: {
-        handover: 'Передача смены',
-        addNote: '+ Добавить',
-        unresolvedImportant: 'НЕРЕШЁННОЕ / ВАЖНОЕ',
-        generalNotes: 'ОБЩИЕ ЗАМЕТКИ',
-        actionItems: 'ВЫПОЛНЕННЫЕ ЗАДАЧИ',
-        noUnresolved: 'Нет нерешённых задач',
-        noGeneral: 'Нет общих заметок',
-        noCompleted: 'Нет выполненных задач',
-        addNoteTitle: 'Добавить заметку',
-        editNoteTitle: 'Редактировать заметку',
-        guestName: 'Имя гостя',
-        roomNumber: 'Номер комнаты',
-        type: 'Тип',
-        note: 'Заметка',
-        followupRequired: 'Требуется дальнейшая работа',
-        promisedToGuest: 'Обещано гостю',
-        whatPromised: 'Что было обещано?',
-        attachments: 'Вложения',
-        cancel: 'Отмена',
-        save: 'Сохранить',
-        edit: 'Редактировать',
-        delete: 'Удалить',
-        deleteConfirm: 'Удалить эту заметку?',
-        edited: 'Изменено',
-        shift: 'Смена',
-        search: 'Поиск заметок...',
-        sortBy: 'Сортировать',
-        filterBy: 'Фильтр',
-        sortNewest: 'Сначала новые',
-        sortOldest: 'Сначала старые',
-        sortRoom: 'По номеру комнаты',
-        filterAll: 'Все',
-        filterPromised: 'Обещанные',
-        filterFollowup: 'К исполнению',
-        optional: 'Необязательно',
-        complaint: 'Жалоба',
-        request: 'Запрос',
-        billing: 'Оплата',
-        lateCheckout: 'Поздний выезд',
-        vip: 'VIP',
-        incident: 'Инцидент',
-        info: 'Информация'
-    }
-};
-
-let currentLanguage = 'en';
 let searchQuery = '';
 let currentSort = 'newest';
 let currentFilter = 'all';
@@ -124,35 +30,6 @@ const SHIFT_COLORS = {
 };
 
 let currentEditingNoteId = null;
-
-// Translation helper
-function t(key) {
-    return TRANSLATIONS[currentLanguage][key] || key;
-}
-
-// Toggle language
-async function toggleLanguage() {
-    currentLanguage = currentLanguage === 'en' ? 'ru' : 'en';
-    await DB.saveSetting(STORAGE_KEY_LANGUAGE, currentLanguage);
-    updateLanguageUI();
-    renderHandoverNotes();
-}
-
-// Update UI text
-function updateLanguageUI() {
-    document.querySelector('.section-header h2').textContent = t('Letsee');
-    document.querySelector('.btn-primary').textContent = t('addNote');
-    document.querySelectorAll('.group-header')[0].textContent = t('unresolvedImportant');
-    document.querySelectorAll('.group-header')[1].textContent = t('generalNotes');
-    document.querySelectorAll('.group-header')[2].textContent = t('actionItems');
-    document.getElementById('search-input').placeholder = t('search');
-    document.getElementById('sort-select').options[0].text = t('sortNewest');
-    document.getElementById('sort-select').options[1].text = t('sortOldest');
-    document.getElementById('sort-select').options[2].text = t('sortRoom');
-    document.getElementById('filter-select').options[0].text = t('filterAll');
-    document.getElementById('filter-select').options[1].text = t('filterPromised');
-    document.getElementById('filter-select').options[2].text = t('filterFollowup');
-}
 
 // Get people from database
 async function getPeople() {
@@ -338,9 +215,9 @@ async function renderHandoverNotes() {
     const actions = notes.filter(n => n.completed);
 
     // Render each group, preserving note order for drag-drop
-    unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noUnresolved')}</div>`;
-    generalList.innerHTML = general.length > 0 ? general.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noGeneral')}</div>`;
-    actionsList.innerHTML = actions.length > 0 ? actions.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${t('noCompleted')}</div>`;
+    unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'noUnresolved'}</div>`;
+    generalList.innerHTML = general.length > 0 ? general.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'noGeneral'}</div>`;
+    actionsList.innerHTML = actions.length > 0 ? actions.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'noCompleted'}</div>`;
 
     // Update bulk UI after render
     updateBulkUI();
@@ -360,9 +237,9 @@ function renderNote(note, shiftPeople = '') {
     // Top badges (category, promise, followup)
     const catClass = `category-${(note.category || 'info').toString().toLowerCase().replace(/\s+/g, '-')}`;
     const topBadges = [];
-    topBadges.push(`<span class="category-badge ${catClass}">${t(note.category)}</span>`);
-    if (note.promised) topBadges.push(`<span class="warning-badge promise">${t('promisedToGuest').toUpperCase()}</span>`);
-    if (note.followup) topBadges.push(`<span class="warning-badge followup">${t('followupRequired').toUpperCase()}</span>`);
+    topBadges.push(`<span class="category-badge ${catClass}">${(note.category)}</span>`);
+    if (note.promised) topBadges.push(`<span class="warning-badge promise">${('promisedToGuest').toUpperCase()}</span>`);
+    if (note.followup) topBadges.push(`<span class="warning-badge followup">${('followupRequired').toUpperCase()}</span>`);
 
     // Inline badges (room, guest) - will appear near the text
     const inlineBadges = [];
@@ -372,7 +249,7 @@ function renderNote(note, shiftPeople = '') {
     const shiftInfo = note.shift || 'A';
     // Use note's addedBy if shiftPeople is empty
     const peopleDisplay = shiftPeople || note.addedBy || 'Staff';
-    const editInfo = note.editedAt ? `<div class="edit-info">${t('edited')}: ${new Date(note.editedAt).toLocaleString(currentLanguage === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${note.editedBy || 'Staff'}</div>` : '';
+    const editInfo = note.editedAt ? `<div class="edit-info">Edited: ${new Date(note.editedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${note.editedBy || 'Staff'}</div>` : '';
     const attachments = note.attachments && note.attachments.length > 0 ? `<div class="attachments">${note.attachments.map(att => {
         if (att.url && att.url.startsWith && att.url.startsWith('data:image')) {
             return `<a href="${att.url}" target="_blank" class="attachment-link" title="${att.name}">🖼️ ${att.name}</a>`;
@@ -449,7 +326,7 @@ function renderNote(note, shiftPeople = '') {
             ${attachments}
             ${editInfo}
             <div class="handover-footer">
-                <span>${timeStr} | ${shiftInfo} ${t('shift')} | ${peopleDisplay}</span>
+                <span>${timeStr} | ${shiftInfo} ${'shift'} | ${peopleDisplay}</span>
                 <span>${dueLabel}</span>
             </div>
         </div>
@@ -459,7 +336,7 @@ function renderNote(note, shiftPeople = '') {
 // Open add note modal
 function openAddNote() {
     currentEditingNoteId = null;
-    document.getElementById('modal-title').textContent = t('addNoteTitle');
+    document.getElementById('modal-title').textContent = 'addNoteTitle';
     document.getElementById('note-form').reset();
     document.getElementById('promise-text-group').style.display = 'none';
     document.getElementById('attachments-list').innerHTML = '';
@@ -634,7 +511,7 @@ async function editNote(noteId) {
     if (!note) return;
     
     currentEditingNoteId = noteId;
-    document.getElementById('modal-title').textContent = t('editNoteTitle');
+    document.getElementById('modal-title').textContent = 'editNoteTitle';
     document.getElementById('note-category').value = note.category;
     document.getElementById('note-room').value = note.room || '';
     document.getElementById('note-guest').value = note.guestName || '';
@@ -677,7 +554,7 @@ async function editNote(noteId) {
 
 // Delete note
 async function deleteNote(noteId) {
-    if (!confirm(t('deleteConfirm'))) return;
+    if (!confirm('deleteConfirm')) return;
     
     const dateKey = currentDate.toISOString().split('T')[0];
     const allNotes = await getHandoverNotes();
@@ -1031,10 +908,6 @@ function selectDate(dateString) {
 document.addEventListener('DOMContentLoaded', async () => {
     await ensureDB();
     await loadTheme();
-    
-    // Load language
-    currentLanguage = await DB.getSetting(STORAGE_KEY_LANGUAGE) || 'en';
-    updateLanguageUI();
     
     // Initial render
     await updatePeopleBlock();
