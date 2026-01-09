@@ -238,8 +238,8 @@ function renderNote(note, shiftPeople = '') {
     const catClass = `category-${(note.category || 'info').toString().toLowerCase().replace(/\s+/g, '-')}`;
     const topBadges = [];
     topBadges.push(`<span class="category-badge ${catClass}">${(note.category)}</span>`);
-    if (note.promised) topBadges.push(`<span class="warning-badge promise">${('promisedToGuest').toUpperCase()}</span>`);
-    if (note.followup) topBadges.push(`<span class="warning-badge followup">${('followupRequired').toUpperCase()}</span>`);
+    if (note.promised) topBadges.push(`<span class="warning-badge promise">${('promised To Guest').toUpperCase()}</span>`);
+    if (note.followup) topBadges.push(`<span class="warning-badge followup">${('follow up Required').toUpperCase()}</span>`);
 
     // Inline badges (room, guest) - will appear near the text
     const inlineBadges = [];
