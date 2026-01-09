@@ -7,3 +7,5 @@ pocketbase.exe
 *.db-shm
 *.db-wal
 pb_migrations/
+*.md
+!README.md
