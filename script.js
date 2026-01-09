@@ -198,17 +198,22 @@ async function renderHandoverNotes() {
 
     const unresolvedList = document.getElementById('unresolved-list');
     const generalList = document.getElementById('general-list');
+    
+    // Update active states for sort and filter controls
+    updateSortFilterActiveStates();
     const actionsList = document.getElementById('actions-list');
     const emptyState = document.getElementById('empty-state');
 
-    // Apply search filter
+    // Apply search filter (includes staff name)
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
         notes = notes.filter(n => 
             n.text.toLowerCase().includes(query) ||
             (n.room && n.room.toLowerCase().includes(query)) ||
             (n.guestName && n.guestName.toLowerCase().includes(query)) ||
-            n.category.toLowerCase().includes(query)
+            n.category.toLowerCase().includes(query) ||
+            (n.addedBy && n.addedBy.toLowerCase().includes(query)) ||
+            (n.editedBy && n.editedBy.toLowerCase().includes(query))
         );
     }
 
@@ -217,6 +222,19 @@ async function renderHandoverNotes() {
         notes = notes.filter(n => n.promised);
     } else if (currentFilter === 'followup') {
         notes = notes.filter(n => n.followup);
+    } else if (currentFilter === 'overdue') {
+        const now = new Date();
+        notes = notes.filter(n => {
+            if (!n.dueDate) return false;
+            const dueDt = new Date(`${n.dueDate}T${n.dueTime || '00:00'}`);
+            return dueDt < now;
+        });
+    } else if (currentFilter === 'urgent') {
+        notes = notes.filter(n => n.promised && n.followup);
+    } else if (currentFilter === 'completed') {
+        notes = notes.filter(n => n.completed);
+    } else if (currentFilter === 'pending') {
+        notes = notes.filter(n => !n.completed);
     }
     // Apply quick filters
     // Need schedule/currentShift for 'myShift'
@@ -227,12 +245,44 @@ async function renderHandoverNotes() {
         notes = notes.filter(n => (n.shift || currentShift) === currentShift);
     } else if (currentQuickFilter === 'todaysUrgent') {
         notes = notes.filter(n => n.promised || n.followup);
+    } else if (currentQuickFilter === 'promised') {
+        notes = notes.filter(n => n.promised);
+    } else if (currentQuickFilter === 'followup') {
+        notes = notes.filter(n => n.followup);
     } else if (currentQuickFilter === 'openItems') {
         notes = notes.filter(n => !n.completed);
+    } else if (currentQuickFilter === 'completed') {
+        notes = notes.filter(n => n.completed);
     }
 
     // Apply sorting
-    if (currentSort === 'custom' && sortOrder.length > 0) {
+    if (currentSort === 'priority') {
+        // Sort by: overdue first, then items with due dates soon, then promised/followup, then newest
+        notes.sort((a, b) => {
+            const now = new Date();
+            
+            // Get due date priority for each note
+            const getUrgency = (note) => {
+                if (note.dueDate) {
+                    const dueDt = new Date(`${note.dueDate}T${note.dueTime || '00:00'}`);
+                    const diffMs = dueDt - now;
+                    if (diffMs < 0) return 0; // Overdue
+                    if (diffMs < 3600000) return 1; // < 1 hour
+                    if (diffMs < 86400000) return 2; // < 24 hours
+                    return 3; // > 24 hours
+                }
+                if (note.promised && note.followup) return 1.5;
+                if (note.promised || note.followup) return 2.5;
+                return 4;
+            };
+            
+            const urgencyA = getUrgency(a);
+            const urgencyB = getUrgency(b);
+            
+            if (urgencyA !== urgencyB) return urgencyA - urgencyB;
+            return b.timestamp - a.timestamp; // Then by newest
+        });
+    } else if (currentSort === 'custom' && sortOrder.length > 0) {
         // Sort notes by sortOrder array
         const notesById = Object.fromEntries(notes.map(n => [n.id, n]));
         notes = sortOrder.map(id => notesById[id]).filter(Boolean);
@@ -248,6 +298,23 @@ async function renderHandoverNotes() {
             const roomA = a.room || '';
             const roomB = b.room || '';
             return roomA.localeCompare(roomB, undefined, { numeric: true });
+        });
+    } else if (currentSort === 'staff') {
+        notes.sort((a, b) => {
+            const staffA = a.addedBy || 'Staff';
+            const staffB = b.addedBy || 'Staff';
+            return staffA.localeCompare(staffB);
+        });
+    } else if (currentSort === 'dueDate') {
+        notes.sort((a, b) => {
+            // Items without due dates go to bottom
+            if (!a.dueDate && !b.dueDate) return a.timestamp - b.timestamp;
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            
+            const dueDtA = new Date(`${a.dueDate}T${a.dueTime || '00:00'}`);
+            const dueDtB = new Date(`${b.dueDate}T${b.dueTime || '00:00'}`);
+            return dueDtA - dueDtB;
         });
     }
 
@@ -686,13 +753,39 @@ async function updatePeopleBlock() {
     shiftName.textContent = currentShift.toUpperCase() + ' SHIFT';
 }
 
+// Update active states for sort and filter controls
+function updateSortFilterActiveStates() {
+    const sortSelect = document.getElementById('sort-select');
+    const filterSelect = document.getElementById('filter-select');
+    
+    // Update sort select active state
+    if (sortSelect) {
+        if (currentSort !== 'newest') {
+            sortSelect.classList.add('active');
+        } else {
+            sortSelect.classList.remove('active');
+        }
+    }
+    
+    // Update filter select active state
+    if (filterSelect) {
+        if (currentFilter !== 'all') {
+            filterSelect.classList.add('active');
+        } else {
+            filterSelect.classList.remove('active');
+        }
+    }
+    
+    // Update quick filter button active states
+    document.querySelectorAll('.quick-filters .btn-primary').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === currentQuickFilter);
+    });
+}
+
 // Quick filter application
 function applyQuickFilter(filter) {
     currentQuickFilter = filter || '';
-    // Update active button styles
-    document.querySelectorAll('.quick-filter').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === filter);
-    });
+    updateSortFilterActiveStates();
     renderHandoverNotes();
 }
 
@@ -973,12 +1066,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Sort handler
     document.getElementById('sort-select')?.addEventListener('change', (e) => {
         currentSort = e.target.value;
+        updateSortFilterActiveStates();
         renderHandoverNotes();
     });
     
     // Filter handler
     document.getElementById('filter-select')?.addEventListener('change', (e) => {
         currentFilter = e.target.value;
+        updateSortFilterActiveStates();
         renderHandoverNotes();
     });
 });

@@ -71,17 +71,27 @@
                         <option value="newest">Newest first</option>
                         <option value="oldest">Oldest first</option>
                         <option value="room">Room number</option>
+                        <option value="priority">Priority (Due/Promised)</option>
+                        <option value="staff">By staff member</option>
+                        <option value="dueDate">Due date</option>
                     </select>
                     <select id="filter-select" class="filter-select">
-                        <option value="all">All</option>
-                        <option value="promised">Promised</option>
-                        <option value="followup">Follow-up</option>
+                        <option value="all">All notes</option>
+                        <option value="promised">Promised to guest</option>
+                        <option value="followup">Follow-up required</option>
+                        <option value="overdue">Overdue items</option>
+                        <option value="urgent">Urgent (Promised + Follow-up)</option>
+                        <option value="completed">Completed</option>
+                        <option value="pending">Pending</option>
                     </select>
                     <!-- Quick filters -->
                     <div class="quick-filters">
                         <button class="btn-primary" data-filter="myShift" onclick="applyQuickFilter('myShift')">My Shift</button>
-                        <button class="btn-primary" data-filter="todaysUrgent" onclick="applyQuickFilter('todaysUrgent')">Today's Urgent</button>
-                        <button class="btn-primary" data-filter="openItems" onclick="applyQuickFilter('openItems')">Open Items</button>
+                        <button class="btn-primary" data-filter="todaysUrgent" onclick="applyQuickFilter('todaysUrgent')">Urgent</button>
+                        <button class="btn-primary" data-filter="promised" onclick="applyQuickFilter('promised')">Promised</button>
+                        <button class="btn-primary" data-filter="followup" onclick="applyQuickFilter('followup')">Follow-up</button>
+                        <button class="btn-primary" data-filter="openItems" onclick="applyQuickFilter('openItems')">Open</button>
+                        <button class="btn-primary" data-filter="completed" onclick="applyQuickFilter('completed')">Completed</button>
                         <button class="btn-primary" data-filter="clear" onclick="applyQuickFilter('')">Clear</button>
                     </div>
                 </div>

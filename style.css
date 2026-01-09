@@ -131,6 +131,17 @@ body {
     margin-left: 12px;
 }
 
+.quick-filters .btn-primary.active {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    font-weight: 700;
+}
+
+[data-theme="dark"] .quick-filters .btn-primary.active {
+    background: #7fbf7f;
+    color: #1a1a1a;
+}
+
 /* Bulk actions */
 .bulk-actions {
     display: flex;
@@ -405,11 +416,25 @@ body {
     font-family: var(--primary-font);
     font-size: 13px;
     cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .sort-select:focus,
 .filter-select:focus {
     outline: none;
+}
+
+.sort-select.active,
+.filter-select.active {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    font-weight: 700;
+}
+
+[data-theme="dark"] .sort-select.active,
+[data-theme="dark"] .filter-select.active {
+    background: #7fbf7f;
+    color: #1a1a1a;
 }
 
 .notes-group {
