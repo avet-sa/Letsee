@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: letsee-db
+    environment:
+      POSTGRES_USER: letsee_user
+      POSTGRES_PASSWORD: letsee_password
+      POSTGRES_DB: letsee
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U letsee_user -d letsee"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - letsee_network
+
+  # FastAPI Backend
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: letsee-backend
+    environment:
+      DATABASE_URL: postgresql://letsee_user:letsee_password@db:5432/letsee
+      SECRET_KEY: your-super-secret-key-change-in-production
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      CORS_ORIGINS: '["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - letsee_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # Minio (S3-compatible storage for local development)
+  minio:
+    image: minio/minio:latest
+    container_name: letsee-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - letsee_network
+    command: minio server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Nginx Frontend Server
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: letsee-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - web
+    networks:
+      - letsee_network
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  letsee_network:
+    driver: bridge

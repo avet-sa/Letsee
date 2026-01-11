@@ -1,161 +1,271 @@
-# Letsee - Hotel Front Office Shift Handover
+# Letsee - Staff Shift Management Platform
 
-✅ **PocketBase Migration Complete!**
+A modern, cloud-ready staff shift management system with authentication, built with FastAPI, PostgreSQL, and Docker.
 
-## What Changed?
-- ✅ Unlimited storage for image attachments (no more 5-10MB localStorage limit)
-- ✅ Professional SQLite database backend
-- ✅ All your features intact: dark theme, Russian support, search/filter, etc.
-- ✅ Runs completely offline on hotel PC
+**Replaced**: Legacy PocketBase monolith → Cloud-native architecture with proper authentication, database, and containerization.
 
-## Quick Start (First Time)
+## Quick Start
 
-### Step 1: Download PocketBase
-1. Go to https://pocketbase.io/docs/
-2. Download **Windows version** (`pocketbase_X.X.X_windows_amd64.zip`)
-3. Extract `pocketbase.exe` to the `Letsee` folder (same folder as this file)
+### Prerequisites
+- Docker & Docker Compose installed
+- Git
 
-### Step 2: Double-click `start-letsee.bat`
-This will:
-- Start PocketBase server
-- Open the app in your browser
-- First time: Create admin account at http://127.0.0.1:8090/_/
+### Run Locally (Docker)
 
-### Step 3: Setup Collections (One-time only)
-Open http://127.0.0.1:8090/_/ and create 4 collections:
+```powershell
+cd c:\Users\HP\Desktop\Letsee
+docker-compose up
+```
 
-#### 1. **people** Collection
-- Field: `name` (Text, Required)
-- Field: `color` (Text, Required)
-- API Rules: All empty (allow all)
+Then open **http://localhost:3000** in your browser.
 
-#### 2. **schedules** Collection
-- Field: `date` (Text, Required)
-- Field: `shift` (Text, Required)
-- Field: `people` (JSON, Required)
-- API Rules: All empty (allow all)
+### Demo Account
+- Email: `demo@example.com`
+- Password: `Demo123456!`
 
-#### 3. **handovers** Collection
-- Field: `date` (Text, Required)
-- Field: `category` (Text, Required)
-- Field: `room` (Text)
-- Field: `guestName` (Text)
-- Field: `text` (Text, Required)
-- Field: `followup` (Bool)
-- Field: `promised` (Bool)
-- Field: `promiseText` (Text)
-- Field: `attachments` (JSON)
-- Field: `timestamp` (Date, Required)
-- Field: `completed` (Bool)
-- Field: `addedBy` (Text)
-- Field: `shift` (Text)
-- Field: `editedAt` (Date)
-- Field: `editedBy` (Text)
-- API Rules: All empty (allow all)
-
-#### 4. **settings** Collection
-- Field: `key` (Text, Required)
-- Field: `value` (Text, Required)
-- API Rules: All empty (allow all)
-
-### Step 4: Migrate Old Data (If you have existing data)
-1. Open `migrate-data.html` in your browser
-2. Click "Start Migration"
-3. Wait for "Migration completed successfully!"
-
-### Step 5: Use the App!
-Open `index.html` - everything works the same, but now with unlimited storage!
+Or register a new account on the login page.
 
 ---
 
-## Daily Use
+## Architecture
 
-**Every day:** Just double-click `start-letsee.bat`
-
-The app will open and PocketBase runs in the background.
+```
+┌─────────────────────────────────────────┐
+│         Browser (localhost:3000)        │
+├─────────────────────────────────────────┤
+│  Frontend (Nginx)                       │
+│  ├─ Serves HTML/CSS/JavaScript          │
+│  └─ Proxies /api/ → FastAPI backend     │
+├─────────────────────────────────────────┤
+│  FastAPI Backend (localhost:8000)       │
+│  ├─ 22 REST API endpoints               │
+│  ├─ JWT authentication                  │
+│  └─ PostgreSQL ORM (SQLAlchemy)         │
+├─────────────────────────────────────────┤
+│  PostgreSQL Database (internal)         │
+│  └─ 6 tables: users, people, schedules, │
+│     handovers, settings, audit          │
+└─────────────────────────────────────────┘
+```
 
 ---
 
-## Auto-Start with Windows (Optional)
+## Technology Stack
 
-1. Press `Win + R`, type `shell:startup`, press Enter
-2. Right-click in the Startup folder → New → Shortcut
-3. Browse to `start-letsee.bat` in your Letsee folder
-4. Click OK
+### Frontend
+- **Framework**: Vanilla HTML/CSS/JavaScript (no build step)
+- **Server**: Nginx (Alpine Linux, ~50MB)
+- **Features**: Login/Registration/Logout, JWT token management, Real-time schedule editing
 
-Now Letsee starts automatically when Windows starts!
+### Backend
+- **Framework**: FastAPI 0.104.1 (Python 3.11)
+- **Database ORM**: SQLAlchemy 2.0.23
+- **Migrations**: Alembic 1.13.1
+- **Authentication**: JWT (python-jose + cryptography)
+- **Password Hashing**: bcrypt 4.1.2
+- **Server**: Uvicorn ASGI
+- **Image Size**: ~250-300MB (optimized multi-stage build)
+
+### Database
+- **Engine**: PostgreSQL 15-Alpine
+- **Driver**: psycopg[binary] 3.3.1
+- **Image Size**: ~80MB
+
+### DevOps
+- **Containerization**: Docker & Docker Compose
+- **Storage** (optional): Minio S3-compatible
 
 ---
 
-## Backup Your Data
+## Project Structure
 
-Your database is in: `Letsee/pb_data/data.db`
+```
+Letsee/
+├── backend/                    # FastAPI application
+│   ├── app/
+│   │   ├── main.py            # FastAPI app, routes, middleware
+│   │   ├── models.py          # SQLAlchemy models
+│   │   ├── schemas.py         # Pydantic v2 schemas
+│   │   ├── core/
+│   │   │   ├── config.py      # Environment settings
+│   │   │   ├── database.py    # SQLAlchemy engine
+│   │   │   └── security.py    # JWT tokens, password hashing
+│   │   └── routers/           # API endpoints
+│   │       ├── auth.py        # Register, login
+│   │       ├── people.py      # Staff management
+│   │       ├── schedules.py   # Shift schedules
+│   │       ├── handovers.py   # Handover notes
+│   │       ├── settings.py    # Settings
+│   │       └── files.py       # File upload
+│   ├── migrations/            # Alembic migrations
+│   ├── pyproject.toml         # Dependencies
+│   ├── Dockerfile             # Multi-stage optimized build
+│   └── alembic.ini
+│
+├── frontend/
+│   ├── index.html             # Main app
+│   ├── login.html             # Login/registration
+│   ├── style.css              # Styling
+│   ├── script.js              # App logic
+│   └── api.js                 # REST API client
+│
+├── docker-compose.yml         # Orchestration
+├── Dockerfile.frontend        # Nginx container
+├── nginx.conf                 # Reverse proxy config
+├── DOCKER_SETUP.md            # Docker documentation
+└── README.md                  # This file
+```
 
-**To backup:**
-1. Stop PocketBase (close the server window)
-2. Copy the entire `pb_data` folder
-3. Store it somewhere safe (USB drive, network folder, etc.)
+---
 
-**To restore:**
-1. Stop PocketBase
-2. Replace `pb_data` folder with your backup
-3. Start PocketBase again
+## API Endpoints (22 Total)
+
+### Authentication (3)
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login (returns JWT token)
+- `POST /api/auth/refresh` - Refresh token
+
+### People (5)
+- `GET /api/people` - List all staff
+- `POST /api/people` - Create staff member
+- `GET /api/people/{id}` - Get staff details
+- `PUT /api/people/{id}` - Update staff member
+- `DELETE /api/people/{id}` - Delete staff member
+
+### Schedules (5)
+- `GET /api/schedules` - List all schedules
+- `GET /api/schedules?date=YYYY-MM-DD` - Get by date
+- `POST /api/schedules` - Create schedule
+- `PUT /api/schedules/{id}` - Update schedule
+- `DELETE /api/schedules/{id}` - Delete schedule
+
+### Handovers (5)
+- `GET /api/handovers` - List all handovers
+- `GET /api/handovers?date=YYYY-MM-DD` - Get by date
+- `POST /api/handovers` - Create handover
+- `PUT /api/handovers/{id}` - Update handover
+- `DELETE /api/handovers/{id}` - Delete handover
+
+### Settings (2)
+- `GET /api/settings` - Get all settings
+- `PUT /api/settings/{key}` - Update setting
+
+### Files (2)
+- `POST /api/files/upload` - Upload file
+- `DELETE /api/files/{file_id}` - Delete file
+
+### Health (1)
+- `GET /api/health` - Health check
+
+---
+
+## Docker Commands
+
+### Quick Start
+```powershell
+cd c:\Users\HP\Desktop\Letsee
+docker-compose up
+```
+
+### Build Images
+```powershell
+docker-compose build
+docker-compose build --no-cache    # Force rebuild
+```
+
+### View Logs
+```powershell
+docker-compose logs -f             # All services
+docker-compose logs -f web         # Backend only
+docker-compose logs -f frontend    # Frontend only
+```
+
+### Stop Services
+```powershell
+docker-compose down                # Stop all
+docker-compose down -v             # Stop and remove volumes
+```
+
+### Access Services
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Frontend | http://localhost:3000 | Application UI |
+| Backend API | http://localhost:8000/api | REST API |
+| API Docs | http://localhost:8000/docs | Swagger UI |
+| Minio Console | http://localhost:9001 | Object storage |
+
+---
+
+## Development
+
+### Run Backend Locally
+
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -e .
+
+$env:DATABASE_URL="postgresql://letsee_user:letsee_password@localhost:5432/letsee"
+$env:SECRET_KEY="dev-secret-key"
+
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
+
+### Run Frontend Locally
+
+```powershell
+cd c:\Users\HP\Desktop\Letsee
+python -m http.server 3000
+```
+
+---
+
+## Major Changes (from PocketBase)
+
+| Aspect | PocketBase | New Stack |
+|--------|-----------|-----------|
+| **Backend** | Monolithic binary | Modular FastAPI + Python |
+| **Database** | SQLite (local) | PostgreSQL (cloud-ready) |
+| **Auth** | Built-in | JWT tokens + bcrypt |
+| **Frontend** | Embedded | Vanilla JS + Nginx |
+| **Deployment** | Single binary | Docker containers |
+| **Scalability** | Limited | Horizontal scaling ready |
+| **Image Size** | ~80MB | Backend ~250MB, Frontend ~50MB |
 
 ---
 
 ## Troubleshooting
 
-### "Connection refused" or app not loading
-- Make sure PocketBase is running (you should see a window with server output)
-- Check it's on http://127.0.0.1:8090
-- Restart: Close PocketBase window, run `start-letsee.bat` again
+### "Cannot GET /" on localhost:3000
+- Check frontend running: `docker ps | grep frontend`
+- View logs: `docker-compose logs frontend`
 
-### "Collection not found"
-- Open http://127.0.0.1:8090/_/
-- Create all 4 collections (see Step 3 above)
+### "Connection refused" on API calls
+- Check backend running: `docker ps | grep web`
+- View logs: `docker-compose logs web`
 
-### Port 8090 already in use
-- Some other program is using port 8090
-- Edit `db.js` line 2: change `8090` to `8091`
-- Run: `.\pocketbase.exe serve --http=127.0.0.1:8091`
+### Database connection errors
+- Ensure PostgreSQL running: `docker ps | grep db`
+- Check DATABASE_URL in docker-compose.yml
 
-### Can't save notes
-- Check PocketBase is running
-- Check API Rules are empty (allow all) for all collections
+### Slow startup
+- Backend takes 30-60s for migrations on first run
+- Subsequent starts are faster
 
 ---
 
-## What's Under the Hood?
+## Next Steps
 
-- **Frontend:** HTML/CSS/JavaScript (no frameworks, pure web standards)
-- **Database:** PocketBase (SQLite backend, professional and battle-tested)
-- **Storage:** Unlimited (only limited by disk space)
-- **Network:** Runs locally, no internet needed
-- **Files:** Attachments stored efficiently in database (no base64 bloat)
-
----
-
-## Files
-
-- `index.html` - Main app
-- `config.html` - People management
-- `db.js` - Database layer (PocketBase API wrapper)
-- `script.js` - App logic
-- `style.css` - Styling
-- `start-letsee.bat` - Launch script
-- `migrate-data.html` - One-time data migration tool
-- `pocketbase.exe` - Database server (download separately)
-- `pb_data/` - Database files (created on first run)
+- [ ] Data migration from PocketBase to PostgreSQL
+- [ ] Mobile app (React Native/Flutter)
+- [ ] Advanced reporting & analytics
+- [ ] SMS notifications
+- [ ] Calendar integration (Google Calendar, Outlook)
 
 ---
 
-## Support
-
-Need help? Check `SETUP.md` for detailed instructions.
-
-Found a bug? The code is clean and well-commented - you can fix it yourself or ask for help!
-
----
-
-**Version:** PocketBase Migration (Jan 2026)
-**Commit:** 13c7558
+**Last Updated**: January 12, 2026
+**Version**: 2.0 (Migrated from PocketBase)

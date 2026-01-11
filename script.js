@@ -21,6 +21,15 @@ async function ensureDB() {
     }
 }
 
+// Logout function
+function handleLogout() {
+    if (confirm('Are you sure you want to sign out?')) {
+        localStorage.removeItem('letsee_access_token');
+        localStorage.removeItem('letsee_refresh_token');
+        window.location.href = '/login.html';
+    }
+}
+
 // Shift colors
 const SHIFT_COLORS = {
     'A': 'rgba(255, 200, 100, 0.5)', // Morning - warm yellow

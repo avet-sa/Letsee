@@ -1,11 +1,42 @@
-# PocketBase data
-pb_data/
-pocketbase.exe
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+backend/venv/
+backend/env/
+*.egg-info/
+.pytest_cache/
+.coverage
 
-# IndexedDB doesn't need these
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Database
 *.db
 *.db-shm
 *.db-wal
-pb_migrations/
-*.md
-!README.md
+
+# Logs
+*.log
+logs/

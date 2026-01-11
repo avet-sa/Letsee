@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
     <title>Letsee</title>
 </head>
 
@@ -35,6 +34,9 @@
             </button>
             <button class="help-btn" onclick="openShortcutsModal()" title="Show keyboard shortcuts (?)">
                 Alt +
+            </button>
+            <button class="logout-btn" onclick="handleLogout()" title="Sign out">
+                ⎋ Sign Out
             </button>
         </div>
     </header>
@@ -239,7 +241,7 @@
         </div>
     </div>
 
-    <script src="db.js"></script>
+    <script src="api.js"></script>
     <script src="script.js"></script>
 </body>
 
