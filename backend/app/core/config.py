@@ -25,13 +25,12 @@ class Settings(BaseSettings):
     CORS_ALLOW_METHODS: list = ["*"]
     CORS_ALLOW_HEADERS: list = ["*"]
     
-    # File upload
-    S3_ENDPOINT_URL: Optional[str] = None  # For local minio, use http://minio:9000
-    S3_ACCESS_KEY: Optional[str] = None
-    S3_SECRET_KEY: Optional[str] = None
-    S3_BUCKET: str = "letsee-attachments"
-    S3_REGION: str = "us-east-1"
-    S3_PRESIGN_EXPIRY: int = 3600  # 1 hour
+    # File upload / Minio
+    MINIO_URL: str = "http://minio:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET: str = "letsee-attachments"
+    MAX_FILE_SIZE: int = 5 * 1024 * 1024  # 5MB
     
     # Environment
     DEBUG: bool = False

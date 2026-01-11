@@ -238,17 +238,81 @@ const SettingsAPI = {
 // ============ Files API ============
 
 const FilesAPI = {
-    async getPresignedUploadUrl(filename, contentType) {
-        return apiFetch('/files/presign-upload', {
+    async uploadFile(file) {
+        /**
+         * Upload a file to Minio via backend.
+         * @param {File} file - The file object to upload
+         * @returns {Promise<{file_key, filename, size, content_type}>}
+         */
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const token = getToken();
+        const headers = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${API_BASE}/files/upload`, {
             method: 'POST',
-            body: JSON.stringify({ filename, content_type: contentType }),
+            headers,
+            body: formData,
+        });
+
+        if (response.status === 401) {
+            clearTokens();
+            window.location.href = '/login.html';
+            return null;
+        }
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'File upload failed');
+        }
+
+        return response.json();
+    },
+
+    async downloadFile(fileKey) {
+        /**
+         * Download a file from Minio.
+         * @param {string} fileKey - The file key to download
+         */
+        const token = getToken();
+        const headers = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${API_BASE}/files/download/${encodeURIComponent(fileKey)}`, {
+            method: 'GET',
+            headers,
+        });
+
+        if (!response.ok) {
+            throw new Error('File download failed');
+        }
+
+        return response.blob();
+    },
+
+    async deleteFile(fileKey) {
+        /**
+         * Delete a file from Minio.
+         * @param {string} fileKey - The file key to delete
+         */
+        return apiFetch(`/files/delete/${encodeURIComponent(fileKey)}`, {
+            method: 'DELETE',
         });
     },
 
-    async getPresignedDownloadUrl(fileKey) {
-        return apiFetch(`/files/presign-download/${fileKey}`, {
-            method: 'POST',
-        });
+    getDownloadUrl(fileKey) {
+        /**
+         * Get direct download URL for a file (for HTML links).
+         * @param {string} fileKey - The file key
+         * @returns {string} Direct download URL
+         */
+        return `${API_BASE}/files/download/${encodeURIComponent(fileKey)}`;
     },
 };
 
@@ -386,8 +450,20 @@ const DB = {
     },
 
     // Files
-    async getPresignedUploadUrl(filename, contentType) {
-        return FilesAPI.getPresignedUploadUrl(filename, contentType);
+    async uploadFile(file) {
+        return FilesAPI.uploadFile(file);
+    },
+
+    async downloadFile(fileKey) {
+        return FilesAPI.downloadFile(fileKey);
+    },
+
+    async deleteFile(fileKey) {
+        return FilesAPI.deleteFile(fileKey);
+    },
+
+    getDownloadUrl(fileKey) {
+        return FilesAPI.getDownloadUrl(fileKey);
     },
 
     // Init (no-op for compatibility)

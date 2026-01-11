@@ -35,8 +35,8 @@
             <button class="help-btn" onclick="openShortcutsModal()" title="Show keyboard shortcuts (?)">
                 Alt +
             </button>
-            <button class="logout-btn" onclick="handleLogout()" title="Sign out">
-                ⎋ Sign Out
+            <button class="btn-primary logout-btn" onclick="handleLogout()" title="Sign out">
+                Sign Out
             </button>
         </div>
     </header>
@@ -183,11 +183,12 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Attachments <span class="optional-label">(Optional - paste image URLs)</span></label>
+                        <label>Attachments <span class="optional-label">(Optional - paste URLs or upload files)</span></label>
                         <div id="attachments-list" class="attachments-list"></div>
+                        <div id="upload-status" style="display:none;margin:8px 0;padding:8px;background:#f0f0f0;border-radius:4px;font-size:0.9em;"></div>
                         <div class="attachment-inputs">
-                            <input type="text" id="attachment-url" placeholder="https://example.com/image.jpg">
-                            <input type="file" id="attachment-file" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                            <input type="text" id="attachment-url" placeholder="https://example.com/file.pdf">
+                            <input type="file" id="attachment-file" accept="*/*" style="display: none;" onchange="handleFileSelect(event)">
                             <button type="button" class="btn-primary" onclick="document.getElementById('attachment-file').click()" style="margin-top: 8px;">Browse</button>
                             <button type="button" class="btn-primary" onclick="addAttachment()" style="margin-top: 8px;">+ Add URL</button>
                         </div>

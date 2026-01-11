@@ -111,21 +111,13 @@ body {
 }
 
 .logout-btn {
-    background: #ff6b6b;
-    border: none;
-    color: white;
-    cursor: pointer;
-    padding: 8px 12px;
-    font-family: var(--primary-font);
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 4px;
-    transition: background 0.2s;
-    margin-left: 8px;
+    transition: background 0.2s !important;
+    font-size: 14px !important;
 }
 
 .logout-btn:hover {
-    background: #ff5252;
+    background: #1b0b0b;
+    border-color: var(--border-primary);
 }
 
 .date-nav {

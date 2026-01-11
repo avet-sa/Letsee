@@ -86,8 +86,18 @@ class ScheduleResponse(BaseModel):
 # ============ Attachment Schemas ============
 
 class AttachmentInfo(BaseModel):
-    url: str
-    name: str
+    """Attachment metadata.
+    Supports legacy base64/url attachments and new Minio-backed uploads using file_key.
+    """
+    # New Minio-backed fields
+    file_key: Optional[str] = None
+    filename: Optional[str] = None
+    size: Optional[int] = None
+    content_type: Optional[str] = None
+    
+    # Legacy inline/base64 fields
+    url: Optional[str] = None
+    name: Optional[str] = None
 
 
 # ============ Handover Schemas ============

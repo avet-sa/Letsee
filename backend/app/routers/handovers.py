@@ -34,7 +34,8 @@ async def create_handover(handover_create: HandoverCreate, db: Session = Depends
         followup=handover_create.followup,
         promised=handover_create.promised,
         promise_text=handover_create.promise_text,
-        attachments=[att.dict() for att in handover_create.attachments],
+        # Store only provided fields to keep payload clean (supports Minio + legacy)
+        attachments=[att.dict(exclude_none=True) for att in handover_create.attachments],
         timestamp=timestamp,
         added_by=handover_create.added_by,
         shift=handover_create.shift,
@@ -82,7 +83,7 @@ async def update_handover(handover_id: UUID, handover_update: HandoverUpdate, db
     if handover_update.promise_text is not None:
         handover.promise_text = handover_update.promise_text
     if handover_update.attachments is not None:
-        handover.attachments = [att.dict() for att in handover_update.attachments]
+        handover.attachments = [att.dict(exclude_none=True) for att in handover_update.attachments]
     if handover_update.completed is not None:
         handover.completed = handover_update.completed
     

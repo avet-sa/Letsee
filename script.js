@@ -260,9 +260,16 @@ function renderNote(note, shiftPeople = '') {
     const peopleDisplay = shiftPeople || note.addedBy || 'Staff';
     const editInfo = note.editedAt ? `<div class="edit-info">Edited: ${new Date(note.editedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${note.editedBy || 'Staff'}</div>` : '';
     const attachments = note.attachments && note.attachments.length > 0 ? `<div class="attachments">${note.attachments.map(att => {
-        if (att.url && att.url.startsWith && att.url.startsWith('data:image')) {
+        // Support both old format (url) and new format (file_key)
+        if (att.file_key) {
+            // New Minio format - use JS download to send auth header
+            const safeName = (att.filename || 'attachment').replace(/'/g, "\\'");
+            return `<a href="#" onclick="downloadAttachment('${att.file_key}','${safeName}'); return false;" class="attachment-link" title="${safeName}">📎 ${safeName}</a>`;
+        } else if (att.url && att.url.startsWith('data:image')) {
+            // Old base64 format (image)
             return `<a href="${att.url}" target="_blank" class="attachment-link" title="${att.name}">🖼️ ${att.name}</a>`;
-        } else {
+        } else if (att.url) {
+            // Old base64 format (file)
             return `<a href="${att.url}" target="_blank" class="attachment-link">📎 ${att.name}</a>`;
         }
     }).join('')}</div>` : '';
@@ -391,20 +398,39 @@ function addAttachment() {
     document.getElementById('attachment-url').value = '';
 }
 
-// Handle file selection and convert to data URL
-function handleFileSelect(event) {
+// Handle file selection and upload to Minio
+async function handleFileSelect(event) {
+    console.log('handleFileSelect called', event.target.files);
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file) {
+        console.log('No file selected');
+        return;
+    }
+    console.log('File selected:', file.name, file.size, file.type);
     
     // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
         alert('File size must be less than 5MB');
         return;
     }
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const dataUrl = e.target.result;
+
+    try {
+        // Show loading indicator
+        const uploadStatus = document.getElementById('upload-status');
+        if (uploadStatus) {
+            uploadStatus.textContent = 'Uploading...';
+            uploadStatus.style.display = 'block';
+        }
+
+        // Upload file to backend/Minio
+        const uploadResponse = await DB.uploadFile(file);
+        
+        if (!uploadResponse || !uploadResponse.file_key) {
+            alert('File upload failed');
+            return;
+        }
+
+        // Add attachment item to list
         const attachmentsList = document.getElementById('attachments-list');
         const attachmentDiv = document.createElement('div');
         attachmentDiv.className = 'attachment-item';
@@ -412,13 +438,45 @@ function handleFileSelect(event) {
             <span>📎 ${file.name}</span>
             <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
         `;
-        attachmentDiv.dataset.url = dataUrl;
+        attachmentDiv.dataset.fileKey = uploadResponse.file_key;
+        attachmentDiv.dataset.filename = file.name;
+        attachmentDiv.dataset.size = uploadResponse.size;
+        attachmentDiv.dataset.contentType = uploadResponse.content_type;
         attachmentsList.appendChild(attachmentDiv);
         
-        // Reset file input
+        // Reset file input and clear status
         event.target.value = '';
-    };
-    reader.readAsDataURL(file);
+        if (uploadStatus) {
+            uploadStatus.style.display = 'none';
+            uploadStatus.textContent = '';
+        }
+    } catch (error) {
+        alert('Upload failed: ' + error.message);
+        console.error('Upload error:', error);
+        const uploadStatus = document.getElementById('upload-status');
+        if (uploadStatus) {
+            uploadStatus.textContent = 'Upload failed: ' + error.message;
+            uploadStatus.style.color = 'red';
+        }
+    }
+}
+
+// Download attachment with auth header to avoid blocked blank page
+async function downloadAttachment(fileKey, filename) {
+    try {
+        const blob = await DB.downloadFile(fileKey);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'attachment';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Download failed:', error);
+        alert('Download failed: ' + error.message);
+    }
 }
 
 // Close note modal
@@ -452,12 +510,22 @@ async function saveNote(event) {
     const daySchedule = schedule[dateKey] || {};
     const currentShift = daySchedule.shift || 'A';
     const people = await getPeople();
-    // Collect attachments
+    // Collect attachments with file keys
     const attachmentItems = document.querySelectorAll('#attachments-list .attachment-item');
-    const attachments = Array.from(attachmentItems).map(item => ({
-        url: item.dataset.url,
-        name: item.querySelector('span').textContent.replace('📎 ', '')
-    }));
+    const attachments = Array.from(attachmentItems).map(item => {
+        if (item.dataset.fileKey) {
+            return {
+                file_key: item.dataset.fileKey,
+                filename: item.dataset.filename,
+                size: parseInt(item.dataset.size) || 0,
+                content_type: item.dataset.contentType || 'application/octet-stream'
+            };
+        }
+        return {
+            url: item.dataset.url,
+            name: item.dataset.url?.split('/').pop() || 'attachment'
+        };
+    });
     const assignedPeople = daySchedule.people || [];
     const noteData = {
         id: currentEditingNoteId || Date.now().toString(),
@@ -536,11 +604,19 @@ async function editNote(noteId) {
         note.attachments.forEach(att => {
             const attachmentDiv = document.createElement('div');
             attachmentDiv.className = 'attachment-item';
+            const displayName = att.filename || att.name || att.url?.split('/').pop() || 'attachment';
             attachmentDiv.innerHTML = `
-                <span>📎 ${att.name}</span>
+                <span>📎 ${displayName}</span>
                 <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
             `;
-            attachmentDiv.dataset.url = att.url;
+            if (att.file_key) {
+                attachmentDiv.dataset.fileKey = att.file_key;
+                attachmentDiv.dataset.filename = displayName;
+                attachmentDiv.dataset.size = att.size || 0;
+                attachmentDiv.dataset.contentType = att.content_type || 'application/octet-stream';
+            } else if (att.url) {
+                attachmentDiv.dataset.url = att.url;
+            }
             attachmentsList.appendChild(attachmentDiv);
         });
     }
@@ -915,6 +991,11 @@ function selectDate(dateString) {
     updateDateDisplay();
     document.getElementById('date-picker').style.display = 'none';
 }
+
+// Make functions available globally for inline event handlers
+window.handleFileSelect = handleFileSelect;
+window.addAttachment = addAttachment;
+window.downloadAttachment = downloadAttachment;
 
 // Close modal on outside click
 document.addEventListener('DOMContentLoaded', async () => {
