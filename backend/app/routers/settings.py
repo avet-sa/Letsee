@@ -18,9 +18,21 @@ async def list_settings(db: Session = Depends(get_db)):
 
 @router.get("/{key}", response_model=SettingResponse)
 async def get_setting(key: str, db: Session = Depends(get_db)):
-    """Get a setting by key."""
+    """Get a setting by key. Auto-creates with default value if not found."""
     setting = db.query(Setting).filter(Setting.key == key).first()
     if not setting:
+        # Auto-create setting with default value for common keys
+        defaults = {
+            "theme": "dark",
+            "language": "en",
+            "timezone": "UTC",
+        }
+        if key in defaults:
+            setting = Setting(key=key, value=defaults[key])
+            db.add(setting)
+            db.commit()
+            db.refresh(setting)
+            return setting
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Setting '{key}' not found"

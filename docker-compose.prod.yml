@@ -3,8 +3,10 @@ version: '3.8'
 services:
   # Traefik Reverse Proxy with automatic HTTPS
   traefik:
-    image: traefik:v2.10
+    image: traefik:3.6.2
     container_name: letsee-traefik
+    env_file:
+      - .env.prod
     command:
       - "--api.dashboard=true"
       - "--providers.docker=true"
@@ -27,11 +29,21 @@ services:
     networks:
       - letsee_network
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # Dashboard
+      - "traefik.http.routers.dashboard.rule=PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.priority=200"
 
   # PostgreSQL Database
   db:
     image: postgres:15-alpine
     container_name: letsee-db
+    env_file:
+      - .env.prod
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -39,7 +51,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,26 +60,26 @@ services:
     restart: unless-stopped
 
   # FastAPI Backend
-  web:
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: letsee-backend
+    env_file:
+      - .env.prod
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "false"
       LOG_LEVEL: INFO
-      CORS_ORIGINS: '["https://${DOMAIN}"]'
+      CORS_ORIGINS: '["https://${DOMAIN}","https://localhost","http://localhost"]'
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET: ${MINIO_BUCKET:-letsee-uploads}
+      MINIO_BUCKET: ${MINIO_BUCKET}
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
     networks:
       - letsee_network
     healthcheck:
@@ -78,18 +90,13 @@ services:
       start_period: 120s
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      # API routes
-      - "traefik.http.routers.api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.api.entrypoints=websecure"
-      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.api.loadbalancer.server.port=8000"
 
   # Minio (S3-compatible storage)
   minio:
     image: minio/minio:latest
     container_name: letsee-minio
+    env_file:
+      - .env.prod
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -112,16 +119,17 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: letsee-frontend
     depends_on:
-      - web
+      - backend
     networks:
       - letsee_network
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
       # Frontend routes (everything not /api)
-      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.priority=1"
       - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.frontend.tls=true"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
       # HSTS and security headers
       - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
