@@ -115,6 +115,8 @@ class HandoverCreate(BaseModel):
     timestamp: Optional[datetime] = None
     added_by: Optional[str] = None
     shift: Optional[str] = None
+    due_date: Optional[str] = None  # YYYY-MM-DD
+    due_time: Optional[str] = None  # HH:MM
 
 
 class HandoverUpdate(BaseModel):
@@ -127,6 +129,8 @@ class HandoverUpdate(BaseModel):
     promise_text: Optional[str] = None
     attachments: Optional[List[AttachmentInfo]] = None
     completed: Optional[bool] = None
+    due_date: Optional[str] = None  # YYYY-MM-DD
+    due_time: Optional[str] = None  # HH:MM
 
 
 class HandoverResponse(BaseModel):
@@ -143,6 +147,9 @@ class HandoverResponse(BaseModel):
     timestamp: datetime
     completed: bool
     added_by: Optional[str]
+    shift: Optional[str]
+    due_date: Optional[str]
+    due_time: Optional[str]
     shift: Optional[str]
     edited_at: Optional[datetime]
     edited_by: Optional[str]

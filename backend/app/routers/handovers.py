@@ -39,6 +39,8 @@ async def create_handover(handover_create: HandoverCreate, db: Session = Depends
         timestamp=timestamp,
         added_by=handover_create.added_by,
         shift=handover_create.shift,
+        due_date=handover_create.due_date,
+        due_time=handover_create.due_time,
     )
     db.add(new_handover)
     db.commit()
@@ -86,6 +88,10 @@ async def update_handover(handover_id: UUID, handover_update: HandoverUpdate, db
         handover.attachments = [att.dict(exclude_none=True) for att in handover_update.attachments]
     if handover_update.completed is not None:
         handover.completed = handover_update.completed
+    if handover_update.due_date is not None:
+        handover.due_date = handover_update.due_date
+    if handover_update.due_time is not None:
+        handover.due_time = handover_update.due_time
     
     handover.edited_at = datetime.utcnow()
     

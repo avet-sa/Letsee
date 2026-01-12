@@ -5,6 +5,15 @@
 
 const API_BASE = '/api';
 
+// UUID v4 generator for creating note IDs
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 // Token management
 const TOKEN_KEY = 'letsee_access_token';
 const REFRESH_TOKEN_KEY = 'letsee_refresh_token';
@@ -175,6 +184,8 @@ const HandoversAPI = {
                 timestamp: data.timestamp || new Date().toISOString(),
                 added_by: data.addedBy,
                 shift: data.shift,
+                due_date: data.due_date || null,
+                due_time: data.due_time || null,
             }),
         });
     },
@@ -192,6 +203,8 @@ const HandoversAPI = {
                 promise_text: data.promiseText,
                 attachments: data.attachments,
                 completed: data.completed,
+                due_date: data.due_date || null,
+                due_time: data.due_time || null,
             }),
         });
     },
@@ -388,8 +401,8 @@ const DB = {
                 followup: note.followup,
                 promised: note.promised,
                 promiseText: note.promise_text,
-                dueDate: '', // Note: dueDate not in new schema, add if needed
-                dueTime: '',
+                dueDate: note.due_date || '',
+                dueTime: note.due_time || '',
                 attachments: note.attachments,
                 timestamp: new Date(note.timestamp).getTime(),
                 completed: note.completed,
@@ -411,16 +424,18 @@ const DB = {
                     date,
                     category: note.category,
                     room: note.room || '',
-                    guestName: note.guestName || '',
+                    guest_name: note.guestName || '',
                     text: note.text,
                     followup: note.followup || false,
                     promised: note.promised || false,
-                    promiseText: note.promiseText || '',
+                    promise_text: note.promiseText || '',
                     attachments: note.attachments || [],
                     timestamp: new Date(note.timestamp).toISOString(),
                     completed: note.completed || false,
-                    addedBy: note.addedBy || '',
+                    added_by: note.addedBy || '',
                     shift: note.shift || 'A',
+                    due_date: note.dueDate || null,
+                    due_time: note.dueTime || null,
                 };
 
                 try {

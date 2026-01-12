@@ -65,6 +65,8 @@ class Handover(Base):
     completed = Column(Boolean, default=False, nullable=False)
     added_by = Column(String(255), nullable=True)
     shift = Column(String(1), nullable=True)  # A, M, B, C
+    due_date = Column(String(10), nullable=True)  # YYYY-MM-DD
+    due_time = Column(String(5), nullable=True)  # HH:MM
     edited_at = Column(DateTime(timezone=True), nullable=True)
     edited_by = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)

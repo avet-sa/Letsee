@@ -356,7 +356,13 @@ function renderNote(note, shiftPeople = '') {
             className += ' due-overdue';
             const absDiffMs = Math.abs(diffMs);
             const absHrs = Math.floor(absDiffMs / (1000 * 60 * 60));
-            text = `OVERDUE by ${absHrs}h`;
+            const absMins = Math.floor((absDiffMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (absHrs < 1) {
+                text = `OVERDUE by ${absMins}m`;
+            } else {
+                text = `OVERDUE by ${absHrs}h`;
+            }
         } else if (hrs <= 1) {
             // Close (1 hour or less) - orange
             className += ' due-close';
@@ -659,7 +665,7 @@ async function saveNote(event) {
     });
     const assignedPeople = daySchedule.people || [];
     const noteData = {
-        id: currentEditingNoteId || Date.now().toString(),
+        id: currentEditingNoteId || generateUUID(),
         category: document.getElementById('note-category').value,
         room: document.getElementById('note-room').value,
         guestName: document.getElementById('note-guest').value,
