@@ -27,6 +27,18 @@ async function ensureDB() {
     }
 }
 
+// Open native date/time picker when clicking custom icon wrapper
+function openPicker(inputId) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    if (typeof el.showPicker === 'function') {
+        el.showPicker();
+    } else {
+        el.focus();
+        el.click();
+    }
+}
+
 // Logout function
 function handleLogout() {
     if (confirm('Are you sure you want to sign out?')) {

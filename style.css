@@ -111,13 +111,20 @@ body {
 }
 
 .logout-btn {
-    transition: background 0.2s !important;
+    transition: background 0.3s !important;
     font-size: 14px !important;
 }
 
-.logout-btn:hover {
-    background: #1b0b0b;
+[data-theme="dark"] .logout-btn:hover {
+    background: rgba(54, 0, 0, 0.68);
     border-color: var(--border-primary);
+    opacity: 1;
+}
+
+[data-theme="light"] .logout-btn:hover {
+    background: rgba(255, 0, 0, 0.2);
+    border-color: var(--border-primary);
+    opacity: 1;
 }
 
 .date-nav {
@@ -919,6 +926,64 @@ body {
     resize: vertical;
 }
 
+/* Date/Time inputs with icons */
+.due-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.input-with-icon {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 4px;
+    padding: 6px 10px;
+}
+
+.input-with-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--text-secondary);
+    stroke-width: 1.8;
+    fill: none;
+    flex-shrink: 0;
+}
+
+.input-with-icon input {
+    border: none;
+    background: transparent;
+    padding: 6px 0;
+    min-width: 150px;
+    color: var(--text-primary);
+}
+
+.input-with-icon {
+    cursor: pointer;
+}
+
+.input-with-icon input.picker-input {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.picker-input::-webkit-calendar-picker-indicator,
+.picker-input::-webkit-inner-spin-button,
+.picker-input::-webkit-clear-button {
+    display: none;
+}
+
+[data-theme="dark"] .input-with-icon svg {
+    stroke: var(--text-secondary);
+}
+
+.input-with-icon:focus-within {
+    border-color: var(--border-primary);
+}
+
 .checkbox-label {
     display: flex;
     align-items: center;
@@ -932,6 +997,28 @@ body {
 .checkbox-label input[type="checkbox"] {
     width: auto;
     cursor: pointer;
+}
+
+/* Emphasized checkboxes for Follow-up / Promised */
+#note-followup {
+    accent-color: #ff9800;
+}
+
+#note-promised {
+    accent-color: #ff4444;
+}
+
+[data-theme="dark"] #note-followup {
+    accent-color: #ffb74d;
+}
+
+[data-theme="dark"] #note-promised {
+    accent-color: #ff6b6b;
+}
+
+.checkbox-label input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--border-primary);
+    outline-offset: 2px;
 }
 
 .modal-actions {
