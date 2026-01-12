@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # ignore unexpected env vars (e.g., legacy S3_* settings)
 
 
 settings = Settings()

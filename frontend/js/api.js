@@ -3,7 +3,7 @@
  * Replaces PocketBase with REST API calls
  */
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = '/api';
 
 // Token management
 const TOKEN_KEY = 'letsee_access_token';

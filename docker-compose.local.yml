@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # Nginx Reverse Proxy
+  proxy:
+    image: nginx:alpine
+    container_name: letsee-proxy-local
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web
+      - frontend
+    networks:
+      - letsee_network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: letsee-db-local
+    environment:
+      POSTGRES_USER: letsee_user
+      POSTGRES_PASSWORD: letsee_password
+      POSTGRES_DB: letsee
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U letsee_user -d letsee"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - letsee_network
+
+  # FastAPI Backend
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: letsee-backend-local
+    environment:
+      DATABASE_URL: postgresql://letsee_user:letsee_password@db:5432/letsee
+      SECRET_KEY: local-testing-secret-key-not-for-production
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      CORS_ORIGINS: '["http://localhost", "http://localhost:80"]'
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: letsee-uploads
+      # S3_ENDPOINT_URL: http://minio:9000
+      # S3_ACCESS_KEY: minioadmin
+      # S3_SECRET_KEY: minioadmin
+      # S3_BUCKET_NAME: letsee-uploads
+      # S3_REGION: us-east-1
+      # S3_SECURE: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - letsee_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  # Minio (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: letsee-minio-local
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data_local:/data
+    networks:
+      - letsee_network
+    command: minio server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Nginx Frontend Server
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: letsee-frontend-local
+    depends_on:
+      - web
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    networks:
+      - letsee_network
+
+volumes:
+  postgres_data_local:
+  minio_data_local:
+
+networks:
+  letsee_network:
+    driver: bridge

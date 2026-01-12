@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+    <title>Letsee - Login</title>
+    <style>
+        :root {
+            --primary-font: "JetBrains Mono", monospace;
+            --bg-primary: #e8e8e8;
+            --bg-secondary: #ffffff;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --text-tertiary: #999999;
+            --border-primary: #000000;
+            --border-secondary: #dddddd;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2a2a2a;
+            --text-primary: #e8e8e8;
+            --text-secondary: #999999;
+            --text-tertiary: #666666;
+            --border-primary: #444444;
+            --border-secondary: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--primary-font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .login-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-secondary);
+            padding-bottom: 20px;
+        }
+
+        .login-header h1 {
+            font-size: 24px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px 12px;
+            font-family: var(--primary-font);
+            font-size: 18px;
+            transition: opacity 0.2s;
+            line-height: 1;
+        }
+
+        .theme-toggle:hover {
+            opacity: 0.7;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-secondary);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--primary-font);
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--border-primary);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--border-primary);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--primary-font);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-login {
+            background: var(--text-primary);
+            color: var(--bg-secondary);
+        }
+
+        .btn-login:hover {
+            opacity: 0.8;
+        }
+
+        .btn-login:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-register {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .btn-register:hover {
+            opacity: 0.7;
+        }
+
+        .error-message {
+            color: #ff4444;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            color: #4CAF50;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            color: var(--text-tertiary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .demo-info {
+            background: var(--bg-primary);
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            border-left: 3px solid var(--border-primary);
+        }
+
+        .demo-info strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .toggle-mode {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .toggle-mode a {
+            color: var(--text-primary);
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .toggle-mode a:hover {
+            opacity: 0.7;
+        }
+
+        .form-container {
+            display: none;
+        }
+
+        .form-container.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Letsee</h1>
+            <p>Shift Management System</p>
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-form" class="form-container active">
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input 
+                        type="email" 
+                        id="login-email" 
+                        placeholder="your@email.com" 
+                        required
+                    >
+                    <div class="error-message" id="login-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input 
+                        type="password" 
+                        id="login-password" 
+                        placeholder="••••••••" 
+                        required
+                    >
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-login" id="login-btn">Sign In</button>
+                </div>
+
+                <div class="loading" id="login-loading">Signing in...</div>
+            </form>
+
+            <div class="toggle-mode">
+                Don't have an account? <a onclick="toggleMode()">Create one</a>
+            </div>
+
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" class="form-container">
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="register-name">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="register-name" 
+                        placeholder="John Doe" 
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input 
+                        type="email" 
+                        id="register-email" 
+                        placeholder="your@email.com" 
+                        required
+                    >
+                    <div class="error-message" id="register-email-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="register-password">Password</label>
+                    <input 
+                        type="password" 
+                        id="register-password" 
+                        placeholder="••••••••" 
+                        minlength="8"
+                        required
+                    >
+                    <div class="error-message" id="register-password-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="register-confirm">Confirm Password</label>
+                    <input 
+                        type="password" 
+                        id="register-confirm" 
+                        placeholder="••••••••" 
+                        minlength="8"
+                        required
+                    >
+                    <div class="error-message" id="register-confirm-error"></div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-login" id="register-btn">Create Account</button>
+                </div>
+
+                <div class="success-message" id="register-success">Account created! Redirecting...</div>
+                <div class="error-message" id="register-error"></div>
+                <div class="loading" id="register-loading">Creating account...</div>
+            </form>
+
+            <div class="toggle-mode">
+                Already have an account? <a onclick="toggleMode()">Sign in</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/login.js"></script>
+</body>
+</html>
