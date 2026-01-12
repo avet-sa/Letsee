@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.rate_limit import api_rate_limiter
 from app.routers import auth, people, schedules, handovers, settings as settings_router, files
 
 # Create tables on startup
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown."""
     # Startup
     print("Starting Letsee Backend...")
+    api_rate_limiter.start_cleanup()
     yield
     # Shutdown
     print("Shutting down Letsee Backend...")
@@ -36,6 +38,21 @@ app.add_middleware(
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
+
+
+# Add global rate limiting middleware
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Apply rate limiting to all requests."""
+    # Skip rate limiting for health checks
+    if request.url.path in ["/health", "/api/health"]:
+        return await call_next(request)
+    
+    # Apply rate limiting
+    await api_rate_limiter.check_rate_limit(request)
+    response = await call_next(request)
+    return response
+
 
 # Include routers
 app.include_router(auth.router)

@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, HTTPException, status, UploadFile, File, Depends, Request
 from fastapi.responses import StreamingResponse
 from app.core.config import settings
+from app.core.security import get_current_user
+from app.core.rate_limit import upload_rate_limiter
 import boto3
 import uuid
 import mimetypes
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +15,41 @@ router = APIRouter(prefix="/api/files", tags=["files"])
 
 # Initialize Minio client (lazy initialization)
 s3_client = None
+
+# Allowed file extensions (images and PDFs only)
+ALLOWED_EXTENSIONS = {
+    # Images
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.tiff', '.ico',
+    # PDFs
+    '.pdf'
+}
+
+# Max file size: 10MB
+MAX_FILE_SIZE = 10 * 1024 * 1024
+
+
+def validate_file_type(filename: str) -> bool:
+    """Validate file extension against allowed types."""
+    ext = os.path.splitext(filename.lower())[1]
+    return ext in ALLOWED_EXTENSIONS
+
+
+def validate_file_path(file_key: str) -> str:
+    """Validate file path to prevent directory traversal attacks."""
+    # Remove any path traversal attempts
+    if '..' in file_key or file_key.startswith('/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file path"
+        )
+    # Normalize path
+    normalized = os.path.normpath(file_key)
+    if normalized != file_key.replace('\\', '/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file path"
+        )
+    return file_key
 
 def get_bucket_name():
     """Get bucket name from settings."""
@@ -66,10 +104,25 @@ def ensure_bucket_exists():
 
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: str = Depends(get_current_user)
+):
     """
     Upload a file to Minio and return the file key for later access.
+    Requires authentication. Only images and PDFs allowed.
     """
+    # Apply upload-specific rate limiting
+    await upload_rate_limiter.check_rate_limit(request)
+    
+    # Validate file type
+    if not validate_file_type(file.filename):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File type not allowed. Only images and PDFs are accepted."
+        )
+    
     bucket_name = get_bucket_name()
     try:
         client = get_s3_client()
@@ -80,12 +133,23 @@ async def upload_file(file: UploadFile = File(...)):
         )
     
     try:
-        # Generate unique file key
-        file_ext = mimetypes.guess_extension(file.content_type) or '.bin'
-        file_key = f"attachments/{uuid.uuid4()}{file_ext}"
+        if not ensure_bucket_exists():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to initialize storage"
+            )
         
-        # Read file content
+        # Read file content and check size
         content = await file.read()
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024}MB"
+            )
+        
+        # Generate unique file key with original extension
+        file_extension = os.path.splitext(file.filename)[1].lower()
+        file_key = f"attachments/{uuid.uuid4()}{file_extension}"
         
         logger.info(f"Uploading file: {file.filename} ({len(content)} bytes) to key: {file_key}")
         
@@ -116,11 +180,17 @@ async def upload_file(file: UploadFile = File(...)):
 
 
 @router.get("/download/{file_key:path}")
-async def download_file(file_key: str):
+async def download_file(
+    file_key: str,
+    current_user: str = Depends(get_current_user)
+):
     """
     Download a file from MinIO with streaming support.
-    Uses Range requests for efficient large file handling.
+    Requires authentication. Validates file path for security.
     """
+    # Validate file path to prevent directory traversal
+    validate_file_path(file_key)
+    
     bucket_name = get_bucket_name()
     try:
         client = get_s3_client()
@@ -164,10 +234,17 @@ async def download_file(file_key: str):
 
 
 @router.delete("/delete/{file_key:path}")
-async def delete_file(file_key: str):
+async def delete_file(
+    file_key: str,
+    current_user: str = Depends(get_current_user)
+):
     """
     Delete a file from Minio by file key.
+    Requires authentication. Validates file path for security.
     """
+    # Validate file path to prevent directory traversal
+    validate_file_path(file_key)
+    
     bucket_name = get_bucket_name()
     try:
         client = get_s3_client()
@@ -188,18 +265,39 @@ async def delete_file(file_key: str):
 
 
 @router.post("/presign-upload")
-async def presign_upload(filename: str, content_type: str):
+async def presign_upload(
+    filename: str,
+    content_type: str,
+    current_user: str = Depends(get_current_user)
+):
     """
     Generate a presigned URL for direct client-side upload to Minio.
-    Not typically used if using /upload endpoint, but useful for large files.
+    Requires authentication. Only images and PDFs allowed.
     """
+    # Validate file type
+    if not validate_file_type(filename):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File type not allowed. Only images and PDFs are accepted."
+        )
+    
+    bucket_name = get_bucket_name()
     try:
-        file_key = f"attachments/{uuid.uuid4()}/{filename}"
+        client = get_s3_client()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"File storage service not available: {str(e)}"
+        )
+    
+    try:
+        file_extension = os.path.splitext(filename)[1].lower()
+        file_key = f"attachments/{uuid.uuid4()}{file_extension}"
         
-        presigned_url = s3_client.generate_presigned_url(
+        presigned_url = client.generate_presigned_url(
             'put_object',
             Params={
-                'Bucket': BUCKET_NAME,
+                'Bucket': bucket_name,
                 'Key': file_key,
                 'ContentType': content_type
             },

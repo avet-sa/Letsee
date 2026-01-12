@@ -8,7 +8,7 @@ services:
     env_file:
       - .env.prod
     command:
-      - "--api.dashboard=true"
+      - "--api.dashboard=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
@@ -29,20 +29,6 @@ services:
     networks:
       - letsee_network
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      # Dashboard UI
-      - "traefik.http.routers.dashboard.rule=PathPrefix(`/dashboard`)"
-      - "traefik.http.routers.dashboard.service=api@internal"
-      - "traefik.http.routers.dashboard.entrypoints=websecure"
-      - "traefik.http.routers.dashboard.tls=true"
-      - "traefik.http.routers.dashboard.priority=300"
-      # Dashboard API (Traefik internal API)
-      - "traefik.http.routers.dashboard-api.rule=(PathPrefix(`/api/http`) || PathPrefix(`/api/tcp`) || PathPrefix(`/api/udp`) || Path(`/api/config`))"
-      - "traefik.http.routers.dashboard-api.service=api@internal"
-      - "traefik.http.routers.dashboard-api.entrypoints=websecure"
-      - "traefik.http.routers.dashboard-api.tls=true"
-      - "traefik.http.routers.dashboard-api.priority=400"
 
   # PostgreSQL Database
   db:
