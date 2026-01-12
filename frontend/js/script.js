@@ -41,11 +41,11 @@ function openPicker(inputId) {
 
 // Logout function
 function handleLogout() {
-    if (confirm('Are you sure you want to sign out?')) {
+    showConfirm('Sign Out', 'Are you sure you want to sign out?', () => {
         localStorage.removeItem('letsee_access_token');
         localStorage.removeItem('letsee_refresh_token');
         window.location.href = '/login.html';
-    }
+    });
 }
 
 // Shift colors
@@ -482,7 +482,7 @@ async function handleFileSelect(event) {
     
     // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        showAlert('File Too Large', 'File size must be less than 5MB');
         return;
     }
 
@@ -498,7 +498,7 @@ async function handleFileSelect(event) {
         const uploadResponse = await DB.uploadFile(file);
         
         if (!uploadResponse || !uploadResponse.file_key) {
-            alert('File upload failed');
+            showAlert('Upload Failed', 'File upload failed');
             return;
         }
 
@@ -523,7 +523,7 @@ async function handleFileSelect(event) {
             uploadStatus.textContent = '';
         }
     } catch (error) {
-        alert('Upload failed: ' + error.message);
+        showAlert('Upload Error', 'Upload failed: ' + error.message);
         console.error('Upload error:', error);
         const uploadStatus = document.getElementById('upload-status');
         if (uploadStatus) {
@@ -570,14 +570,14 @@ async function openAttachment(fileKey, filename, type) {
         modal.classList.remove('hidden');
     } catch (error) {
         console.error('Failed to open attachment:', error);
-        alert('Failed to open attachment: ' + error.message);
+        showAlert('Error', 'Failed to open attachment: ' + error.message);
     }
 }
 
 // Download current attachment (Save As)
 function downloadCurrentAttachment() {
     if (!currentAttachmentBlob || !currentAttachmentFilename) {
-        alert('No attachment loaded');
+        showAlert('Error', 'No attachment loaded');
         return;
     }
     
@@ -787,28 +787,28 @@ async function editNote(noteId) {
 
 // Delete note
 async function deleteNote(noteId) {
-    if (!confirm('Are you sure you want to delete this note?')) return;
-    
-    // Remove from DOM immediately
-    const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
-    if (noteElement) {
-        noteElement.remove();
-    }
-    
-    // Remove from selection if selected
-    selectedNotes.delete(noteId);
-    updateBulkUI();
-    
-    // Save in background
-    const dateKey = currentDate.toISOString().split('T')[0];
-    getHandoverNotes().then(allNotes => {
-        return getNotesForDate(dateKey).then(dateData => {
-            const notes = dateData.notes || [];
-            dateData.notes = notes.filter(n => n.id !== noteId);
-            dateData.sortOrder = dateData.sortOrder.filter(id => id !== noteId);
-            allNotes[dateKey] = dateData;
-            return saveHandoverNotes(allNotes);
+    showConfirm('Delete Note', 'Are you sure you want to delete this note?', async () => {
+        // Remove from DOM immediately
+        const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+        if (noteElement) {
+            noteElement.remove();
+        }
+        
+        // Remove from selection if selected
+        selectedNotes.delete(noteId);
+        updateBulkUI();
+        
+        // Save in background
+        const dateKey = currentDate.toISOString().split('T')[0];
+        getHandoverNotes().then(allNotes => {
+            return getNotesForDate(dateKey).then(dateData => {
+                const notes = dateData.notes || [];
+                dateData.notes = notes.filter(n => n.id !== noteId);
+                dateData.sortOrder = dateData.sortOrder.filter(id => id !== noteId);
+                allNotes[dateKey] = dateData;
+                return saveHandoverNotes(allNotes);
         });
+    });
     });
 }
 
@@ -1310,6 +1310,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderHandoverNotes();
     });
 });
+
+// Alert Modal Functions
+function showAlert(title, message) {
+    document.getElementById('alert-title').textContent = title;
+    document.getElementById('alert-message').textContent = message;
+    document.getElementById('alert-modal').style.display = 'flex';
+}
+
+function closeAlertModal() {
+    document.getElementById('alert-modal').style.display = 'none';
+}
+
+// Confirmation Modal Functions
+let confirmAction = null;
+
+function showConfirm(title, message, onConfirm) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    document.getElementById('confirm-modal').style.display = 'flex';
+    confirmAction = onConfirm;
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').style.display = 'none';
+    confirmAction = null;
+}
+
+function executeConfirmAction() {
+    if (confirmAction) {
+        confirmAction();
+    }
+    closeConfirmModal();
+}
 
 // Update time immediately and then every second
 updateTime();

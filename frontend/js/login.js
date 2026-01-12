@@ -142,7 +142,7 @@ async function performLogin(email, password) {
         console.error('Auto-login after registration failed:', error.message);
         // Fall back to manual login
         setTimeout(() => {
-            alert('Account created! Please log in with your credentials.');
+            showAlert('Account Created', 'Account created! Please log in with your credentials.');
             location.reload();
         }, 1000);
     }
@@ -159,13 +159,16 @@ window.addEventListener('DOMContentLoaded', () => {
     loadTheme();
 });
 
-// // Theme toggle
-// function toggleTheme() {
-//     const currentTheme = document.documentElement.getAttribute('data-theme');
-//     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-//     document.documentElement.setAttribute('data-theme', newTheme);
-//     localStorage.setItem('letsee_theme', newTheme);
-// }
+// Alert Modal Functions
+function showAlert(title, message) {
+    document.getElementById('alert-title').textContent = title;
+    document.getElementById('alert-message').textContent = message;
+    document.getElementById('alert-modal').style.display = 'flex';
+}
+
+function closeAlertModal() {
+    document.getElementById('alert-modal').style.display = 'none';
+}
 
 // Theme toggle
 function toggleTheme() {
