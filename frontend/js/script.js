@@ -307,18 +307,38 @@ function renderNote(note, shiftPeople = '') {
     const editInfo = note.editedAt ? `<div class="edit-info">Edited: ${new Date(note.editedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${note.editedBy || 'Staff'}</div>` : '';
     const attachments = note.attachments && note.attachments.length > 0 ? `<div class="attachments">${note.attachments.map(att => {
         // Support both old format (url) and new format (file_key)
+        // Allowed types: images (jpg, jpeg, png, gif, webp, svg) and PDF
+        const isAllowedType = att => {
+            const filename = (att.filename || att.name || '').toLowerCase();
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+            const isPdfExtension = filename.endsWith('.pdf');
+            const isImageExtension = imageExtensions.some(ext => filename.endsWith(ext));
+            const mimeType = att.mime_type || '';
+            const isImageMime = mimeType.startsWith('image/');
+            const isPdfMime = mimeType === 'application/pdf';
+            return (isImageExtension || isPdfExtension || isImageMime || isPdfMime);
+        };
+
+        if (!isAllowedType(att)) {
+            return ''; // Skip non-allowed file types
+        }
+
+        const filename = att.filename || att.name || 'attachment';
+        const isImage = filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+
         if (att.file_key) {
-            // New Minio format - use JS download to send auth header
-            const safeName = (att.filename || 'attachment').replace(/'/g, "\\'");
-            return `<a href="#" onclick="downloadAttachment('${att.file_key}','${safeName}'); return false;" class="attachment-link" title="${safeName}">📎 ${safeName}</a>`;
+            // New Minio format - open in browser with auth header
+            const safeName = filename.replace(/'/g, "\\'");
+            return `<a href="#" onclick="openAttachment('${att.file_key}','${safeName}','${isImage ? 'image' : 'pdf'}'); return false;" class="attachment-link" title="${safeName}">${isImage ? '🖼️' : '📄'} ${safeName}</a>`;
         } else if (att.url && att.url.startsWith('data:image')) {
             // Old base64 format (image)
-            return `<a href="${att.url}" target="_blank" class="attachment-link" title="${att.name}">🖼️ ${att.name}</a>`;
-        } else if (att.url) {
-            // Old base64 format (file)
-            return `<a href="${att.url}" target="_blank" class="attachment-link">📎 ${att.name}</a>`;
+            return `<a href="${att.url}" target="_blank" class="attachment-link" title="${filename}">🖼️ ${filename}</a>`;
+        } else if (att.url && att.url.includes('data:application/pdf')) {
+            // Old base64 format (PDF)
+            return `<a href="${att.url}" target="_blank" class="attachment-link" title="${filename}">📄 ${filename}</a>`;
         }
-    }).join('')}</div>` : '';
+        return ''; // Skip other file types
+    }).filter(Boolean).join('')}</div>` : '';
 
     // Due label
     let dueLabel = 'No Due Date';
@@ -507,22 +527,87 @@ async function handleFileSelect(event) {
     }
 }
 
-// Download attachment with auth header to avoid blocked blank page
-async function downloadAttachment(fileKey, filename) {
+// Store current attachment for download
+let currentAttachmentBlob = null;
+let currentAttachmentFilename = null;
+
+// Open attachment in modal
+async function openAttachment(fileKey, filename, type) {
     try {
         const blob = await DB.downloadFile(fileKey);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename || 'attachment';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        currentAttachmentBlob = blob;
+        currentAttachmentFilename = filename;
+        
+        const modal = document.getElementById('attachment-modal');
+        const preview = document.getElementById('attachment-preview');
+        const title = document.getElementById('attachment-modal-title');
+        
+        title.textContent = filename;
+        preview.innerHTML = ''; // Clear previous content
+        
+        if (type === 'image' || filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
+            // Display image
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(blob);
+            preview.appendChild(img);
+        } else if (type === 'pdf' || filename.toLowerCase().endsWith('.pdf')) {
+            // Display PDF in iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.minHeight = '500px';
+            iframe.src = URL.createObjectURL(blob);
+            preview.appendChild(iframe);
+        }
+        
+        // Show modal
+        modal.classList.remove('hidden');
     } catch (error) {
-        console.error('Download failed:', error);
-        alert('Download failed: ' + error.message);
+        console.error('Failed to open attachment:', error);
+        alert('Failed to open attachment: ' + error.message);
     }
+}
+
+// Download current attachment (Save As)
+function downloadCurrentAttachment() {
+    if (!currentAttachmentBlob || !currentAttachmentFilename) {
+        alert('No attachment loaded');
+        return;
+    }
+    
+    const url = URL.createObjectURL(currentAttachmentBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentAttachmentFilename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+// Close attachment modal
+function closeAttachmentModal() {
+    const modal = document.getElementById('attachment-modal');
+    modal.classList.add('hidden');
+    const preview = document.getElementById('attachment-preview');
+    
+    // Cleanup blob URLs
+    const iframes = preview.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+        if (iframe.src) URL.revokeObjectURL(iframe.src);
+    });
+    const imgs = preview.querySelectorAll('img');
+    imgs.forEach(img => {
+        if (img.src) URL.revokeObjectURL(img.src);
+    });
+    
+    currentAttachmentBlob = null;
+    currentAttachmentFilename = null;
+}
+
+// Deprecated: kept for backwards compatibility
+async function downloadAttachment(fileKey, filename) {
+    await openAttachment(fileKey, filename, 'file');
 }
 
 // Close note modal

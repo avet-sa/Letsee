@@ -257,6 +257,23 @@
         </div>
     </div>
 
+    <!-- Attachment Modal -->
+    <div id="attachment-modal" class="modal hidden">
+        <div class="modal-content attachment-modal-content">
+            <div class="modal-header">
+                <h3 id="attachment-modal-title">Attachment</h3>
+                <button class="close-btn" onclick="closeAttachmentModal()">×</button>
+            </div>
+            <div class="attachment-modal-body">
+                <div id="attachment-preview" class="attachment-preview"></div>
+                <div class="attachment-modal-footer">
+                    <button class="btn-primary" onclick="closeAttachmentModal()">Close</button>
+                    <button class="btn-primary" onclick="downloadCurrentAttachment()">Download</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="js/api.js"></script>
     <script src="js/script.js"></script>
 </body>
