@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
@@ -11,13 +12,20 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 
 @router.get("", response_model=List[SettingResponse])
-async def list_settings(db: Session = Depends(get_db)):
+async def list_settings(
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Get all settings."""
     return db.query(Setting).all()
 
 
 @router.get("/{key}", response_model=SettingResponse)
-async def get_setting(key: str, db: Session = Depends(get_db)):
+async def get_setting(
+    key: str,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Get a setting by key. Auto-creates with default value if not found."""
     setting = db.query(Setting).filter(Setting.key == key).first()
     if not setting:
@@ -41,7 +49,11 @@ async def get_setting(key: str, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=SettingResponse, status_code=status.HTTP_201_CREATED)
-async def create_setting(setting_create: SettingCreate, db: Session = Depends(get_db)):
+async def create_setting(
+    setting_create: SettingCreate,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Create a new setting."""
     # Check if setting already exists
     existing = db.query(Setting).filter(Setting.key == setting_create.key).first()
@@ -59,7 +71,12 @@ async def create_setting(setting_create: SettingCreate, db: Session = Depends(ge
 
 
 @router.put("/{key}", response_model=SettingResponse)
-async def update_setting(key: str, setting_update: SettingUpdate, db: Session = Depends(get_db)):
+async def update_setting(
+    key: str,
+    setting_update: SettingUpdate,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Update a setting by key."""
     setting = db.query(Setting).filter(Setting.key == key).first()
     if not setting:
@@ -75,7 +92,11 @@ async def update_setting(key: str, setting_update: SettingUpdate, db: Session = 
 
 
 @router.delete("/{key}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_setting(key: str, db: Session = Depends(get_db)):
+async def delete_setting(
+    key: str,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Delete a setting by key."""
     setting = db.query(Setting).filter(Setting.key == key).first()
     if not setting:

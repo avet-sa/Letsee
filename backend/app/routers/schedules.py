@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
@@ -11,7 +12,11 @@ router = APIRouter(prefix="/api/schedules", tags=["schedules"])
 
 
 @router.get("", response_model=List[ScheduleResponse])
-async def list_schedules(date: Optional[str] = Query(None), db: Session = Depends(get_db)):
+async def list_schedules(
+    date: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Get schedules. Optionally filter by date (YYYY-MM-DD)."""
     query = db.query(Schedule)
     if date:
@@ -20,7 +25,11 @@ async def list_schedules(date: Optional[str] = Query(None), db: Session = Depend
 
 
 @router.post("", response_model=ScheduleResponse, status_code=status.HTTP_201_CREATED)
-async def create_schedule(schedule_create: ScheduleCreate, db: Session = Depends(get_db)):
+async def create_schedule(
+    schedule_create: ScheduleCreate,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Create a new schedule for a date."""
     # Check if schedule already exists for this date
     existing = db.query(Schedule).filter(Schedule.date == schedule_create.date).first()
@@ -42,7 +51,12 @@ async def create_schedule(schedule_create: ScheduleCreate, db: Session = Depends
 
 
 @router.put("/{date}", response_model=ScheduleResponse)
-async def upsert_schedule(date: str, schedule_update: ScheduleUpdate, db: Session = Depends(get_db)):
+async def upsert_schedule(
+    date: str,
+    schedule_update: ScheduleUpdate,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Create or update a schedule by date (YYYY-MM-DD)."""
     schedule = db.query(Schedule).filter(Schedule.date == date).first()
     
@@ -72,7 +86,11 @@ async def upsert_schedule(date: str, schedule_update: ScheduleUpdate, db: Sessio
 
 
 @router.get("/{schedule_id}", response_model=ScheduleResponse)
-async def get_schedule(schedule_id: str, db: Session = Depends(get_db)):
+async def get_schedule(
+    schedule_id: str,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Get a schedule by ID or date."""
     # Try UUID first
     try:
@@ -91,7 +109,11 @@ async def get_schedule(schedule_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_schedule(schedule_id: str, db: Session = Depends(get_db)):
+async def delete_schedule(
+    schedule_id: str,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Delete a schedule by ID or date."""
     # Try UUID first
     try:

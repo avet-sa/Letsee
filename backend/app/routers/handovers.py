@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
@@ -12,7 +13,11 @@ router = APIRouter(prefix="/api/handovers", tags=["handovers"])
 
 
 @router.get("", response_model=List[HandoverResponse])
-async def list_handovers(date: Optional[str] = Query(None), db: Session = Depends(get_db)):
+async def list_handovers(
+    date: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Get handover notes. Optionally filter by date (YYYY-MM-DD)."""
     query = db.query(Handover)
     if date:
@@ -21,7 +26,11 @@ async def list_handovers(date: Optional[str] = Query(None), db: Session = Depend
 
 
 @router.post("", response_model=HandoverResponse, status_code=status.HTTP_201_CREATED)
-async def create_handover(handover_create: HandoverCreate, db: Session = Depends(get_db)):
+async def create_handover(
+    handover_create: HandoverCreate,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Create a new handover note."""
     timestamp = handover_create.timestamp or datetime.utcnow()
     
@@ -49,7 +58,11 @@ async def create_handover(handover_create: HandoverCreate, db: Session = Depends
 
 
 @router.get("/{handover_id}", response_model=HandoverResponse)
-async def get_handover(handover_id: UUID, db: Session = Depends(get_db)):
+async def get_handover(
+    handover_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Get a handover note by ID."""
     handover = db.query(Handover).filter(Handover.id == handover_id).first()
     if not handover:
@@ -61,7 +74,12 @@ async def get_handover(handover_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.put("/{handover_id}", response_model=HandoverResponse)
-async def update_handover(handover_id: UUID, handover_update: HandoverUpdate, db: Session = Depends(get_db)):
+async def update_handover(
+    handover_id: UUID,
+    handover_update: HandoverUpdate,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Update a handover note."""
     handover = db.query(Handover).filter(Handover.id == handover_id).first()
     if not handover:
@@ -101,7 +119,11 @@ async def update_handover(handover_id: UUID, handover_update: HandoverUpdate, db
 
 
 @router.delete("/{handover_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_handover(handover_id: UUID, db: Session = Depends(get_db)):
+async def delete_handover(
+    handover_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     """Delete a handover note."""
     handover = db.query(Handover).filter(Handover.id == handover_id).first()
     if not handover:
