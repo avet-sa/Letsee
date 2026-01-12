@@ -12,6 +12,12 @@ let currentQuickFilter = '';
 let selectedNotes = new Set();
 const DRAFT_KEY = 'letsee_note_draft';
 
+// Cache for render performance
+let cachedDateData = null;
+let cachedDateKey = null;
+let cachedSchedule = null;
+let cachedShiftPeople = null;
+
 // Initialize database on load
 let dbInitialized = false;
 async function ensureDB() {
@@ -62,6 +68,14 @@ async function getHandoverNotes() {
 async function saveHandoverNotes(notes) {
     await ensureDB();
     await DB.saveHandoverNotes(notes);
+    // Invalidate cache since data changed
+    invalidateRenderCache();
+}
+
+// Invalidate render cache
+function invalidateRenderCache() {
+    cachedDateData = null;
+    cachedDateKey = null;
 }
 
 // Get notes for current date
@@ -76,9 +90,33 @@ async function getNotesForDate(dateKey) {
     return dateData;
 }
 
-async function renderHandoverNotes() {
+async function renderHandoverNotes(skipCache = false) {
     const dateKey = currentDate.toISOString().split('T')[0];
+    
+    // Use cache if available and date hasn't changed
+    if (!skipCache && cachedDateKey === dateKey && cachedDateData) {
+        renderHandoverNotesSync(cachedDateData, cachedSchedule, cachedShiftPeople);
+        return;
+    }
+    
+    // Load data and cache it
     const dateData = await getNotesForDate(dateKey);
+    const schedule = await getSchedule();
+    const daySchedule = schedule[dateKey] || {};
+    const shiftPeople = await getCurrentShiftPeople();
+    
+    // Cache for next render
+    cachedDateKey = dateKey;
+    cachedDateData = dateData;
+    cachedSchedule = schedule;
+    cachedShiftPeople = shiftPeople;
+    
+    renderHandoverNotesSync(dateData, schedule, shiftPeople);
+}
+
+// Synchronous render that doesn't do any async calls
+function renderHandoverNotesSync(dateData, schedule, shiftPeople) {
+    const dateKey = currentDate.toISOString().split('T')[0];
     let notes = dateData.notes || [];
     let sortOrder = dateData.sortOrder || [];
 
@@ -124,7 +162,6 @@ async function renderHandoverNotes() {
     }
     // Apply quick filters
     // Need schedule/currentShift for 'myShift'
-    const schedule = await getSchedule();
     const daySchedule = schedule[dateKey] || {};
     const currentShift = daySchedule.shift || 'A';
     if (currentQuickFilter === 'myShift') {
@@ -215,18 +252,15 @@ async function renderHandoverNotes() {
 
     emptyState.classList.add('hidden');
 
-    // Get shift people once for all notes
-    const shiftPeople = await getCurrentShiftPeople();
-
     // Sort notes into groups but keep them in saved order (don't re-sort by timestamp)
     const unresolved = notes.filter(n => !n.completed && (n.promised || n.followup));
     const general = notes.filter(n => !n.completed && !n.promised && !n.followup);
     const actions = notes.filter(n => n.completed);
 
     // Render each group, preserving note order for drag-drop
-    unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'noUnresolved'}</div>`;
-    generalList.innerHTML = general.length > 0 ? general.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'noGeneral'}</div>`;
-    actionsList.innerHTML = actions.length > 0 ? actions.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'noCompleted'}</div>`;
+    unresolvedList.innerHTML = unresolved.length > 0 ? unresolved.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'No Unresolved / Important Notes'}</div>`;
+    generalList.innerHTML = general.length > 0 ? general.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'No General Notes'}</div>`;
+    actionsList.innerHTML = actions.length > 0 ? actions.map(n => renderNote(n, shiftPeople)).join('') : `<div class="empty-group">${'No Completed Notes'}</div>`;
 
     // Update bulk UI after render
     updateBulkUI();
@@ -317,18 +351,18 @@ function renderNote(note, shiftPeople = '') {
                     ${topBadges.join('')}
                 </div>
                 <div class="handover-actions">
-                    <button class="btn-icon btn-complete" onclick="toggleComplete('${note.id}')" title="${note.completed ? 'Mark incomplete' : 'Mark complete'}">
+                    <button class="btn-icon btn-complete" onclick="event.stopPropagation(); toggleComplete('${note.id}')" title="${note.completed ? 'Mark incomplete' : 'Mark complete'}">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             ${note.completed ? '<path d="M3 12l6 6 12-12"/>' : '<polyline points="20 6 9 17 4 12"/>'}
                         </svg>
                     </button>
-                    <button class="btn-icon btn-edit" onclick="editNote('${note.id}')" title="Edit">
+                    <button class="btn-icon btn-edit" onclick="event.stopPropagation(); editNote('${note.id}')" title="Edit">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                     </button>
-                    <button class="btn-icon btn-delete" onclick="deleteNote('${note.id}')" title="Delete">
+                    <button class="btn-icon btn-delete" onclick="event.stopPropagation(); deleteNote('${note.id}')" title="Delete">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"/>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -352,7 +386,7 @@ function renderNote(note, shiftPeople = '') {
 // Open add note modal
 function openAddNote() {
     currentEditingNoteId = null;
-    document.getElementById('modal-title').textContent = 'addNoteTitle';
+    document.getElementById('modal-title').textContent = 'Add Note';
     document.getElementById('note-form').reset();
     document.getElementById('promise-text-group').style.display = 'none';
     document.getElementById('attachments-list').innerHTML = '';
@@ -569,26 +603,40 @@ async function saveNote(event) {
         if (!sortOrder.includes(noteData.id)) sortOrder.push(noteData.id);
     }
     allNotes[dateKey] = { notes: dateNotes, sortOrder };
-    // Save to database
-    await saveHandoverNotes(allNotes);
-    // Clear draft after successful save
+    
+    // Clear draft and close modal immediately
     localStorage.removeItem(DRAFT_KEY);
     document.getElementById('draft-indicator').classList.add('hidden');
     closeNoteModal();
-    renderHandoverNotes();
+    
+    // Save to database and re-render in background
+    saveHandoverNotes(allNotes).then(() => {
+        renderHandoverNotes();
+    });
 }
 
 // Edit note
 async function editNote(noteId) {
+    // Show modal immediately
+    currentEditingNoteId = noteId;
+    document.getElementById('modal-title').textContent = 'Edit Note';
+    document.getElementById('note-modal').classList.remove('hidden');
+    
+    // Focus note field immediately
+    const noteTextarea = document.getElementById('note-text');
+    noteTextarea.focus();
+    
+    // Load data in background and populate
     const dateKey = currentDate.toISOString().split('T')[0];
     const dateData = await getNotesForDate(dateKey);
     const notes = Array.isArray(dateData) ? dateData : (dateData.notes || []);
     const note = notes.find(n => n.id === noteId);
     
-    if (!note) return;
+    if (!note) {
+        document.getElementById('note-modal').classList.add('hidden');
+        return;
+    }
     
-    currentEditingNoteId = noteId;
-    document.getElementById('modal-title').textContent = 'editNoteTitle';
     document.getElementById('note-category').value = note.category;
     document.getElementById('note-room').value = note.room || '';
     document.getElementById('note-guest').value = note.guestName || '';
@@ -630,40 +678,85 @@ async function editNote(noteId) {
     document.getElementById('draft-indicator').classList.add('hidden');
     attachAutosaveListeners();
     
-    document.getElementById('note-modal').classList.remove('hidden');
-    // Focus note field and add Enter key handler
-    const noteTextarea = document.getElementById('note-text');
-    noteTextarea.focus();
+    // Add Enter key handler
     noteTextarea.addEventListener('keydown', handleNoteTextareaEnter, { once: true });
 }
 
 // Delete note
 async function deleteNote(noteId) {
-    if (!confirm('deleteConfirm')) return;
+    if (!confirm('Are you sure you want to delete this note?')) return;
     
+    // Remove from DOM immediately
+    const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+    if (noteElement) {
+        noteElement.remove();
+    }
+    
+    // Remove from selection if selected
+    selectedNotes.delete(noteId);
+    updateBulkUI();
+    
+    // Save in background
     const dateKey = currentDate.toISOString().split('T')[0];
-    const allNotes = await getHandoverNotes();
-    const dateNotes = allNotes[dateKey] || [];
-    
-    allNotes[dateKey] = dateNotes.filter(n => n.id !== noteId);
-    await saveHandoverNotes(allNotes);
-    
-    renderHandoverNotes();
+    getHandoverNotes().then(allNotes => {
+        return getNotesForDate(dateKey).then(dateData => {
+            const notes = dateData.notes || [];
+            dateData.notes = notes.filter(n => n.id !== noteId);
+            dateData.sortOrder = dateData.sortOrder.filter(id => id !== noteId);
+            allNotes[dateKey] = dateData;
+            return saveHandoverNotes(allNotes);
+        });
+    });
 }
 
 // Toggle complete status
 async function toggleComplete(noteId) {
-    const dateKey = currentDate.toISOString().split('T')[0];
-    const allNotes = await getHandoverNotes();
-    const dateNotes = allNotes[dateKey] || [];
+    // Immediate UI feedback - update DOM directly
+    const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+    if (!noteElement) return;
     
-    const note = dateNotes.find(n => n.id === noteId);
-    if (note) {
-        note.completed = !note.completed;
-        allNotes[dateKey] = dateNotes;
-        await saveHandoverNotes(allNotes);
-        renderHandoverNotes();
+    const isCompleted = noteElement.classList.contains('completed');
+    noteElement.classList.toggle('completed');
+    
+    // Update button icon immediately
+    const btn = noteElement.querySelector('.btn-complete svg path, .btn-complete svg polyline');
+    if (btn) {
+        btn.outerHTML = isCompleted ? 
+            '<polyline points="20 6 9 17 4 12"/>' : 
+            '<path d="M3 12l6 6 12-12"/>';
     }
+    
+    // Move element to correct section immediately
+    const unresolvedList = document.getElementById('unresolved-list');
+    const generalList = document.getElementById('general-list');
+    const actionsList = document.getElementById('actions-list');
+    
+    if (!isCompleted) {
+        // Moving to completed
+        actionsList.appendChild(noteElement);
+    } else {
+        // Moving back - need to check if it has promised/followup
+        const hasWarnings = noteElement.classList.contains('has-promise') || noteElement.classList.contains('has-followup');
+        if (hasWarnings) {
+            unresolvedList.appendChild(noteElement);
+        } else {
+            generalList.appendChild(noteElement);
+        }
+    }
+    
+    // Save in background (no await to keep it fast)
+    const dateKey = currentDate.toISOString().split('T')[0];
+    getHandoverNotes().then(allNotes => {
+        return getNotesForDate(dateKey).then(dateData => {
+            const notes = dateData.notes || [];
+            const note = notes.find(n => n.id === noteId);
+            if (note) {
+                note.completed = !isCompleted;
+                allNotes[dateKey] = dateData;
+                return saveHandoverNotes(allNotes);
+            }
+        });
+    });
 }
 
 // Update people block with gradient
@@ -777,35 +870,98 @@ function toggleSelect(id, element) {
 }
 
 function clearSelection() {
+    selectedNotes.forEach(noteId => {
+        const element = document.querySelector(`[data-note-id="${noteId}"]`);
+        if (element) element.classList.remove('selected');
+    });
     selectedNotes.clear();
-    // Re-render to remove selection borders
-    renderHandoverNotes();
+    updateBulkUI();
 }
 
 async function bulkDelete() {
     if (selectedNotes.size === 0) return;
     if (!confirm(`Delete ${selectedNotes.size} selected notes?`)) return;
-    const dateKey = currentDate.toISOString().split('T')[0];
-    const allNotes = await getHandoverNotes();
-    const dateNotes = allNotes[dateKey] || [];
-    allNotes[dateKey] = dateNotes.filter(n => !selectedNotes.has(n.id));
-    await saveHandoverNotes(allNotes);
+    
+    const noteIds = Array.from(selectedNotes);
+    
+    // Remove from DOM immediately
+    noteIds.forEach(noteId => {
+        const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+        if (noteElement) {
+            noteElement.remove();
+        }
+    });
+    
     selectedNotes.clear();
-    renderHandoverNotes();
+    updateBulkUI();
+    
+    // Save in background
+    const dateKey = currentDate.toISOString().split('T')[0];
+    getHandoverNotes().then(allNotes => {
+        return getNotesForDate(dateKey).then(dateData => {
+            const notes = dateData.notes || [];
+            dateData.notes = notes.filter(n => !noteIds.includes(n.id));
+            dateData.sortOrder = dateData.sortOrder.filter(id => !noteIds.includes(id));
+            allNotes[dateKey] = dateData;
+            return saveHandoverNotes(allNotes);
+        });
+    });
 }
 
 async function bulkToggleComplete() {
     if (selectedNotes.size === 0) return;
-    const dateKey = currentDate.toISOString().split('T')[0];
-    const allNotes = await getHandoverNotes();
-    const dateNotes = allNotes[dateKey] || [];
-    dateNotes.forEach(n => {
-        if (selectedNotes.has(n.id)) n.completed = !n.completed;
+    
+    const unresolvedList = document.getElementById('unresolved-list');
+    const generalList = document.getElementById('general-list');
+    const actionsList = document.getElementById('actions-list');
+    
+    // Store selected IDs before clearing
+    const noteIds = Array.from(selectedNotes);
+    
+    // Update UI immediately for all selected notes
+    noteIds.forEach(noteId => {
+        const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+        if (!noteElement) return;
+        
+        const isCompleted = noteElement.classList.contains('completed');
+        noteElement.classList.toggle('completed');
+        
+        // Update button icon
+        const btn = noteElement.querySelector('.btn-complete svg path, .btn-complete svg polyline');
+        if (btn) {
+            btn.outerHTML = isCompleted ? 
+                '<polyline points="20 6 9 17 4 12"/>' : 
+                '<path d="M3 12l6 6 12-12"/>';
+        }
+        
+        // Move to correct section
+        if (!isCompleted) {
+            actionsList.appendChild(noteElement);
+        } else {
+            const hasWarnings = noteElement.classList.contains('has-promise') || noteElement.classList.contains('has-followup');
+            if (hasWarnings) {
+                unresolvedList.appendChild(noteElement);
+            } else {
+                generalList.appendChild(noteElement);
+            }
+        }
     });
-    allNotes[dateKey] = dateNotes;
-    await saveHandoverNotes(allNotes);
+    
     selectedNotes.clear();
-    renderHandoverNotes();
+    updateBulkUI();
+    
+    // Save in background
+    const dateKey = currentDate.toISOString().split('T')[0];
+    getHandoverNotes().then(allNotes => {
+        return getNotesForDate(dateKey).then(dateData => {
+            const notes = dateData.notes || [];
+            notes.forEach(n => {
+                if (noteIds.includes(n.id)) n.completed = !n.completed;
+            });
+            allNotes[dateKey] = dateData;
+            return saveHandoverNotes(allNotes);
+        });
+    });
 }
 
 // Draft autosave
@@ -942,6 +1098,7 @@ function updateDateDisplay() {
 
 function changeDate(days) {
     currentDate.setDate(currentDate.getDate() + days);
+    invalidateRenderCache(); // Cache is date-specific
     updateDateDisplay();
 }
 

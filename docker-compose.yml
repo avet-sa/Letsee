@@ -81,6 +81,12 @@ services:
       - "3000:80"
     depends_on:
       - web
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html
+      - ./login.html:/usr/share/nginx/html/login.html
+      - ./script.js:/usr/share/nginx/html/script.js
+      - ./style.css:/usr/share/nginx/html/style.css
+      - ./api.js:/usr/share/nginx/html/api.js
     networks:
       - letsee_network
 
