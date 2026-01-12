@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, UploadFile, File
+from fastapi.responses import StreamingResponse
 from app.core.config import settings
 import boto3
 import uuid
@@ -11,7 +12,10 @@ router = APIRouter(prefix="/api/files", tags=["files"])
 
 # Initialize Minio client (lazy initialization)
 s3_client = None
-BUCKET_NAME = 'letsee-attachments'
+
+def get_bucket_name():
+    """Get bucket name from settings."""
+    return settings.MINIO_BUCKET
 
 def get_s3_client():
     """Get or initialize S3 client lazily."""
@@ -34,24 +38,31 @@ def get_s3_client():
 
 def ensure_bucket_exists():
     """Create bucket if it doesn't exist."""
+    global s3_client
+    bucket_name = get_bucket_name()
     if not s3_client:
         return False
     
     try:
-        s3_client.head_bucket(Bucket=BUCKET_NAME)
-        logger.info(f"Bucket {BUCKET_NAME} already exists")
+        s3_client.head_bucket(Bucket=bucket_name)
+        logger.info(f"Bucket {bucket_name} already exists")
         return True
-    except s3_client.exceptions.NoSuchBucket:
-        try:
-            s3_client.create_bucket(Bucket=BUCKET_NAME)
-            logger.info(f"Created bucket {BUCKET_NAME}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to create bucket {BUCKET_NAME}: {e}")
-            return False
     except Exception as e:
-        logger.error(f"Error checking bucket: {e}")
-        return False
+        # head_bucket raises generic ClientError with 404, not NoSuchBucket
+        error_code = e.response.get('Error', {}).get('Code') if hasattr(e, 'response') else None
+        
+        if error_code == '404' or 'NoSuchBucket' in str(e):
+            logger.info(f"Bucket {bucket_name} does not exist, creating it...")
+            try:
+                s3_client.create_bucket(Bucket=bucket_name)
+                logger.info(f"Successfully created bucket {bucket_name}")
+                return True
+            except Exception as create_error:
+                logger.error(f"Failed to create bucket {bucket_name}: {create_error}")
+                return False
+        else:
+            logger.error(f"Error checking bucket {bucket_name}: {e}")
+            return False
 
 
 @router.post("/upload")
@@ -59,6 +70,7 @@ async def upload_file(file: UploadFile = File(...)):
     """
     Upload a file to Minio and return the file key for later access.
     """
+    bucket_name = get_bucket_name()
     try:
         client = get_s3_client()
     except Exception as e:
@@ -79,7 +91,7 @@ async def upload_file(file: UploadFile = File(...)):
         
         # Upload to Minio
         client.put_object(
-            Bucket=BUCKET_NAME,
+            Bucket=bucket_name,
             Key=file_key,
             Body=content,
             ContentType=file.content_type,
@@ -106,9 +118,10 @@ async def upload_file(file: UploadFile = File(...)):
 @router.get("/download/{file_key:path}")
 async def download_file(file_key: str):
     """
-    Generate a presigned URL for downloading a file from MinIO.
-    This allows direct download from MinIO without streaming through FastAPI.
+    Download a file from MinIO with streaming support.
+    Uses Range requests for efficient large file handling.
     """
+    bucket_name = get_bucket_name()
     try:
         client = get_s3_client()
     except Exception as e:
@@ -118,37 +131,35 @@ async def download_file(file_key: str):
         )
     
     try:
-        # Verify file exists
-        client.head_object(Bucket=BUCKET_NAME, Key=file_key)
+        # Verify file exists and get metadata
+        response = client.head_object(Bucket=bucket_name, Key=file_key)
+        content_length = response.get('ContentLength', 0)
+        content_type = response.get('ContentType', 'application/octet-stream')
         
-        # Generate presigned URL for download (valid for 1 hour)
-        presigned_url = client.generate_presigned_url(
-            'get_object',
-            Params={
-                'Bucket': BUCKET_NAME,
-                'Key': file_key
-            },
-            ExpiresIn=3600
+        # Get file object
+        file_obj = client.get_object(Bucket=bucket_name, Key=file_key)
+        
+        filename = file_key.split('/')[-1]
+        
+        return StreamingResponse(
+            iter([file_obj['Body'].read()]),
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(content_length),
+                "Accept-Ranges": "bytes"
+            }
         )
-        
-        logger.info(f"Generated presigned download URL for: {file_key}")
-        
-        return {
-            "success": True,
-            "download_url": presigned_url,
-            "file_key": file_key,
-            "expires_in": 3600
-        }
     except client.exceptions.NoSuchKey:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File not found"
         )
     except Exception as e:
-        logger.error(f"Failed to generate download URL for {file_key}: {str(e)}")
+        logger.error(f"Failed to download file {file_key}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate download URL: {str(e)}"
+            detail=f"Failed to download file: {str(e)}"
         )
 
 
@@ -157,6 +168,7 @@ async def delete_file(file_key: str):
     """
     Delete a file from Minio by file key.
     """
+    bucket_name = get_bucket_name()
     try:
         client = get_s3_client()
     except Exception as e:
@@ -166,7 +178,7 @@ async def delete_file(file_key: str):
         )
     
     try:
-        client.delete_object(Bucket=BUCKET_NAME, Key=file_key)
+        client.delete_object(Bucket=bucket_name, Key=file_key)
         return {"success": True, "message": "File deleted successfully"}
     except Exception as e:
         raise HTTPException(

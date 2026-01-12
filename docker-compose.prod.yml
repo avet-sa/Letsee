@@ -117,6 +117,14 @@ services:
       timeout: 20s
       retries: 3
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # MinIO API routes (S3 bucket access)
+      - "traefik.http.routers.minio-api.rule=PathPrefix(`/letsee-attachments`)"
+      - "traefik.http.routers.minio-api.priority=100"
+      - "traefik.http.routers.minio-api.entrypoints=websecure"
+      - "traefik.http.routers.minio-api.tls=true"
+      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
 
   # Nginx Frontend Server
   frontend:

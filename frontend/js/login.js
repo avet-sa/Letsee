@@ -33,7 +33,6 @@ async function handleLogin(event) {
 
     try {
         const loginPayload = { email, password };
-        console.log('Login payload:', loginPayload);
         
         const response = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
@@ -42,7 +41,6 @@ async function handleLogin(event) {
         });
 
         const data = await response.json();
-        console.log('Login response:', response.status, data);
 
         if (!response.ok) {
             const errorMsg = data.detail || data.message || 'Login failed';

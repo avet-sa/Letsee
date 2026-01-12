@@ -472,13 +472,11 @@ function addAttachment() {
 
 // Handle file selection and upload to Minio
 async function handleFileSelect(event) {
-    console.log('handleFileSelect called', event.target.files);
     const file = event.target.files[0];
     if (!file) {
         console.log('No file selected');
         return;
     }
-    console.log('File selected:', file.name, file.size, file.type);
     
     // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
