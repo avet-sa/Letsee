@@ -1,10 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, UploadFile, File
-from fastapi.responses import StreamingResponse
 from app.core.config import settings
 import boto3
 import uuid
 import mimetypes
-from io import BytesIO
 import logging
 
 logger = logging.getLogger(__name__)
@@ -108,7 +106,8 @@ async def upload_file(file: UploadFile = File(...)):
 @router.get("/download/{file_key:path}")
 async def download_file(file_key: str):
     """
-    Download a file from Minio by file key.
+    Generate a presigned URL for downloading a file from MinIO.
+    This allows direct download from MinIO without streaming through FastAPI.
     """
     try:
         client = get_s3_client()
@@ -119,27 +118,37 @@ async def download_file(file_key: str):
         )
     
     try:
-        # Get object from Minio
-        response = client.get_object(Bucket=BUCKET_NAME, Key=file_key)
+        # Verify file exists
+        client.head_object(Bucket=BUCKET_NAME, Key=file_key)
         
-        # Get file metadata
-        filename = response.get('Metadata', {}).get('filename', file_key.split('/')[-1])
-        content_type = response.get('ContentType', 'application/octet-stream')
-        
-        return StreamingResponse(
-            iter([response['Body'].read()]),
-            media_type=content_type,
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        # Generate presigned URL for download (valid for 1 hour)
+        presigned_url = client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': BUCKET_NAME,
+                'Key': file_key
+            },
+            ExpiresIn=3600
         )
+        
+        logger.info(f"Generated presigned download URL for: {file_key}")
+        
+        return {
+            "success": True,
+            "download_url": presigned_url,
+            "file_key": file_key,
+            "expires_in": 3600
+        }
     except client.exceptions.NoSuchKey:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File not found"
         )
     except Exception as e:
+        logger.error(f"Failed to generate download URL for {file_key}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to download file: {str(e)}"
+            detail=f"Failed to generate download URL: {str(e)}"
         )
 
 
