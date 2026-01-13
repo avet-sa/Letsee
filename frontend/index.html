@@ -259,8 +259,8 @@
     </div>
 
     <!-- Attachment Modal -->
-    <div id="attachment-modal" class="modal hidden">
-        <div class="modal-content attachment-modal-content">
+    <div id="attachment-modal" class="modal hidden" onclick="closeAttachmentModal()">
+        <div class="modal-content attachment-modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <h3 id="attachment-modal-title">Attachment</h3>
                 <button class="close-btn" onclick="closeAttachmentModal()">×</button>

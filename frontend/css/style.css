@@ -885,7 +885,7 @@ body {
 
 .attachment-modal-content {
     background: var(--bg-secondary);
-    border-radius: 0;
+    border-radius: 6px;
     max-width: 700px;
     width: 90%;
     max-height: 90vh;
@@ -925,7 +925,6 @@ body {
     display: flex;
     gap: 10px;
     padding: 15px 25px;
-    border-top: 1px solid var(--border-secondary);
     background: var(--bg-primary);
     justify-content: flex-end;
 }
