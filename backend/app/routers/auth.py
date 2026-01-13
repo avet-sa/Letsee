@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import (
     get_password_hash, verify_password, create_access_token, create_refresh_token
 )
+from app.core.rate_limit import auth_rate_limiter
 from app.models import User
 from app.schemas import UserCreate, UserLogin, UserResponse, Token
 
@@ -35,8 +36,10 @@ async def register(user_create: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(user_login: UserLogin, db: Session = Depends(get_db)):
+async def login(user_login: UserLogin, request: Request, db: Session = Depends(get_db)):
     """Authenticate and return JWT tokens."""
+    # Apply per-route rate limiting to protect against brute force
+    await auth_rate_limiter.check_rate_limit(request)
     user = db.query(User).filter(User.email == user_login.email).first()
     
     if not user or not verify_password(user_login.password, user.hashed_password):

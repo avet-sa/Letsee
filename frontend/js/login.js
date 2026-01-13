@@ -18,12 +18,42 @@ function clearErrors() {
     });
 }
 
+// Basic sanitization and validation helpers
+function sanitizeEmail(value) {
+    const v = (value || '').trim();
+    // Strip spaces and dangerous characters
+    const cleaned = v.replace(/[\s<>"'`]/g, '');
+    return cleaned;
+}
+
+function sanitizeName(value) {
+    const v = (value || '').trim();
+    // Remove control chars and HTML-sensitive chars
+    return v.replace(/[<>"'`]/g, '').slice(0, 100);
+}
+
+function sanitizePassword(value) {
+    // Do not aggressively mutate passwords; trim only
+    return (value || '').trim();
+}
+
+function isValidEmail(value) {
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
+}
+
+function isStrongEnoughPassword(value) {
+    // Minimal client-side check; backend will enforce hashing/security
+    return typeof value === 'string' && value.length >= 8;
+}
+
 async function handleLogin(event) {
     event.preventDefault();
     clearErrors();
 
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
+    const emailInput = document.getElementById('login-email').value;
+    const passwordInput = document.getElementById('login-password').value;
+    const email = sanitizeEmail(emailInput);
+    const password = sanitizePassword(passwordInput);
     const btn = document.getElementById('login-btn');
     const loading = document.getElementById('login-loading');
     const errorEl = document.getElementById('login-error');
@@ -32,6 +62,12 @@ async function handleLogin(event) {
     loading.classList.add('show');
 
     try {
+        if (!isValidEmail(email)) {
+            throw new Error('Please enter a valid email address.');
+        }
+        if (!isStrongEnoughPassword(password)) {
+            throw new Error('Password must be at least 8 characters.');
+        }
         const loginPayload = { email, password };
         
         const response = await fetch(`${API_BASE}/auth/login`, {
@@ -66,10 +102,14 @@ async function handleRegister(event) {
     event.preventDefault();
     clearErrors();
 
-    const name = document.getElementById('register-name').value;
-    const email = document.getElementById('register-email').value;
-    const password = document.getElementById('register-password').value;
-    const confirm = document.getElementById('register-confirm').value;
+    const nameRaw = document.getElementById('register-name').value;
+    const emailRaw = document.getElementById('register-email').value;
+    const passwordRaw = document.getElementById('register-password').value;
+    const confirmRaw = document.getElementById('register-confirm').value;
+    const name = sanitizeName(nameRaw);
+    const email = sanitizeEmail(emailRaw);
+    const password = sanitizePassword(passwordRaw);
+    const confirm = sanitizePassword(confirmRaw);
     const btn = document.getElementById('register-btn');
     const loading = document.getElementById('register-loading');
     const successEl = document.getElementById('register-success');
@@ -79,6 +119,23 @@ async function handleRegister(event) {
     if (password !== confirm) {
         document.getElementById('register-confirm-error').textContent = 'Passwords do not match';
         document.getElementById('register-confirm-error').classList.add('show');
+        return;
+    }
+
+    // Basic input validation
+    if (!name) {
+        document.getElementById('register-name-error').textContent = 'Name is required';
+        document.getElementById('register-name-error').classList.add('show');
+        return;
+    }
+    if (!isValidEmail(email)) {
+        document.getElementById('register-email-error').textContent = 'Please enter a valid email address';
+        document.getElementById('register-email-error').classList.add('show');
+        return;
+    }
+    if (!isStrongEnoughPassword(password)) {
+        document.getElementById('register-password-error').textContent = 'Password must be at least 8 characters';
+        document.getElementById('register-password-error').classList.add('show');
         return;
     }
 
@@ -118,10 +175,12 @@ async function handleRegister(event) {
 // Helper function to perform login without requiring a form event
 async function performLogin(email, password) {
     try {
+        const safeEmail = sanitizeEmail(email);
+        const safePassword = sanitizePassword(password);
         const response = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email: safeEmail, password: safePassword })
         });
 
         const data = await response.json();
