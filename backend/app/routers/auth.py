@@ -12,8 +12,10 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse)
-async def register(user_create: UserCreate, db: Session = Depends(get_db)):
+async def register(user_create: UserCreate, request: Request, db: Session = Depends(get_db)):
     """Register a new user."""
+    # Apply per-route rate limiting to prevent mass signups
+    await auth_rate_limiter.check_rate_limit(request)
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == user_create.email).first()
     if existing_user:
