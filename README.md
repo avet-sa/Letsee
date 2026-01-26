@@ -14,6 +14,7 @@ A modern, cloud-ready staff shift management system with authentication, built w
 
 ```powershell
 cd c:\Users\HP\Desktop\Letsee
+copy .env.example .env
 docker-compose up
 ```
 

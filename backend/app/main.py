@@ -1,11 +1,20 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import text
+import logging
 
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.rate_limit import api_rate_limiter
 from app.routers import auth, people, schedules, handovers, settings as settings_router, files
+
+# Basic logging configuration for production
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
@@ -15,11 +24,11 @@ Base.metadata.create_all(bind=engine)
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown."""
     # Startup
-    print("Starting Letsee Backend...")
+    logger.info("Starting Letsee Backend...")
     api_rate_limiter.start_cleanup()
     yield
     # Shutdown
-    print("Shutting down Letsee Backend...")
+    logger.info("Shutting down Letsee Backend...")
 
 
 # Create FastAPI app
@@ -27,6 +36,8 @@ app = FastAPI(
     title=settings.API_TITLE,
     version=settings.API_VERSION,
     description=settings.API_DESCRIPTION,
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan,
 )
 
@@ -66,7 +77,13 @@ app.include_router(files.router)
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "service": "letsee-backend"}
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.error("Database health check failed: %s", exc)
+        return {"status": "degraded", "service": "letsee-backend", "db": "unhealthy"}
+    return {"status": "ok", "service": "letsee-backend", "db": "healthy"}
 
 
 @app.get("/api/health")

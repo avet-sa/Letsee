@@ -27,12 +27,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: letsee-backend
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://letsee_user:letsee_password@db:5432/letsee
-      SECRET_KEY: your-super-secret-key-change-in-production
       DEBUG: "false"
       LOG_LEVEL: INFO
-      CORS_ORIGINS: '["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost"]'
     ports:
       - "8000:8000"
     depends_on:
@@ -48,7 +47,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 120s
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   # Minio (S3-compatible storage for local development)
   minio:

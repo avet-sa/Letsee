@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 from uuid import UUID
 
@@ -39,12 +39,12 @@ class UserResponse(BaseModel):
 
 class PersonCreate(BaseModel):
     name: str
-    color: str
+    color: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
 
 
 class PersonUpdate(BaseModel):
     name: Optional[str] = None
-    color: Optional[str] = None
+    color: Optional[str] = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
 
 
 class PersonResponse(BaseModel):
@@ -61,13 +61,13 @@ class PersonResponse(BaseModel):
 # ============ Schedule Schemas ============
 
 class ScheduleCreate(BaseModel):
-    date: str  # YYYY-MM-DD
-    shift: str  # A, M, B, C
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")  # YYYY-MM-DD
+    shift: Literal["A", "M", "B", "C"]
     people: List[str] = Field(default_factory=list)
 
 
 class ScheduleUpdate(BaseModel):
-    shift: Optional[str] = None
+    shift: Optional[Literal["A", "M", "B", "C"]] = None
     people: Optional[List[str]] = None
 
 
@@ -103,7 +103,7 @@ class AttachmentInfo(BaseModel):
 # ============ Handover Schemas ============
 
 class HandoverCreate(BaseModel):
-    date: str  # YYYY-MM-DD
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     category: str
     room: Optional[str] = None
     guest_name: Optional[str] = None
@@ -129,7 +129,7 @@ class HandoverUpdate(BaseModel):
     promise_text: Optional[str] = None
     attachments: Optional[List[AttachmentInfo]] = None
     completed: Optional[bool] = None
-    due_date: Optional[str] = None  # YYYY-MM-DD
+    due_date: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")  # YYYY-MM-DD
     due_time: Optional[str] = None  # HH:MM
 
 
@@ -150,7 +150,6 @@ class HandoverResponse(BaseModel):
     shift: Optional[str]
     due_date: Optional[str]
     due_time: Optional[str]
-    shift: Optional[str]
     edited_at: Optional[datetime]
     edited_by: Optional[str]
     created_at: datetime

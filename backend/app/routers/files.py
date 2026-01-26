@@ -24,8 +24,8 @@ ALLOWED_EXTENSIONS = {
     '.pdf'
 }
 
-# Max file size: 10MB
-MAX_FILE_SIZE = 10 * 1024 * 1024
+# Max file size configured via settings (default 10MB)
+MAX_FILE_SIZE = settings.MAX_FILE_SIZE
 
 
 def validate_file_type(filename: str) -> bool:

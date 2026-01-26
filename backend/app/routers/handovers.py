@@ -3,7 +3,7 @@ from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.core.database import get_db
 from app.models import Handover
@@ -32,7 +32,7 @@ async def create_handover(
     current_user: str = Depends(get_current_user)
 ):
     """Create a new handover note."""
-    timestamp = handover_create.timestamp or datetime.utcnow()
+    timestamp = handover_create.timestamp or datetime.now(UTC)
     
     new_handover = Handover(
         date=handover_create.date,
@@ -111,7 +111,7 @@ async def update_handover(
     if handover_update.due_time is not None:
         handover.due_time = handover_update.due_time
     
-    handover.edited_at = datetime.utcnow()
+    handover.edited_at = datetime.now(UTC)
     
     db.commit()
     db.refresh(handover)
