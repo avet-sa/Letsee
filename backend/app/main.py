@@ -7,7 +7,8 @@ import logging
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.rate_limit import api_rate_limiter
-from app.routers import auth, people, schedules, handovers, settings as settings_router, files
+from app.core.scheduler import backup_scheduler
+from app.routers import auth, people, schedules, handovers, settings as settings_router, files, backups
 
 # Basic logging configuration for production
 logging.basicConfig(
@@ -26,9 +27,11 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Letsee Backend...")
     api_rate_limiter.start_cleanup()
+    await backup_scheduler.start()
     yield
     # Shutdown
     logger.info("Shutting down Letsee Backend...")
+    await backup_scheduler.stop()
 
 
 # Create FastAPI app
@@ -72,6 +75,7 @@ app.include_router(schedules.router)
 app.include_router(handovers.router)
 app.include_router(settings_router.router)
 app.include_router(files.router)
+app.include_router(backups.router)
 
 
 @app.get("/health")
@@ -83,13 +87,13 @@ async def health_check():
     except Exception as exc:
         logger.error("Database health check failed: %s", exc)
         return {"status": "degraded", "service": "letsee-backend", "db": "unhealthy"}
-    return {"status": "ok", "service": "letsee-backend", "db": "healthy"}
+    return {"status": "ok", "service": "letsee-backend", "db": "healthy", "backups": "enabled"}
 
 
 @app.get("/api/health")
 async def api_health_check():
     """API health check endpoint for Docker health checks."""
-    return {"status": "ok", "service": "letsee-backend"}
+    return {"status": "ok", "service": "letsee-backend", "backups": "enabled"}
 
 
 @app.get("/")

@@ -39,13 +39,18 @@ Or register a new account on the login page.
 │  └─ Proxies /api/ → FastAPI backend     │
 ├─────────────────────────────────────────┤
 │  FastAPI Backend (localhost:8000)       │
-│  ├─ 22 REST API endpoints               │
+│  ├─ 26 REST API endpoints               │
 │  ├─ JWT authentication                  │
+│  ├─ Automatic hourly backups 🔄         │
 │  └─ PostgreSQL ORM (SQLAlchemy)         │
 ├─────────────────────────────────────────┤
 │  PostgreSQL Database (internal)         │
 │  └─ 6 tables: users, people, schedules, │
 │     handovers, settings, audit          │
+├─────────────────────────────────────────┤
+│  Minio/S3 Storage (internal)            │
+│  ├─ File attachments                    │
+│  └─ Database backups (hourly)           │
 └─────────────────────────────────────────┘
 ```
 
@@ -119,7 +124,7 @@ Letsee/
 
 ---
 
-## API Endpoints (22 Total)
+## API Endpoints (26 Total)
 
 ### Authentication (3)
 - `POST /api/auth/register` - Register new user
@@ -146,6 +151,12 @@ Letsee/
 - `POST /api/handovers` - Create handover
 - `PUT /api/handovers/{id}` - Update handover
 - `DELETE /api/handovers/{id}` - Delete handover
+
+### Backups (4) 🔄 NEW
+- `GET /api/backups/list` - List available backups
+- `POST /api/backups/create` - Create manual backup
+- `POST /api/backups/restore/{filename}` - Restore from backup
+- `POST /api/backups/cleanup` - Delete old backups
 
 ### Settings (2)
 - `GET /api/settings` - Get all settings
@@ -238,6 +249,37 @@ python -m http.server 3000
 
 ---
 
+## Data Protection & Backups 🔄
+
+The system **automatically creates hourly database backups** to protect your hotel shift data from unexpected failures.
+
+### Automatic Backups
+- **Frequency**: Every hour
+- **Retention**: 24 hourly + 7 daily backups
+- **Storage**: Minio/S3 (local or cloud)
+- **No configuration needed**: Works automatically
+
+### Quick Backup Commands
+
+```bash
+# List all backups
+curl http://localhost:8000/api/backups/list
+
+# Create manual backup
+curl -X POST http://localhost:8000/api/backups/create
+
+# Restore from backup
+curl -X POST http://localhost:8000/api/backups/restore/backup_auto_20260129_120000.sql
+```
+
+### Documentation
+- **Quick Start**: See `BACKUP_QUICKSTART.md`
+- **Full Guide**: See `BACKUP_SYSTEM.md`
+- **Deployment**: See `DEPLOYMENT_BACKUPS.md`
+- **Architecture**: See `BACKUP_ARCHITECTURE.md`
+
+---
+
 ## Troubleshooting
 
 ### "Cannot GET /" on localhost:3000
@@ -255,6 +297,10 @@ python -m http.server 3000
 ### Slow startup
 - Backend takes 30-60s for migrations on first run
 - Subsequent starts are faster
+
+### Backup issues
+- Check logs: `docker logs letsee-backend | grep backup`
+- See `BACKUP_QUICKSTART.md` for troubleshooting
 
 ---
 
