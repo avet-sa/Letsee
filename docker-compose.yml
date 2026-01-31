@@ -1,6 +1,25 @@
 version: '3.8'
 
 services:
+  # Traefik Reverse Proxy for local development
+  traefik:
+    image: traefik:3.6.2
+    container_name: letsee-traefik
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - letsee_network
+    restart: unless-stopped
+
   # PostgreSQL Database
   db:
     image: postgres:15-alpine
@@ -76,18 +95,21 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     container_name: letsee-frontend
-    ports:
-      - "3000:80"
     depends_on:
       - web
     volumes:
-      - ./index.html:/usr/share/nginx/html/index.html
-      - ./login.html:/usr/share/nginx/html/login.html
-      - ./script.js:/usr/share/nginx/html/script.js
-      - ./style.css:/usr/share/nginx/html/style.css
-      - ./api.js:/usr/share/nginx/html/api.js
+      - ./frontend/index.html:/usr/share/nginx/html/index.html
+      - ./frontend/login.html:/usr/share/nginx/html/login.html
+      - ./frontend/js:/usr/share/nginx/html/js
+      - ./frontend/css:/usr/share/nginx/html/css
     networks:
       - letsee_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.frontend.priority=1"
 
 volumes:
   postgres_data:

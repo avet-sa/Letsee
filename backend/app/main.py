@@ -17,8 +17,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create tables on startup
-Base.metadata.create_all(bind=engine)
+# Tables are managed by Alembic migrations, not create_all()
+# Base.metadata.create_all(bind=engine)  # Removed to avoid race conditions with gunicorn workers
 
 
 @asynccontextmanager
