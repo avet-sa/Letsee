@@ -68,7 +68,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 120s
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command: sh -c "alembic upgrade head && gunicorn -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:8000 app.main:app"
 
   # Minio (S3-compatible storage)
   minio:

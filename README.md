@@ -18,6 +18,8 @@ copy .env.example .env
 docker-compose up
 ```
 
+To change worker count, set `WEB_CONCURRENCY` in `.env` (default is 2).
+
 Then open **http://localhost:3000** in your browser.
 
 ### Demo Account
