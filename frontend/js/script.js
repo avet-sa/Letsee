@@ -940,7 +940,12 @@ function updateSortFilterActiveStates() {
 
 // Quick filter application
 function applyQuickFilter(filter) {
-    currentQuickFilter = filter || '';
+    // Toggle off if clicking the same filter again
+    if (currentQuickFilter === filter) {
+        currentQuickFilter = '';
+    } else {
+        currentQuickFilter = filter;
+    }
     updateSortFilterActiveStates();
     renderHandoverNotes();
 }
@@ -1372,6 +1377,20 @@ function selectDate(dateString) {
     updateDateDisplay();
     document.getElementById('custom-date-picker').style.display = 'none';
 }
+
+// Close date picker on outside click
+document.addEventListener('click', (e) => {
+    const picker = document.getElementById('custom-date-picker');
+    const dateDisplay = document.getElementById('current-date');
+    const dateNav = document.querySelector('.date-nav');
+    
+    if (picker && picker.style.display !== 'none') {
+        // Close if click is outside the picker and date navigation area
+        if (!dateNav?.contains(e.target)) {
+            picker.style.display = 'none';
+        }
+    }
+});
 
 // Make functions available globally for inline event handlers
 window.handleFileSelect = handleFileSelect;

@@ -13,6 +13,36 @@
     --modal-overlay: rgba(0, 0, 0, 0.5);
 }
 
+select {
+    -webkit-appearance: none; /* For Chrome, Safari, Edge, Opera */
+    -moz-appearance: none;    /* For Firefox */
+    appearance: none;         /* Standard property */
+    /* Optional: Remove default background, which may contain an arrow in some frameworks */
+    background: none; 
+    /* Optional: Adjust padding to remove space reserved for the original arrow */
+    padding-right: 1.5em; 
+}
+
+/* For Internet Explorer 10 and 11 */
+select::-ms-expand {
+    display: none;
+}
+
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0; /* Important for older Chrome/Safari versions */
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield; /* Standard property for newer browsers */
+}
+
+
 .none {
     display: none !important;
 }
@@ -211,6 +241,10 @@ body {
 
 .date-picker-nav:hover {
     opacity: 0.7;
+}
+
+#picker-month, #picker-year {
+    text-align: center;
 }
 
 .date-picker-month-year {
