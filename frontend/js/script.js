@@ -1197,10 +1197,40 @@ function updateDateDisplay() {
     renderHandoverNotes();
 }
 
+// Date navigation throttling to prevent rate limit issues
+let lastDateChangeTime = 0;
+const DATE_CHANGE_COOLDOWN = 300; // milliseconds
+let isLoadingDate = false;
+
 function changeDate(days) {
-    currentDate.setDate(currentDate.getDate() + days);
-    invalidateRenderCache(); // Cache is date-specific
-    updateDateDisplay();
+    const now = Date.now();
+    
+    // Prevent rapid-fire clicks
+    if (now - lastDateChangeTime < DATE_CHANGE_COOLDOWN || isLoadingDate) {
+        return;
+    }
+    
+    lastDateChangeTime = now;
+    isLoadingDate = true;
+    
+    // Disable navigation buttons during load
+    const leftBtn = document.querySelector('.date-nav .nav-btn:first-child');
+    const rightBtn = document.querySelector('.date-nav .nav-btn:last-child');
+    if (leftBtn) leftBtn.disabled = true;
+    if (rightBtn) rightBtn.disabled = true;
+    
+    try {
+        currentDate.setDate(currentDate.getDate() + days);
+        invalidateRenderCache(); // Cache is date-specific
+        updateDateDisplay();
+    } finally {
+        // Re-enable buttons after a brief delay to ensure UI updates
+        setTimeout(() => {
+            if (leftBtn) leftBtn.disabled = false;
+            if (rightBtn) rightBtn.disabled = false;
+            isLoadingDate = false;
+        }, 100);
+    }
 }
 
 // Theme toggle
@@ -1240,21 +1270,107 @@ async function loadTheme() {
 }
 
 // Date picker functions
+let pickerDate = new Date();
+
 function toggleDatePicker() {
-    const picker = document.getElementById('date-picker');
-    const dateKey = currentDate.toISOString().split('T')[0];
-    picker.value = dateKey;
-    picker.style.display = 'block';
-    picker.style.position = 'absolute';
-    picker.focus();
-    picker.showPicker();
+    const picker = document.getElementById('custom-date-picker');
+    if (picker.style.display === 'none') {
+        pickerDate = new Date(currentDate);
+        // Initialize select values before rendering
+        document.getElementById('picker-month').value = pickerDate.getMonth();
+        document.getElementById('picker-year').value = pickerDate.getFullYear();
+        renderCalendar();
+        picker.style.display = 'block';
+    } else {
+        picker.style.display = 'none';
+    }
+}
+
+function updateCalendar() {
+    const month = parseInt(document.getElementById('picker-month').value) || 0;
+    const year = parseInt(document.getElementById('picker-year').value) || new Date().getFullYear();
+    pickerDate = new Date(year, month, 1);
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const year = pickerDate.getFullYear();
+    const month = pickerDate.getMonth();
+    
+    // Get first day and number of days in month
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    
+    const daysContainer = document.getElementById('picker-days');
+    daysContainer.innerHTML = '';
+    
+    // Previous month days
+    for (let i = firstDay - 1; i >= 0; i--) {
+        const day = daysInPrevMonth - i;
+        const dayEl = createDayElement(day, 'other-month', new Date(year, month - 1, day));
+        daysContainer.appendChild(dayEl);
+    }
+    
+    // Current month days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        let className = '';
+        
+        if (day === currentDate.getDate() && month === currentDate.getMonth() && year === currentDate.getFullYear()) {
+            className = 'selected';
+        }
+        
+        const dayEl = createDayElement(day, className, date);
+        daysContainer.appendChild(dayEl);
+    }
+    
+    // Next month days
+    const totalCells = daysContainer.children.length;
+    const remainingCells = 42 - totalCells; // 6 weeks * 7 days
+    for (let day = 1; day <= remainingCells; day++) {
+        const dayEl = createDayElement(day, 'other-month', new Date(year, month + 1, day));
+        daysContainer.appendChild(dayEl);
+    }
+}
+
+function createDayElement(day, className, date) {
+    const dayEl = document.createElement('div');
+    dayEl.className = `date-picker-day ${className}`;
+    dayEl.textContent = day;
+    
+    if (!className.includes('other-month')) {
+        dayEl.onclick = () => selectDateFromPicker(date);
+    }
+    
+    return dayEl;
+}
+
+function selectDateFromPicker(date) {
+    currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+    updateDateDisplay();
+    document.getElementById('custom-date-picker').style.display = 'none';
+}
+
+function previousMonth() {
+    pickerDate.setMonth(pickerDate.getMonth() - 1);
+    document.getElementById('picker-month').value = pickerDate.getMonth();
+    document.getElementById('picker-year').value = pickerDate.getFullYear();
+    renderCalendar();
+}
+
+function nextMonth() {
+    pickerDate.setMonth(pickerDate.getMonth() + 1);
+    document.getElementById('picker-month').value = pickerDate.getMonth();
+    document.getElementById('picker-year').value = pickerDate.getFullYear();
+    renderCalendar();
 }
 
 function selectDate(dateString) {
     const [year, month, day] = dateString.split('-').map(Number);
     currentDate = new Date(year, month - 1, day, 12, 0, 0, 0);
     updateDateDisplay();
-    document.getElementById('date-picker').style.display = 'none';
+    document.getElementById('custom-date-picker').style.display = 'none';
 }
 
 // Make functions available globally for inline event handlers
