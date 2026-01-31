@@ -9,6 +9,7 @@ services:
       - .env.prod
     command:
       - "--api.dashboard=false"
+      - "--api.debug=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
@@ -19,6 +20,8 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
+      - "--global.checknewversion=false"
+      - "--global.sendanonymoususage=false"
     ports:
       - "80:80"
       - "443:443"
@@ -41,6 +44,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pgaudit -c log_statement=all -c ssl=on"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -51,6 +55,8 @@ services:
     networks:
       - letsee_network
     restart: unless-stopped
+    expose:
+      - "5432"
 
   # FastAPI Backend
   backend:
@@ -122,6 +128,68 @@ services:
       - "traefik.http.routers.minio-api.tls=true"
       - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
 
+  # Loki Log Aggregation
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: letsee-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    expose:
+      - "3100"
+    networks:
+      - letsee_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: /bin/sh -c 'mkdir -p /loki/boltdb-shipper-active /loki/boltdb-shipper-cache /loki/chunks && /usr/bin/loki -config.file=/etc/loki/local-config.yaml'
+
+  # Promtail Log Shipper (sends logs to Loki)
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: letsee-promtail
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - letsee_network
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+  # Grafana Dashboards & Visualization
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: letsee-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SERVER_ROOT_URL: https://${DOMAIN}/grafana
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - letsee_network
+    restart: unless-stopped
+    depends_on:
+      - loki
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Nginx Frontend Server
   frontend:
     build:
@@ -152,6 +220,8 @@ volumes:
   postgres_data:
   minio_data:
   traefik_certs:
+  loki_data:
+  grafana_data:
 
 networks:
   letsee_network:
