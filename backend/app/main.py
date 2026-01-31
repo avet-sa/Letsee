@@ -2,20 +2,26 @@ from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
-import logging
+import os
 
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.rate_limit import api_rate_limiter
 from app.core.scheduler import backup_scheduler
+from app.core.logging_config import setup_logging, get_logger
+from app.core.request_logging import RequestLoggingMiddleware
 from app.routers import auth, people, schedules, handovers, settings as settings_router, files, backups
 
-# Basic logging configuration for production
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+# Configure structured logging
+log_file = os.getenv("LOG_FILE")  # Optional: /var/log/app.log or similar
+json_format = os.getenv("LOG_FORMAT", "text").lower() == "json"
+setup_logging(
+    log_level=settings.LOG_LEVEL,
+    log_file=log_file,
+    json_format=json_format,
+    console_output=True,
 )
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Tables are managed by Alembic migrations, not create_all()
 # Base.metadata.create_all(bind=engine)  # Removed to avoid race conditions with gunicorn workers
@@ -43,6 +49,9 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan,
 )
+
+# Add request logging middleware (add first so it wraps all other middleware)
+app.add_middleware(RequestLoggingMiddleware)
 
 # Add CORS middleware
 app.add_middleware(
