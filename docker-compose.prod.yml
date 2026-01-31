@@ -60,7 +60,7 @@ services:
     env_file:
       - .env.prod
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "false"
       LOG_LEVEL: INFO
@@ -75,13 +75,22 @@ services:
     networks:
       - letsee_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD-SHELL", "python -c \"import requests; requests.get('http://localhost:8000/api/health')\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 120s
     command: sh -c "alembic upgrade head && gunicorn -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:8000 app.main:app"
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # Backend API routes
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.priority=10"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls=true"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
 
   # Minio (S3-compatible storage)
   minio:
@@ -130,6 +139,7 @@ services:
       - "traefik.http.routers.frontend.priority=1"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
       # HSTS and security headers
       - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"

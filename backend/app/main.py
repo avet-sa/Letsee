@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
@@ -62,8 +62,17 @@ async def rate_limit_middleware(request: Request, call_next):
     if request.url.path in ["/health", "/api/health"]:
         return await call_next(request)
     
-    # Apply rate limiting
-    await api_rate_limiter.check_rate_limit(request)
+    # Apply rate limiting with proper exception handling
+    try:
+        await api_rate_limiter.check_rate_limit(request)
+    except HTTPException as exc:
+        # Return proper response for rate limit errors
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail}
+        )
+    
     response = await call_next(request)
     return response
 
