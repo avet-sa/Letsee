@@ -41,5 +41,36 @@ docker-compose.override.yml
 # Logs
 *.log
 logs/
+
+# Documentation (but keep key setup guides)
 *.md
 !README.md
+
+# WAL-G & Backups
+wal-g-backups/
+/archive/
+*.backup
+*.tar
+*.tar.gz
+*.sql
+*.sql.gz
+
+# MinIO local data
+minio_data/
+.minio.sys/
+
+# Postgres data & archives
+postgres_data/
+postgres_archive/
+
+# Traefik certificates
+traefik_certs/
+acme.json
+
+# Grafana & Loki data
+grafana_data/
+loki_data/
+
+# Backup credentials (if stored separately)
+*backup*.env
+*backup*.key

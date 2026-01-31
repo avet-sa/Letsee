@@ -1,0 +1,27 @@
+# WAL-G Backup & Archive Container
+# Handles automated full backups and WAL archiving
+FROM postgres:15-alpine
+
+# Install WAL-G and required dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    bash \
+    postgresql-client \
+    brotli
+
+# Download and install WAL-G
+RUN wget -qO- https://github.com/wal-g/wal-g/releases/download/v2.0.1/wal-g-pg.linux-amd64.tar.gz | tar xz -C /usr/local/bin/
+
+WORKDIR /app
+
+# Copy configuration script
+COPY wal-g-env.sh /app/
+RUN chmod +x /app/wal-g-env.sh
+
+# Copy backup and restore scripts
+COPY wal-g-backup.sh /app/
+COPY wal-g-restore.sh /app/
+RUN chmod +x /app/wal-g-*.sh
+
+ENTRYPOINT ["/app/wal-g-backup.sh"]
