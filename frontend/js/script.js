@@ -538,24 +538,24 @@ let currentAttachmentFilename = null;
 // Open attachment in modal
 async function openAttachment(fileKey, filename, type) {
     try {
-        const blob = await DB.downloadFile(fileKey);
-        currentAttachmentBlob = blob;
         currentAttachmentFilename = filename;
-        
+        currentAttachmentBlob = null;
+
         const modal = document.getElementById('attachment-modal');
         const preview = document.getElementById('attachment-preview');
         const title = document.getElementById('attachment-modal-title');
-        
+
         title.textContent = filename;
         preview.innerHTML = ''; // Clear previous content
-        
+
+        const blob = await DB.downloadFile(fileKey);
+        currentAttachmentBlob = blob;
+
         if (type === 'image' || filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
-            // Display image
             const img = document.createElement('img');
             img.src = URL.createObjectURL(blob);
             preview.appendChild(img);
         } else if (type === 'pdf' || filename.toLowerCase().endsWith('.pdf')) {
-            // Display PDF in iframe
             const iframe = document.createElement('iframe');
             iframe.style.width = '100%';
             iframe.style.height = '100%';
@@ -563,7 +563,7 @@ async function openAttachment(fileKey, filename, type) {
             iframe.src = URL.createObjectURL(blob);
             preview.appendChild(iframe);
         }
-        
+
         // Show modal
         modal.classList.remove('hidden');
     } catch (error) {
@@ -578,7 +578,7 @@ function downloadCurrentAttachment() {
         showAlert('Error', 'No attachment loaded');
         return;
     }
-    
+
     const url = URL.createObjectURL(currentAttachmentBlob);
     const a = document.createElement('a');
     a.href = url;

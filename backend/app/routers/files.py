@@ -212,7 +212,7 @@ async def download_file(
         filename = file_key.split('/')[-1]
         
         return StreamingResponse(
-            iter([file_obj['Body'].read()]),
+            file_obj["Body"].iter_chunks(chunk_size=1024 * 1024),
             media_type=content_type,
             headers={
                 "Content-Disposition": f"attachment; filename={filename}",
