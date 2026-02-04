@@ -137,17 +137,17 @@ const SchedulesAPI = {
         return apiFetch(`/schedules/${id}`);
     },
 
-    async create(date, shift, people) {
+    async create(date, data) {
         return apiFetch('/schedules', {
             method: 'POST',
-            body: JSON.stringify({ date, shift, people }),
+            body: JSON.stringify({ date, shifts: data.shifts }),
         });
     },
 
-    async update(id, shift, people) {
-        return apiFetch(`/schedules/${id}`, {
+    async update(date, data) {
+        return apiFetch(`/schedules/${date}`, {
             method: 'PUT',
-            body: JSON.stringify({ shift, people }),
+            body: JSON.stringify({ shifts: data.shifts }),
         });
     },
 
@@ -372,8 +372,9 @@ const DB = {
         const result = {};
         for (const schedule of schedules) {
             result[schedule.date] = {
-                shift: schedule.shift,
-                people: schedule.people,
+                shifts: schedule.shifts || { A: [], M: [], B: [], C: [] },
+                edited_by: schedule.edited_by,
+                edited_at: schedule.edited_at,
             };
         }
         return result;
@@ -381,11 +382,15 @@ const DB = {
 
     async saveSchedule(schedule) {
         for (const [date, data] of Object.entries(schedule)) {
+            const payload = {
+                shifts: data.shifts || { A: [], M: [], B: [], C: [] }
+            };
+            
             const existing = await SchedulesAPI.list(date);
             if (existing.length > 0) {
-                await SchedulesAPI.update(existing[0].id, data.shift, data.people);
+                await SchedulesAPI.update(date, payload);
             } else {
-                await SchedulesAPI.create(date, data.shift, data.people);
+                await SchedulesAPI.create(date, payload);
             }
         }
     },

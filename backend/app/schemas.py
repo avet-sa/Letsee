@@ -60,22 +60,29 @@ class PersonResponse(BaseModel):
 
 # ============ Schedule Schemas ============
 
+class ShiftAssignment(BaseModel):
+    """People assigned to each shift."""
+    A: List[str] = Field(default_factory=list)
+    M: List[str] = Field(default_factory=list)
+    B: List[str] = Field(default_factory=list)
+    C: List[str] = Field(default_factory=list)
+
+
 class ScheduleCreate(BaseModel):
     date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")  # YYYY-MM-DD
-    shift: Literal["A", "M", "B", "C"]
-    people: List[str] = Field(default_factory=list)
+    shifts: ShiftAssignment = Field(default_factory=ShiftAssignment)
 
 
 class ScheduleUpdate(BaseModel):
-    shift: Optional[Literal["A", "M", "B", "C"]] = None
-    people: Optional[List[str]] = None
+    shifts: Optional[ShiftAssignment] = None
 
 
 class ScheduleResponse(BaseModel):
     id: UUID
     date: str
-    shift: str
-    people: List[str]
+    shifts: dict  # {A: [people], M: [people], B: [people], C: [people]}
+    edited_by: Optional[str] = None
+    edited_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     

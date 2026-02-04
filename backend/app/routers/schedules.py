@@ -3,9 +3,10 @@ from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.models import Schedule
+from app.models import Schedule, User
 from app.schemas import ScheduleCreate, ScheduleUpdate, ScheduleResponse
 
 router = APIRouter(prefix="/api/schedules", tags=["schedules"])
@@ -41,8 +42,9 @@ async def create_schedule(
     
     new_schedule = Schedule(
         date=schedule_create.date,
-        shift=schedule_create.shift,
-        people=schedule_create.people
+        shifts=schedule_create.shifts.model_dump(),
+        edited_by=current_user,
+        edited_at=datetime.now(timezone.utc)
     )
     db.add(new_schedule)
     db.commit()
@@ -62,21 +64,23 @@ async def upsert_schedule(
     
     if schedule:
         # Update existing
-        if schedule_update.shift is not None:
-            schedule.shift = schedule_update.shift
-        if schedule_update.people is not None:
-            schedule.people = schedule_update.people
+        if schedule_update.shifts is not None:
+            schedule.shifts = schedule_update.shifts.model_dump()
+        # Update audit fields
+        schedule.edited_by = current_user
+        schedule.edited_at = datetime.now(timezone.utc)
     else:
         # Create new
-        if schedule_update.shift is None:
+        if schedule_update.shifts is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="shift is required for new schedule"
+                detail="shifts is required for new schedule"
             )
         schedule = Schedule(
             date=date,
-            shift=schedule_update.shift,
-            people=schedule_update.people or []
+            shifts=schedule_update.shifts.model_dump(),
+            edited_by=current_user,
+            edited_at=datetime.now(timezone.utc)
         )
         db.add(schedule)
     

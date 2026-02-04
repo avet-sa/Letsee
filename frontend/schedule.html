@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='%23333'>L</text></svg>">
+    <title>Schedule Management - Letsee</title>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="date-nav">
+                <button class="nav-btn" onclick="previousMonth()" title="Previous month">←</button>
+                <div class="calendar-month-display" id="month-year-display"></div>
+                <button class="nav-btn" onclick="nextMonth()" title="Next month">→</button>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="header-info">
+                <span>Schedule Management</span>
+            </div>
+            <div class="time-display" id="current-time">00:00</div>
+            <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme (Ctrl+K)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </button>
+            <button class="btn-primary" onclick="openPeopleModal()" title="Manage Staff">
+                Staff
+            </button>
+            <a href="/" class="btn-primary" title="Back to Handovers">
+                ← Back
+            </a>
+            <button class="btn-primary logout-btn" onclick="handleLogout()" title="Sign out">
+                Sign Out
+            </button>
+        </div>
+    </header>
+
+    <main class="schedule-main">
+        <div class="schedule-container">
+            <!-- Calendar Section - Full Width -->
+            <div class="schedule-calendar full-width">
+                <div class="calendar-legend">
+                    <div class="legend-item"><span class="shift-badge shift-a">A</span> Morning (08:00-17:00)</div>
+                    <div class="legend-item"><span class="shift-badge shift-m">M</span> Middle (11:00-20:00)</div>
+                    <div class="legend-item"><span class="shift-badge shift-b">B</span> Late (15:00-00:00)</div>
+                    <div class="legend-item"><span class="shift-badge shift-c">C</span> Night (00:00-08:00)</div>
+                </div>
+
+                <div class="calendar-weekdays">
+                    <div class="weekday">Sun</div>
+                    <div class="weekday">Mon</div>
+                    <div class="weekday">Tue</div>
+                    <div class="weekday">Wed</div>
+                    <div class="weekday">Thu</div>
+                    <div class="weekday">Fri</div>
+                    <div class="weekday">Sat</div>
+                </div>
+
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- Calendar days will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Day Details Hover Preview -->
+    <div id="hover-preview" class="hover-preview" style="display: none;">
+        <div id="hover-preview-content" class="hover-preview-content">
+            <!-- Shift info will be rendered here -->
+        </div>
+    </div>
+
+    <!-- Day Edit Modal -->
+    <div id="day-modal" class="modal-overlay" style="display: none;" onclick="closeDayModal(event)">
+        <div class="modal-dialog modal-compact" onclick="event.stopPropagation()">
+            <div id="modal-content" class="modal-content">
+                <!-- Shifts and staff will be rendered here -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn-save" onclick="saveDaySchedule()">✓</button>
+                <button class="btn-clear" onclick="clearDaySchedule()">×</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- People Management Modal -->
+    <div id="people-modal" class="modal-overlay" style="display: none;" onclick="closePeopleModal()">
+        <div class="modal-dialog modal-large" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Manage Staff</h2>
+                <button class="close-btn" onclick="closePeopleModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="people-list" id="people-list">
+                    <!-- People will be rendered here -->
+                </div>
+                <div class="add-person-form">
+                    <h3>Add New Staff Member</h3>
+                    <div class="form-row">
+                        <input type="text" id="new-person-name" placeholder="Full Name" class="form-input">
+                        <input type="color" id="new-person-color" value="#3498db" class="form-input color-input" title="Pick a color">
+                        <button class="btn-primary" onclick="addPerson()">+ Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="closePeopleModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/schedule.js"></script>
+</body>
+
+</html>

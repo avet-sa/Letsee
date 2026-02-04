@@ -68,6 +68,12 @@
             <button class="help-btn" onclick="openShortcutsModal()" title="Show keyboard shortcuts (?)">
                 Alt +
             </button>
+            <button class="btn-primary" onclick="openPeopleModal()" title="Manage Staff">
+                Staff
+            </button>
+            <a href="/schedule.html" class="btn-primary" title="Manage Schedule">
+                Schedule
+            </a>
             <button class="btn-primary logout-btn" onclick="handleLogout()" title="Sign out">
                 Sign Out
             </button>
@@ -331,6 +337,32 @@
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
                 <button class="btn-danger" id="confirm-btn" onclick="executeConfirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- People Management Modal -->
+    <div id="people-modal" class="modal-overlay" style="display: none;" onclick="closePeopleModal()">
+        <div class="modal-dialog modal-large" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Manage Staff</h2>
+                <button class="close-btn" onclick="closePeopleModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="people-list" id="people-list">
+                    <!-- People will be rendered here -->
+                </div>
+                <div class="add-person-form">
+                    <h3>Add New Staff Member</h3>
+                    <div class="form-row">
+                        <input type="text" id="new-person-name" placeholder="Full Name" class="form-input">
+                        <input type="color" id="new-person-color" value="#3498db" class="form-input color-input" title="Pick a color">
+                        <button class="btn-primary" onclick="addPerson()">+ Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="closePeopleModal()">Done</button>
             </div>
         </div>
     </div>

@@ -74,6 +74,7 @@ input[type=number] {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    text-decoration: none;
 }
 
 body {
@@ -1168,6 +1169,10 @@ body {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
+.modal-dialog.modal-large {
+    max-width: 600px;
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -1209,6 +1214,25 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 2000;
+}
+
+#day-modal {
+    background: transparent !important;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0;
+}
+
+#day-modal.modal-overlay {
+    display: flex;
+    background: transparent;
+}
+
+#day-modal .modal-dialog {
+    position: fixed;
+    margin: 0;
+    width: auto;
+    max-width: 500px;
 }
 
 #note-form {
@@ -1429,4 +1453,743 @@ body {
     #note-form {
         padding: 20px;
     }
+
+    .schedule-container {
+        flex-direction: column;
+    }
+
+    .schedule-calendar,
+    .schedule-panel {
+        max-width: 100%;
+    }
+
+    .schedule-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        background: var(--bg-primary);
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+    }
+
+    .schedule-panel.mobile-open {
+        transform: translateY(0);
+    }
+
+    .panel-close-btn {
+        display: block;
+    }
 }
+
+/* ============ Schedule Page Styles ============ */
+
+/* SCHEDULE PAGE STYLES */
+
+.schedule-main {
+    padding: 20px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.schedule-container {
+    display: flex;
+    gap: 30px;
+    /* height: calc(100vh - 120px); */
+}
+
+/* Calendar Section */
+.schedule-calendar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.schedule-calendar.full-width {
+    width: 100%;
+}
+
+.calendar-month-display {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 200px;
+    justify-content: center;
+}
+
+.calendar-month-display select,
+.calendar-month-display input {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    padding: 10px 15px;
+    font-size: 16px;
+    font-family: var(--primary-font);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.calendar-month-display input {
+    width: 100px;
+}
+
+.calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
+    font-size: 13px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.shift-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.shift-badge.shift-a {
+    background: rgba(255, 200, 100, 0.7);
+}
+
+.shift-badge.shift-m {
+    background: rgba(150, 200, 255, 0.7);
+}
+
+.shift-badge.shift-b {
+    background: rgba(255, 150, 150, 0.7);
+}
+
+.shift-badge.shift-c {
+    background: rgba(150, 150, 200, 0.7);
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.weekday {
+    padding: 10px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    flex: 1;
+    background: var(--border-secondary);
+    border: 1px solid var(--border-secondary);
+}
+
+.calendar-day {
+    background: var(--bg-secondary);
+    padding: 6px;
+    height: 100px;
+    max-height: 100px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.calendar-day:hover:not(.other-month) {
+    background: var(--bg-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+.calendar-day.other-month {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.calendar-day.today {
+    border: 2px solid var(--text-primary);
+}
+
+.calendar-day.selected {
+    background: var(--bg-primary);
+    box-shadow: inset 0 0 0 2px var(--text-primary);
+}
+
+.day-number {
+    font-weight: 600;
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.day-shifts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3px;
+    flex: 1;
+}
+
+.day-shift {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px;
+    border-radius: 2px;
+}
+
+.shift-count {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.day-staff {
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.staff-initials {
+    background: var(--border-secondary);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+/* Side Panel - Hidden */
+.schedule-panel {
+    display: none;
+}
+
+.panel-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-tertiary);
+    text-align: center;
+    font-size: 14px;
+}
+
+.panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    height: 100%;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.panel-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.panel-close-btn {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 32px;
+    cursor: pointer;
+    color: var(--text-primary);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+}
+
+.panel-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.panel-label {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.shift-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.shift-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-primary);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--primary-font);
+    text-align: left;
+}
+
+.shift-option:hover {
+    border-color: var(--text-secondary);
+}
+
+.shift-option.selected {
+    border-color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.shift-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.shift-name {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.shift-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.staff-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.staff-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.staff-checkbox:hover {
+    background: var(--border-secondary);
+}
+
+.staff-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.staff-checkbox label {
+    cursor: pointer;
+    flex: 1;
+    font-size: 14px;
+}
+
+.edit-history {
+    padding: 15px;
+    background: var(--bg-primary);
+    border-left: 3px solid var(--text-primary);
+    font-size: 13px;
+}
+
+.history-label {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.history-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--text-secondary);
+}
+
+.history-date {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.panel-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-secondary);
+}
+
+.btn-save {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.btn-secondary {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    padding: 12px 20px;
+    font-family: var(--primary-font);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background: var(--bg-secondary);
+}
+
+/* ============ People Management Modal ============ */
+
+.people-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 30px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.person-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-secondary);
+    transition: all 0.2s ease;
+}
+
+.person-item:hover {
+    border-color: var(--border-primary);
+}
+
+.person-color {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid var(--border-primary);
+    flex-shrink: 0;
+}
+
+.person-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.person-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.person-color-code {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: monospace;
+}
+
+.person-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon {
+    background: none;
+    border: 1px solid var(--border-primary);
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: var(--primary-font);
+    font-size: 12px;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+}
+
+.btn-icon:hover {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.btn-danger {
+    background: #e74c3c;
+    color: white;
+    border: 1px solid #c0392b;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.add-person-form {
+    padding: 20px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-secondary);
+}
+
+.add-person-form h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.form-input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+    font-family: var(--primary-font);
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--text-primary);
+}
+
+.color-input {
+    flex: 0 0 60px;
+    padding: 5px;
+    height: 42px;
+    cursor: pointer;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+}
+
+/* Hover Preview */
+.hover-preview {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 12px;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    max-width: 300px;
+    font-size: 13px;
+}
+
+.hover-preview-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.preview-shift {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.preview-shift-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.preview-staff {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 28px;
+    max-height: 60px;
+    overflow-y: auto;
+}
+
+.preview-no-data {
+    color: var(--text-tertiary);
+    font-style: italic;
+    text-align: center;
+    padding: 20px 10px;
+}
+
+/* Day Edit Modal Specific Styles */
+.modal-compact {
+    max-width: 280px;
+    padding: 0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px;
+}
+
+.modal-shift-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-secondary);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+}
+
+.modal-shift-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.modal-shift-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg-primary);
+    border-radius: 2px;
+}
+
+.modal-shift-header.collapsed {
+    opacity: 0.6;
+}
+
+.modal-shift-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    font-weight: 600;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.modal-shift-name {
+    font-weight: 600;
+    font-size: 12px;
+    flex: 1;
+}
+
+.modal-shift-staff {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-left: 28px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.modal-staff-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+}
+
+.modal-staff-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.modal-staff-item label {
+    cursor: pointer;
+    flex: 1;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.modal-staff-color {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+    flex-shrink: 0;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0;
+    border-top: 1px solid var(--border-secondary);
+}
+
+.modal-actions button {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: var(--primary-font);
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.modal-actions button:hover {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.modal-actions .btn-save {
+    border-right: 1px solid var(--border-secondary);
+}
+
+.modal-actions .btn-clear {
+    color: var(--text-secondary);
+}
+
+

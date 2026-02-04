@@ -1521,3 +1521,89 @@ updateTime();
 setInterval(updateTime, 1000);
 updateDateDisplay();
 // updateFooterDate();
+
+// ============ People Management ============
+
+async function openPeopleModal() {
+    document.getElementById('people-modal').style.display = 'flex';
+    await renderPeopleList();
+}
+
+function closePeopleModal() {
+    document.getElementById('people-modal').style.display = 'none';
+    document.getElementById('new-person-name').value = '';
+    document.getElementById('new-person-color').value = '#3498db';
+    // Reload people data
+    getPeople();
+}
+
+async function renderPeopleList() {
+    const people = await getPeople();
+    const peopleList = document.getElementById('people-list');
+    
+    if (people.length === 0) {
+        peopleList.innerHTML = '<div class="empty-state">No staff members yet. Add one below!</div>';
+        return;
+    }
+    
+    peopleList.innerHTML = '';
+    
+    people.forEach((person, index) => {
+        const personEl = document.createElement('div');
+        personEl.className = 'person-item';
+        
+        personEl.innerHTML = `
+            <div class="person-color" style="background-color: ${person.color}"></div>
+            <div class="person-info">
+                <div class="person-name">${person.name}</div>
+                <div class="person-color-code">${person.color}</div>
+            </div>
+            <div class="person-actions">
+                <button class="btn-icon btn-danger" onclick="deletePerson(${index}, '${person.name.replace(/'/g, "\\'")}')">Delete</button>
+            </div>
+        `;
+        
+        peopleList.appendChild(personEl);
+    });
+}
+
+async function addPerson() {
+    const nameInput = document.getElementById('new-person-name');
+    const colorInput = document.getElementById('new-person-color');
+    
+    const name = nameInput.value.trim();
+    const color = colorInput.value;
+    
+    if (!name) {
+        alert('Please enter a name');
+        return;
+    }
+    
+    try {
+        await PeopleAPI.create(name, color);
+        nameInput.value = '';
+        colorInput.value = '#3498db';
+        await renderPeopleList();
+    } catch (error) {
+        console.error('Error adding person:', error);
+        alert('Failed to add staff member. Please try again.');
+    }
+}
+
+async function deletePerson(index, name) {
+    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    
+    try {
+        // Get current people from API to get the ID
+        const allPeople = await PeopleAPI.list();
+        const personToDelete = allPeople.find(p => p.name === name);
+        
+        if (personToDelete) {
+            await PeopleAPI.delete(personToDelete.id);
+            await renderPeopleList();
+        }
+    } catch (error) {
+        console.error('Error deleting person:', error);
+        alert('Failed to delete staff member. Please try again.');
+    }
+}

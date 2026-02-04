@@ -32,13 +32,14 @@ class Person(Base):
 
 
 class Schedule(Base):
-    """Daily shift schedule."""
+    """Daily shift schedule - contains all 4 shifts per day."""
     __tablename__ = "schedules"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     date = Column(String(10), unique=True, nullable=False, index=True)  # YYYY-MM-DD
-    shift = Column(String(1), nullable=False)  # A, M, B, C
-    people = Column(JSON, nullable=False, default=list)  # Array of person names
+    shifts = Column(JSON, nullable=False, default=dict)  # {A: [people], M: [people], B: [people], C: [people]}
+    edited_by = Column(String(255), nullable=True)  # Who last edited this schedule
+    edited_at = Column(DateTime(timezone=True), nullable=True)  # When last edited
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
