@@ -169,24 +169,28 @@ const HandoversAPI = {
     },
 
     async create(data) {
+        const payload = {
+            date: data.date,
+            category: data.category,
+            room: data.room || '',
+            guest_name: data.guestName || '',
+            text: data.text,
+            followup: data.followup,
+            promised: data.promised,
+            promise_text: data.promiseText || '',
+            attachments: data.attachments,
+            timestamp: data.timestamp || new Date().toISOString(),
+            added_by: data.addedBy,
+            shift: data.shift,
+            due_date: data.due_date || null,
+            due_time: data.due_time || null,
+        };
+        console.log('[CREATE] Input data.guestName:', data.guestName);
+        console.log('[CREATE] Payload guest_name:', payload.guest_name);
+        console.log('[CREATE] Full payload:', payload);
         return apiFetch('/handovers', {
             method: 'POST',
-            body: JSON.stringify({
-                date: data.date,
-                category: data.category,
-                room: data.room,
-                guest_name: data.guestName,
-                text: data.text,
-                followup: data.followup,
-                promised: data.promised,
-                promise_text: data.promiseText,
-                attachments: data.attachments,
-                timestamp: data.timestamp || new Date().toISOString(),
-                added_by: data.addedBy,
-                shift: data.shift,
-                due_date: data.due_date || null,
-                due_time: data.due_time || null,
-            }),
+            body: JSON.stringify(payload),
         });
     },
 
@@ -195,12 +199,12 @@ const HandoversAPI = {
             method: 'PUT',
             body: JSON.stringify({
                 category: data.category,
-                room: data.room,
-                guest_name: data.guestName,
+                room: data.room || '',
+                guest_name: data.guestName || '',
                 text: data.text,
                 followup: data.followup,
                 promised: data.promised,
-                promise_text: data.promiseText,
+                promise_text: data.promiseText || '',
                 attachments: data.attachments,
                 completed: data.completed,
                 due_date: data.due_date || null,
@@ -424,7 +428,7 @@ const DB = {
                     date,
                     category: note.category,
                     room: note.room || '',
-                    guest_name: note.guestName || '',
+                    guestName: note.guestName || '',
                     text: note.text,
                     followup: note.followup || false,
                     promised: note.promised || false,

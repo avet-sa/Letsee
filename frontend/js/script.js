@@ -105,6 +105,26 @@ async function getNotesForDate(dateKey) {
 async function renderHandoverNotes(skipCache = false) {
     const dateKey = currentDate.toISOString().split('T')[0];
     
+    // If searching, get all notes across all dates
+    if (searchQuery && searchQuery.trim()) {
+        const allNotes = await getHandoverNotes();
+        const schedule = await getSchedule();
+        const shiftPeople = await getCurrentShiftPeople();
+        
+        // Flatten all notes from all dates
+        const allNotesFlat = { notes: [], sortOrder: [] };
+        for (const [date, dateData] of Object.entries(allNotes)) {
+            if (dateData && dateData.notes) {
+                // Add date info to each note for display
+                allNotesFlat.notes.push(...dateData.notes.map(n => ({ ...n, _date: date })));
+                allNotesFlat.sortOrder.push(...dateData.sortOrder);
+            }
+        }
+        
+        renderHandoverNotesSync(allNotesFlat, schedule, shiftPeople);
+        return;
+    }
+    
     // Use cache if available and date hasn't changed
     if (!skipCache && cachedDateKey === dateKey && cachedDateData) {
         renderHandoverNotesSync(cachedDateData, cachedSchedule, cachedShiftPeople);
@@ -295,11 +315,30 @@ function renderNote(note, shiftPeople = '') {
     topBadges.push(`<span class="category-badge ${catClass}">${(note.category)}</span>`);
     if (note.promised) topBadges.push(`<span class="warning-badge promise">${('promised To Guest').toUpperCase()}</span>`);
     if (note.followup) topBadges.push(`<span class="warning-badge followup">${('follow-up Required').toUpperCase()}</span>`);
+    
+    // Add date badge when searching across all dates
+    if (note._date) {
+        const noteDate = new Date(note._date);
+        const dateStr = noteDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        topBadges.push(`<span class="date-badge">${dateStr}</span>`);
+    }
 
     // Inline badges (room, guest) - will appear near the text
     const inlineBadges = [];
-    if (note.room) inlineBadges.push(`<span class="room-badge-inline">${note.room}</span>`);
-    if (note.guestName) inlineBadges.push(`<span class="guest-badge-inline">${note.guestName}</span>`);
+    if (note.room) {
+        // Split rooms by comma and create a badge for each
+        const rooms = note.room.split(',').map(r => r.trim()).filter(r => r);
+        rooms.forEach(room => {
+            inlineBadges.push(`<span class="room-badge-inline">${room}</span>`);
+        });
+    }
+    if (note.guestName) {
+        // Split guest names by comma and create a badge for each
+        const guests = note.guestName.split(',').map(g => g.trim()).filter(g => g);
+        guests.forEach(guest => {
+            inlineBadges.push(`<span class="guest-badge-inline">${guest}</span>`);
+        });
+    }
 
     const shiftInfo = note.shift || 'A';
     // Use note's addedBy if shiftPeople is empty

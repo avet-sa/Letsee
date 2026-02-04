@@ -822,6 +822,15 @@ body {
     background: #ff8800;
 }
 
+.date-badge {
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    background: #4f4f4f;
+    color: white;
+}
+
 [data-theme="light"] .handover-item.has-both-warnings {
     background: repeating-linear-gradient(45deg,
             rgba(255, 136, 0, 0.22) 0px,
