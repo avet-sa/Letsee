@@ -3,7 +3,16 @@
  * Replaces PocketBase with REST API calls
  */
 
-const API_BASE = '/api';
+const API_BASE = (() => {
+    const { protocol, hostname, port } = window.location;
+
+    // Native frontend dev server: static files on :3000, FastAPI on :8000.
+    if (hostname === 'localhost' && port === '3000') {
+        return `${protocol}//${hostname}:8000/api`;
+    }
+
+    return '/api';
+})();
 
 // UUID v4 generator for creating note IDs
 function generateUUID() {
