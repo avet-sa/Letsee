@@ -173,7 +173,7 @@
 .day-shifts-grid {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     flex: 1;
 }
 
@@ -181,8 +181,10 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 2px 5px;
+    padding: 4px 5px;
     border-radius: 2px;
+    position: relative;
+    margin-left: 25px;
 }
 
 .day-shift.has-assignment {
@@ -199,6 +201,8 @@
     font-size: 8px;
     font-weight: 600;
     flex-shrink: 0;
+    position: absolute;
+    left: -25px;
 }
 
 .shift-count {

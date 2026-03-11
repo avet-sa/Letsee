@@ -1,5 +1,11 @@
 // Schedule Management Script
 
+// ============================================
+// DEVELOPMENT MODE TOGGLE
+// Set to false when backend is ready
+// ============================================
+const DEV_MODE = true;
+
 // State
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
@@ -18,19 +24,113 @@ const SHIFTS = {
     C: { name: 'Night', time: '00:00 - 08:00', color: 'rgba(150, 150, 200, 0.7)' }
 };
 
-// Today
-const today = new Date();
-let year = today.getFullYear();
-let month = today.getMonth();
+// ============================================
+// MOCK DATA (for development)
+// ============================================
+const MOCK_PEOPLE = [
+    { id: 1, name: 'Alice Johnson', color: '#3498db' },
+    { id: 2, name: 'Bob Smith', color: '#e74c3c' },
+    { id: 3, name: 'Carol Davis', color: '#2ecc71' },
+    { id: 4, name: 'David Wilson', color: '#f39c12' },
+    { id: 5, name: 'Emma Brown', color: '#9b59b6' }
+];
 
-function isToday(d) { return d === today.getDate() && month === today.getMonth() && year === today.getFullYear(); }
+const MOCK_SCHEDULES = {
+    // Example: '2025-03-15': { shifts: { A: ['Alice Johnson'], M: ['Bob Smith'], B: [], C: [] } }
+};
+
+// Mock current user
+const MOCK_USER = { id: 1, name: 'Admin User' };
+
+// ============================================
+// MOCK API (for development)
+// ============================================
+const MockDB = {
+    init: async () => {
+        console.log('[MOCK] DB initialized');
+        return Promise.resolve();
+    },
+    getCurrentUser: async () => {
+        console.log('[MOCK] Getting current user');
+        return Promise.resolve(MOCK_USER);
+    },
+    getPeople: async () => {
+        console.log('[MOCK] Getting people');
+        return Promise.resolve([...MOCK_PEOPLE]);
+    },
+    getSchedule: async () => {
+        console.log('[MOCK] Getting schedules');
+        return Promise.resolve({ ...MOCK_SCHEDULES });
+    },
+    saveSchedule: async (schedule) => {
+        console.log('[MOCK] Saving schedule:', schedule);
+        // Update mock data
+        Object.assign(MOCK_SCHEDULES, schedule);
+        return Promise.resolve(schedule);
+    },
+    logout: () => {
+        console.log('[MOCK] Logging out');
+        window.location.href = '/';
+    }
+};
+
+const MockPeopleAPI = {
+    create: async (name, color) => {
+        console.log('[MOCK] Creating person:', name, color);
+        const newPerson = {
+            id: MOCK_PEOPLE.length + 1,
+            name,
+            color
+        };
+        MOCK_PEOPLE.push(newPerson);
+        return Promise.resolve(newPerson);
+    },
+    list: async () => {
+        console.log('[MOCK] Listing people');
+        return Promise.resolve([...MOCK_PEOPLE]);
+    },
+    delete: async (id) => {
+        console.log('[MOCK] Deleting person:', id);
+        const index = MOCK_PEOPLE.findIndex(p => p.id === id);
+        if (index > -1) {
+            MOCK_PEOPLE.splice(index, 1);
+        }
+        return Promise.resolve({ id });
+    }
+};
+
+const MockSchedulesAPI = {
+    list: async (dateStr) => {
+        console.log('[MOCK] Listing schedules for:', dateStr);
+        const schedule = MOCK_SCHEDULES[dateStr];
+        return Promise.resolve(schedule ? [{ id: dateStr, ...schedule }] : []);
+    },
+    delete: async (id) => {
+        console.log('[MOCK] Deleting schedule:', id);
+        delete MOCK_SCHEDULES[id];
+        return Promise.resolve({ id });
+    }
+};
+
+// ============================================
+// API SELECTOR (switches between mock and real)
+// ============================================
+const DB = DEV_MODE ? MockDB : window.DB;
+const PeopleAPI = DEV_MODE ? MockPeopleAPI : window.PeopleAPI;
+const SchedulesAPI = DEV_MODE ? MockSchedulesAPI : window.SchedulesAPI;
 
 // Initialize
 async function init() {
-    // await DB.init();
-    // await loadCurrentUser();
-    // await loadPeople();
-    // await loadSchedules();
+    if (DEV_MODE) {
+        await MockDB.init();
+    } else {
+        // PRODUCTION: Uncomment when backend is ready
+        // await DB.init();
+    }
+
+    await loadCurrentUser();
+    await loadPeople();
+    await loadSchedules();
     renderCalendar();
     updateClock();
     setInterval(updateClock, 1000);
@@ -218,28 +318,62 @@ function showHoverPreview(dateStr, event) {
     const preview = document.getElementById('hover-preview');
     const content = document.getElementById('hover-preview-content');
 
+    // Extract day and month from dateStr
+    const dateParts = dateStr.split('-');
+    const day = parseInt(dateParts[2]);
+    const monthIndex = parseInt(dateParts[1]) - 1;
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // Set header
+    document.getElementById('hover-preview-day').textContent = day;
+    document.getElementById('hover-preview-month').textContent = monthNames[monthIndex].toUpperCase();
+
+    // Build staff rows like the example
     let html = '';
     const hasAnyShifts = Object.values(schedule.shifts).some(people => people && people.length > 0);
 
     if (!hasAnyShifts) {
         html = '<div class="preview-no-data">No shifts assigned</div>';
     } else {
-        for (const [shift, people] of Object.entries(schedule.shifts)) {
-            if (people && people.length > 0) {
-                const shiftInfo = SHIFTS[shift];
+        // Group staff by shift and render each staff member
+        peopleData.forEach((person, idx) => {
+            let assignedShift = null;
+
+            // Find which shift this person is assigned to
+            for (const [shift, people] of Object.entries(schedule.shifts)) {
+                if (people && people.includes(person.name)) {
+                    assignedShift = shift;
+                    break;
+                }
+            }
+
+            if (assignedShift) {
+                const shiftInfo = SHIFTS[assignedShift];
+                const initials = getInitials(person.name);
+
                 html += `
-                    <div class="preview-shift">
-                        <span class="preview-shift-badge shift-${shift.toLowerCase()}">${shift}</span>
-                        <span>${shiftInfo.name}</span>
-                    </div>
-                    <div class="preview-staff">
-                        ${people.map(name => {
-                    const person = peopleData.find(p => p.name === name);
-                    return `<div style="color: ${person ? person.color : 'inherit'}">${name}</div>`;
-                }).join('')}
+                    <div class="preview-staff-row">
+                        <div class="preview-staff-name-row">
+                            <div class="preview-staff-avatar"
+                                style="background:${person.color}18;border:1px solid ${person.color}44;color:${person.color}">
+                                ${initials}
+                            </div>
+                            <span class="preview-staff-name">${person.name}</span>
+                            <span class="preview-staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${assignedShift}</span>
+                        </div>
                     </div>
                 `;
+
+                // Add divider if not last item
+                if (idx < peopleData.length - 1) {
+                    html += '<div class="preview-staff-divider"></div>';
+                }
             }
+        });
+
+        // If no staff rows were added, show no data
+        if (!html) {
+            html = '<div class="preview-no-data">No shifts assigned</div>';
         }
     }
 
@@ -268,10 +402,11 @@ function showHoverPreview(dateStr, event) {
 
         // Keep within viewport vertically - position above if needed
         if (top + ph > vh - 8) {
+            // Position above the cell, not at the top of viewport
             top = rect.top - ph - 8;
         }
 
-        // Make sure it doesn't go above viewport
+        // If still doesn't fit, position at top with small margin
         if (top < 8) {
             top = 8;
         }
@@ -306,45 +441,112 @@ function openDayModal(dateStr, dayEl) {
         edited_at: null
     };
 
-    // Render shifts in modal
-    const modalContent = document.getElementById('modal-content');
-    let html = '';
+    // Extract day and month
+    const dateParts = dateStr.split('-');
+    const day = parseInt(dateParts[2]);
+    const monthIndex = parseInt(dateParts[1]) - 1;
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    for (const [shift, people] of Object.entries(schedule.shifts)) {
-        const shiftInfo = SHIFTS[shift];
-        const staffCount = people && people.length > 0 ? people.length : 0;
+    // Render modal like the example - one row per staff member with shift options
+    const modalContent = document.getElementById('modal-content');
+    let html = `
+        <div class="modal-header">
+            <span class="hover-preview-day">${day}</span>
+            <span class="hover-preview-month">${monthNames[monthIndex].toUpperCase()}</span>
+        </div>
+        <div class="modal-staff-content">
+    `;
+
+    peopleData.forEach((person, idx) => {
+        const initials = getInitials(person.name);
+
+        // Find current shift for this person
+        let currentShift = 'off';
+        for (const [shift, people] of Object.entries(schedule.shifts)) {
+            if (people && people.includes(person.name)) {
+                currentShift = shift;
+                break;
+            }
+        }
+
+        const shiftInfo = currentShift !== 'off' ? SHIFTS[currentShift] : null;
+        const badgeHtml = shiftInfo
+            ? `<span class="staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${currentShift}</span>`
+            : "";
+
+        // Shift option buttons
+        const optsHtml = ['A', 'M', 'B', 'C'].map(shift => {
+            const shiftData = SHIFTS[shift];
+            const isActive = currentShift === shift;
+            return `
+                <button class="shift-opt${isActive ? ' active' : ''}"
+                    style="background:${isActive ? shiftData.color.replace('0.7', '0.2') : 'var(--bg-primary)'};
+                           border-color:${isActive ? shiftData.color.replace('0.7', '0.5') : 'var(--border-secondary)'};
+                           color:${isActive ? shiftData.color.replace('0.7', '1') : 'var(--text-tertiary)'}"
+                    data-person="${person.name}" data-shift="${shift}">
+                    ${shift}
+                </button>`;
+        }).join('');
+
+        const divider = idx < peopleData.length - 1
+            ? `<div class="staff-divider"></div>` : "";
 
         html += `
-            <div class="modal-shift-section">
-                <div class="modal-shift-header">
-                    <span class="modal-shift-badge shift-${shift.toLowerCase()}">${shift}</span>
-                    <span class="modal-shift-name">${shiftInfo.name}</span>
+            <div class="staff-row">
+                <div class="staff-name-row">
+                    <div class="staff-avatar"
+                        style="background:${person.color}18;border:1px solid ${person.color}44;color:${person.color}">
+                        ${initials}
+                    </div>
+                    <span class="staff-name">${person.name}</span>
+                    ${badgeHtml}
                 </div>
-                <div class="modal-shift-staff">
-                    ${peopleData.map(person => {
-            const isAssigned = people && people.includes(person.name);
-            return `
-                            <div class="modal-staff-item">
-                                <input type="checkbox" id="staff-${shift}-${person.name}" 
-                                       value="${person.name}" ${isAssigned ? 'checked' : ''}>
-                                <label for="staff-${shift}-${person.name}">
-                                    <span class="modal-staff-color" style="background-color: ${person.color}"></span>
-                                    ${person.name}
-                                </label>
-                            </div>
-                        `;
-        }).join('')}
-                </div>
-            </div>
-        `;
-    }
+                <div class="shift-opts">${optsHtml}</div>
+                ${divider}
+            </div>`;
+    });
 
+    html += '</div>';
     modalContent.innerHTML = html;
 
-    // Add event listeners for auto-save on checkbox change
-    modalContent.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', async () => {
+    // Add event listeners for shift buttons
+    modalContent.querySelectorAll('.shift-opt').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const personName = btn.dataset.person;
+            const shift = btn.dataset.shift;
+
+            // Ensure scheduleData entry exists
+            if (!scheduleData[selectedDate]) {
+                scheduleData[selectedDate] = {
+                    shifts: { A: [], M: [], B: [], C: [] }
+                };
+            }
+
+            // Get current schedule
+            const currentSchedule = scheduleData[selectedDate];
+
+            // Ensure all shift arrays exist
+            for (const s of ['A', 'M', 'B', 'C']) {
+                if (!currentSchedule.shifts[s]) {
+                    currentSchedule.shifts[s] = [];
+                }
+            }
+
+            // Remove person from all shifts first
+            for (const s of ['A', 'M', 'B', 'C']) {
+                currentSchedule.shifts[s] = currentSchedule.shifts[s].filter(name => name !== personName);
+            }
+
+            // Check if we're unsetting or setting
+            const isCurrentlyActive = btn.classList.contains('active');
+            if (!isCurrentlyActive) {
+                // Add to selected shift
+                currentSchedule.shifts[shift].push(personName);
+            }
+
+            // Save and refresh
             await saveDaySchedule();
+            openDayModal(selectedDate, openDayCell); // Refresh modal
         });
     });
 
@@ -417,22 +619,13 @@ async function saveDaySchedule() {
     if (!selectedDate) return;
 
     try {
-        const existingSchedule = scheduleData[selectedDate] || {
+        // Ensure the schedule exists
+        const currentSchedule = scheduleData[selectedDate] || {
             shifts: { A: [], M: [], B: [], C: [] }
         };
 
-        const updatedShifts = {};
-
-        for (const shift of ['A', 'M', 'B', 'C']) {
-            const checkboxes = document.querySelectorAll(`input[id^="staff-${shift}-"]`);
-            const people = Array.from(checkboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
-            updatedShifts[shift] = people;
-        }
-
         const scheduleToSave = {};
-        scheduleToSave[selectedDate] = { shifts: updatedShifts };
+        scheduleToSave[selectedDate] = { shifts: currentSchedule.shifts };
 
         await DB.saveSchedule(scheduleToSave);
 
@@ -499,23 +692,29 @@ function nextMonth() {
 
 // Update calendar when month/year changed
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('month-year-display').addEventListener('change', (e) => {
-        currentMonth = parseInt(e.target.value);
-        renderCalendar();
-    });
+    const monthYearDisplay = document.getElementById('month-year-display');
+    if (monthYearDisplay) {
+        monthYearDisplay.addEventListener('change', (e) => {
+            currentMonth = parseInt(e.target.value);
+            renderCalendar();
+        });
 
-    document.getElementById('month-year-display').addEventListener('change', (e) => {
-        currentYear = parseInt(e.target.value);
-        renderCalendar();
-    });
+        monthYearDisplay.addEventListener('change', (e) => {
+            currentYear = parseInt(e.target.value);
+            renderCalendar();
+        });
+    }
 });
 
 // Clock
 function updateClock() {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    document.getElementById('current-time').textContent = `${hours}:${minutes}`;
+    const clockEl = document.getElementById('current-time');
+    if (clockEl) {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        clockEl.textContent = `${hours}:${minutes}`;
+    }
 }
 
 // Theme
@@ -536,11 +735,15 @@ function applyTheme() {
 
 function updateFavicon(theme) {
     const favicon = document.getElementById('favicon');
-    const color = theme === 'dark' ? '%23ffffff' : '%23333';
-    favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='${color}'>L</text></svg>`;
+    if (favicon) {
+        const color = theme === 'dark' ? '%23ffffff' : '%23333';
+        favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='${color}'>L</text></svg>`;
+    }
 }
 
 // Logout
+let confirmAction = null;
+
 function showConfirm(title, message, onConfirm) {
     document.getElementById('confirm-title').textContent = title;
     document.getElementById('confirm-message').textContent = message;
@@ -629,7 +832,7 @@ async function renderPeopleList() {
                 <div class="person-color-code">${person.color}</div>
             </div>
             <div class="person-actions">
-                <button class="btn-icon btn-danger" onclick="deletePerson(${index}, '${person.name.replace(/'/g, "\\'")}')">Delete</button>
+                <button class="btn-icon btn-danger" onclick="deletePerson(${person.id}, '${person.name.replace(/'/g, "\\'")}')">Delete</button>
             </div>
         `;
 
@@ -660,18 +863,11 @@ async function addPerson() {
     }
 }
 
-async function deletePerson(index, name) {
+async function deletePerson(id, name) {
     showConfirm('Delete Staff Member', `Are you sure you want to delete ${name}? This action cannot be undone.`, async () => {
-
         try {
-            // Get current people from API to get the ID
-            const allPeople = await PeopleAPI.list();
-            const personToDelete = allPeople.find(p => p.name === name);
-
-            if (personToDelete) {
-                await PeopleAPI.delete(personToDelete.id);
-                await renderPeopleList();
-            }
+            await PeopleAPI.delete(id);
+            await renderPeopleList();
         } catch (error) {
             console.error('Error deleting person:', error);
             alert('Failed to delete staff member. Please try again.');

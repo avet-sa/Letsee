@@ -9,8 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" id="favicon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='%23333'>L</text></svg>">
+    <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='%23333'>L</text></svg>">
     <title>Schedule Management - Letsee</title>
 </head>
 
@@ -29,17 +28,7 @@
             </div>
             <div class="time-display" id="current-time">00:00</div>
             <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme (Ctrl+K)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="5" />
-                    <line x1="12" y1="1" x2="12" y2="3" />
-                    <line x1="12" y1="21" x2="12" y2="23" />
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                    <line x1="1" y1="12" x2="3" y2="12" />
-                    <line x1="21" y1="12" x2="23" y2="12" />
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                </svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
             </button>
             <button class="btn-primary" onclick="openPeopleModal()" title="Manage Staff">
                 Staff
@@ -81,10 +70,16 @@
         </div>
     </main>
 
-    <!-- Day Details Hover Preview (styled like modal) -->
+    <!-- Day Details Hover Preview (styled like example) -->
     <div id="hover-preview" class="hover-preview" style="display: none;">
-        <div id="hover-preview-content" class="hover-preview-content">
-            <!-- Shift info will be rendered here -->
+        <div class="hover-preview-dialog">
+            <div class="hover-preview-header">
+                <span class="hover-preview-day" id="hover-preview-day"></span>
+                <span class="hover-preview-month" id="hover-preview-month"></span>
+            </div>
+            <div id="hover-preview-content" class="hover-preview-content">
+                <!-- Staff assignments will be rendered here -->
+            </div>
         </div>
     </div>
 
@@ -127,8 +122,7 @@
                     <h3>Add New Staff Member</h3>
                     <div class="form-row">
                         <input type="text" id="new-person-name" placeholder="Full Name" class="form-input">
-                        <input type="color" id="new-person-color" value="#3498db" class="form-input color-input"
-                            title="Pick a color">
+                        <input type="color" id="new-person-color" value="#3498db" class="form-input color-input" title="Pick a color">
                         <button class="btn-primary" onclick="addPerson()">+ Add</button>
                     </div>
                 </div>
