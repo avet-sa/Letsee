@@ -74,3 +74,4 @@ loki_data/
 # Backup credentials (if stored separately)
 *backup*.env
 *backup*.key
+frontend/scheduler-example.html

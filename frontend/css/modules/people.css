@@ -1,0 +1,308 @@
+/* ============ People Management Modal ============ */
+
+.people-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 30px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.person-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-secondary);
+    transition: all 0.2s ease;
+}
+
+.person-item:hover {
+    border-color: var(--border-primary);
+}
+
+.person-color {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid var(--border-primary);
+    flex-shrink: 0;
+}
+
+.person-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.person-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.person-color-code {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: monospace;
+}
+
+.person-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon {
+    background: none;
+    border: 1px solid var(--border-primary);
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: var(--primary-font);
+    font-size: 12px;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+}
+
+.btn-danger {
+    background: #e74c3c;
+    color: white;
+    border: 1px solid #c0392b;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.add-person-form {
+    padding: 20px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-secondary);
+}
+
+.add-person-form h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.form-input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+    font-family: var(--primary-font);
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--text-primary);
+}
+
+.color-input {
+    flex: 0 0 60px;
+    padding: 5px;
+    height: 42px;
+    cursor: pointer;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+}
+
+/* Hover Preview */
+.hover-preview {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 12px;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    max-width: 300px;
+    font-size: 13px;
+}
+
+.hover-preview-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.preview-shift {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.preview-shift-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.preview-staff {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 28px;
+    max-height: 60px;
+    overflow-y: auto;
+}
+
+.preview-no-data {
+    color: var(--text-tertiary);
+    font-style: italic;
+    text-align: center;
+    padding: 20px 10px;
+}
+
+/* Day Edit Modal Specific Styles */
+.modal-compact {
+    max-width: 280px;
+    padding: 0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px;
+}
+
+.modal-shift-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-secondary);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+}
+
+.modal-shift-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.modal-shift-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg-primary);
+    border-radius: 2px;
+}
+
+.modal-shift-header.collapsed {
+    opacity: 0.6;
+}
+
+.modal-shift-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    font-weight: 600;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.modal-shift-name {
+    font-weight: 600;
+    font-size: 12px;
+    flex: 1;
+}
+
+.modal-shift-staff {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-left: 28px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.modal-staff-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+}
+
+.modal-staff-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.modal-staff-item label {
+    cursor: pointer;
+    flex: 1;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.modal-staff-color {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+    flex-shrink: 0;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0;
+    border-top: 1px solid var(--border-secondary);
+}
+
+.modal-actions button {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: var(--primary-font);
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.modal-actions button:hover {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.modal-actions .btn-save {
+    border-right: 1px solid var(--border-secondary);
+}
+
+.modal-actions .btn-clear {

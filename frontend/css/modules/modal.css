@@ -1,0 +1,429 @@
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.note-modal-content {
+    background: var(--bg-secondary);
+    border-radius: 0;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    scrollbar-color: #9f9f9f #2a2a2a;
+}
+
+.attachment-modal-content {
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.attachment-modal-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 25px;
+    gap: 20px;
+}
+
+.attachment-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-secondary);
+    overflow: auto;
+    border-radius: 0;
+}
+
+.attachment-preview img,
+.attachment-preview iframe {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+}
+
+.attachment-modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 15px 25px;
+    background: var(--bg-primary);
+    justify-content: flex-end;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.modal-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    line-height: 1;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+}
+
+.close-btn:hover {
+    color: var(--text-primary);
+}
+
+/* Alert Modal Dialog */
+.modal-dialog {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-dialog.modal-large {
+    max-width: 600px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.modal-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.modal-body {
+    padding: 20px 25px;
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 15px 25px;
+    border-top: 1px solid var(--border-secondary);
+    background: var(--bg-primary);
+    justify-content: flex-end;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+#day-modal {
+    background: transparent !important;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0;
+}
+
+#day-modal.modal-overlay {
+    display: flex;
+    background: transparent;
+}
+
+#day-modal .modal-dialog {
+    position: fixed;
+    margin: 0;
+    width: auto;
+    max-width: 500px;
+}
+
+#note-form {
+    padding: 25px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 11px;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-secondary);
+    border-radius: 0;
+    font-family: var(--primary-font);
+    font-size: 13px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--border-primary);
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+/* Date/Time inputs with icons */
+.due-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.input-with-icon {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 4px;
+    padding: 6px 10px;
+}
+
+.input-with-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--text-secondary);
+    stroke-width: 1.8;
+    fill: none;
+    flex-shrink: 0;
+}
+
+.input-with-icon input {
+    border: none;
+    background: transparent;
+    padding: 6px 0;
+    min-width: 150px;
+    color: var(--text-primary);
+}
+
+.input-with-icon {
+    cursor: pointer;
+}
+
+.input-with-icon input.picker-input {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.picker-input::-webkit-calendar-picker-indicator,
+.picker-input::-webkit-inner-spin-button,
+.picker-input::-webkit-clear-button {
+    display: none;
+}
+
+[data-theme="dark"] .input-with-icon svg {
+    stroke: var(--text-secondary);
+}
+
+.input-with-icon:focus-within {
+    border-color: var(--border-primary);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    cursor: pointer;
+}
+
+/* Emphasized checkboxes for Follow-up / Promised */
+#note-followup {
+    accent-color: #ff9800;
+}
+
+#note-promised {
+    accent-color: #ff4444;
+}
+
+[data-theme="dark"] #note-followup {
+    accent-color: #ffb74d;
+}
+
+[data-theme="dark"] #note-promised {
+    accent-color: #ff6b6b;
+}
+
+.checkbox-label input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--border-primary);
+    outline-offset: 2px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.btn-white {
+    background: var(--text-primary);
+    color: var(--bg-secondary);
+}
+
+/* Shortcuts modal */
+.shortcuts-content {
+    max-width: 600px;
+}
+
+.shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.shortcut-item {
+    padding: 12px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    border: 1px solid var(--border-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.shortcut-key {
+    font-weight: 700;
+    font-size: 14px;
+    background: var(--border-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.shortcut-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        height: auto;
+        padding: 15px 20px;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .header-left,
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .handover-section {
+        padding: 20px;
+    }
+
+    .handover-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .note-modal-content {
+        width: 95%;
+    }
+
+    #note-form {
+        padding: 20px;
+    }
+
+    .schedule-container {
+        flex-direction: column;
+    }
+
+    .schedule-calendar,
+    .schedule-panel {
+        max-width: 100%;
+    }
+
+    .schedule-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        background: var(--bg-primary);
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+    }
+
+    .schedule-panel.mobile-open {
+        transform: translateY(0);
+    }
+
+    .panel-close-btn {
+        display: block;
+    }
+}
+
