@@ -35,6 +35,7 @@ services:
     restart: unless-stopped
 
   # PostgreSQL Database with WAL-G Archiving
+  
   db:
     image: postgres:15-alpine
     container_name: letsee-db
@@ -44,16 +45,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_INITDB_ARGS: >-
-        -c shared_preload_libraries=pgaudit
-        -c log_statement=all
-        -c ssl=on
-        -c archive_mode=on
-        -c archive_command='mkdir -p /archive && cp %p /archive/%f'
-        -c archive_timeout=300
-        -c wal_level=replica
-        -c max_wal_senders=3
-        -c wal_keep_size=1GB
+    command: >
+      postgres
+      -c log_statement=all
+      -c archive_mode=on
+      -c archive_command='mkdir -p /archive && cp %p /archive/%f'
+      -c archive_timeout=300
+      -c wal_level=replica
+      -c max_wal_senders=3
+      -c wal_keep_size=1GB
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - postgres_archive:/archive
