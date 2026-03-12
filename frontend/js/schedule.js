@@ -286,9 +286,9 @@ function createDayElement(day, dateStr, isOtherMonth, isToday = false, isSelecte
                 personCircle.className = 'day-shift-person';
                 personCircle.textContent = getInitials(person.name);
                 personCircle.title = `${person.name} (${shift})`;
-                personCircle.style.background = person.color + '20';
-                personCircle.style.borderColor = person.color + '55';
-                personCircle.style.color = person.color;
+                personCircle.style.setProperty('--person-color', person.color);
+                personCircle.style.setProperty('--person-bg', person.color + '20');
+                personCircle.style.setProperty('--person-border', person.color + '55');
                 shiftPeople.appendChild(personCircle);
             });
 
@@ -400,7 +400,7 @@ function showHoverPreview(dateStr, event) {
         const vh = window.innerHeight;
 
         let left = rect.left + rect.width / 2 - pw / 2;
-        let top = rect.bottom + 8;
+        let top = rect.bottom + 25;
 
         // Keep within viewport horizontally
         if (left + pw > vw - 8) left = vw - pw - 8;
@@ -409,7 +409,7 @@ function showHoverPreview(dateStr, event) {
         // Keep within viewport vertically - position above if needed
         if (top + ph > vh - 8) {
             // Position above the cell, not at the top of viewport
-            top = rect.top - ph - 8;
+            top = rect.top - ph - 45;
         }
 
         // If still doesn't fit, position at top with small margin
