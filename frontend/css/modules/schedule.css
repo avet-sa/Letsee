@@ -219,70 +219,70 @@
 }
 
 .day-shifts-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 3px;
     flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
     min-height: 0;
 }
 
-.day-shifts-grid::-webkit-scrollbar {
-    width: 3px;
-}
-
-.day-shifts-grid::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.day-shifts-grid::-webkit-scrollbar-thumb {
-    background: var(--border-primary);
-    border-radius: 3px;
-}
-
-.day-shift {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 5px;
-    border-radius: 2px;
+.day-shift-quadrant {
     position: relative;
-    margin-left: 25px;
-    margin-right: 6px;
-}
-
-.day-shift.has-assignment {
-    border-left: 2px solid;
-}
-
-.shift-initials-circle {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
     display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 12px 4px 4px;
+    border: 1px solid var(--border-secondary);
+    border-radius: 6px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.day-shift-quadrant-label {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.day-shift-quadrant-people {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+    width: 100%;
+}
+
+.day-shift-person {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    aspect-ratio: 1;
+    border: 1px solid var(--border-secondary);
+    border-radius: 50%;
     font-size: 8px;
-    font-weight: 600;
-    flex-shrink: 0;
-    position: absolute;
-    left: -25px;
-}
-
-.shift-count {
-    font-size: 9px;
-    font-weight: 500;
+    font-weight: 800;
     line-height: 1;
-    color: var(--text-primary);
+    min-width: 0;
 }
 
-.day-staff {
-    font-size: 11px;
-    color: var(--text-secondary);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+.day-shift-person-more,
+.day-shift-quadrant-empty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    letter-spacing: 0.04em;
+    min-height: 100%;
+}
+
+.day-shift-quadrant-empty {
+    opacity: 0.5;
 }
 
 .staff-initials {

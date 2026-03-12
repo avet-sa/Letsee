@@ -255,47 +255,60 @@ function createDayElement(day, dateStr, isOtherMonth, isToday = false, isSelecte
     dayNumberSlot.appendChild(dayNumber);
     dayEl.appendChild(dayNumberSlot);
 
-    // Schedule info - Show assignments as pills with initials + shift code
+    // Schedule info - 2x2 shift grid, one quadrant per shift.
     const schedule = scheduleData[dateStr];
     if (schedule && !isOtherMonth && schedule.shifts) {
-        // Create container for assignments
         const gridContainer = document.createElement('div');
         gridContainer.className = 'day-shifts-grid';
 
-        // Show assignments for each shift
         ['A', 'M', 'B', 'C'].forEach(shift => {
-            const people = schedule.shifts[shift] || [];
+            const shiftInfo = SHIFTS[shift];
+            const people = (schedule.shifts[shift] || [])
+                .map(personName => peopleData.find(p => p.name === personName))
+                .filter(Boolean);
 
-            people.forEach(personName => {
-                const person = peopleData.find(p => p.name === personName);
-                if (!person) return;
+            const shiftLane = document.createElement('div');
+            shiftLane.className = 'day-shift-quadrant';
+            shiftLane.style.background = shiftInfo.color.replace('0.7', '0.10');
+            shiftLane.style.borderColor = shiftInfo.color.replace('0.7', '0.28');
 
-                const initials = getInitials(personName);
-                const shiftInfo = SHIFTS[shift];
+            const shiftLabel = document.createElement('span');
+            shiftLabel.className = 'day-shift-quadrant-label';
+            shiftLabel.textContent = shift;
+            shiftLabel.style.color = shiftInfo.color.replace('0.7', '1');
+            shiftLane.appendChild(shiftLabel);
 
-                const dayShift = document.createElement('div');
-                dayShift.className = 'day-shift has-assignment';
-                dayShift.style.background = shiftInfo.color.replace('0.7', '0.2');
-                dayShift.style.borderLeftColor = person.color;
+            const shiftPeople = document.createElement('div');
+            shiftPeople.className = 'day-shift-quadrant-people';
 
-                // Initials circle
-                const initialsCircle = document.createElement('div');
-                initialsCircle.className = 'shift-initials-circle';
-                initialsCircle.style.background = person.color + '18';
-                initialsCircle.style.border = `1px solid ${person.color}44`;
-                initialsCircle.style.color = person.color;
-                initialsCircle.textContent = initials;
-                dayShift.appendChild(initialsCircle);
-
-                // Shift badge
-                const shiftBadge = document.createElement('span');
-                shiftBadge.className = 'shift-count';
-                shiftBadge.style.color = shiftInfo.color.replace('0.7', '1');
-                shiftBadge.textContent = shift;
-                dayShift.appendChild(shiftBadge);
-
-                gridContainer.appendChild(dayShift);
+            people.slice(0, DAY_CELL_SHIFT_VISIBLE_LIMIT).forEach(person => {
+                const personCircle = document.createElement('span');
+                personCircle.className = 'day-shift-person';
+                personCircle.textContent = getInitials(person.name);
+                personCircle.title = `${person.name} (${shift})`;
+                personCircle.style.background = person.color + '20';
+                personCircle.style.borderColor = person.color + '55';
+                personCircle.style.color = person.color;
+                shiftPeople.appendChild(personCircle);
             });
+
+            if (people.length > DAY_CELL_SHIFT_VISIBLE_LIMIT) {
+                const overflowIndicator = document.createElement('span');
+                overflowIndicator.className = 'day-shift-person-more';
+                overflowIndicator.textContent = `+${people.length - DAY_CELL_SHIFT_VISIBLE_LIMIT}`;
+                overflowIndicator.title = `${people.length - DAY_CELL_SHIFT_VISIBLE_LIMIT} more on ${shift}`;
+                shiftPeople.appendChild(overflowIndicator);
+            }
+
+            if (people.length === 0) {
+                const emptyIndicator = document.createElement('span');
+                emptyIndicator.className = 'day-shift-quadrant-empty';
+                emptyIndicator.textContent = '';
+                shiftPeople.appendChild(emptyIndicator);
+            }
+
+            shiftLane.appendChild(shiftPeople);
+            gridContainer.appendChild(shiftLane);
         });
 
         dayEl.appendChild(gridContainer);
@@ -318,6 +331,7 @@ function getInitials(name) {
 let hoverPreviewState = null;
 const PREVIEW_PAGE_SIZE = 4;
 let hoverPreviewCell = null;
+const DAY_CELL_SHIFT_VISIBLE_LIMIT = 4;
 
 // Show hover preview
 function showHoverPreview(dateStr, event) {
