@@ -9,7 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='%23333'>L</text></svg>">
+    <link rel="icon" id="favicon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='%23333'>L</text></svg>">
     <title>Schedule Management - Letsee</title>
 </head>
 
@@ -21,14 +22,30 @@
                 <div class="calendar-month-display" id="month-year-display"></div>
                 <button class="nav-btn" onclick="nextMonth()" title="Next month">→</button>
             </div>
-        </div>
-        <div class="header-right">
             <div class="header-info">
                 <span>Schedule Management</span>
             </div>
+            <!-- <div class="calendar-legend">
+                <div class="legend-item"><span class="shift-badge shift-a">A</span> Morning</div>
+                <div class="legend-item"><span class="shift-badge shift-m">M</span> Middle</div>
+                <div class="legend-item"><span class="shift-badge shift-b">B</span> Late</div>
+                <div class="legend-item"><span class="shift-badge shift-c">C</span> Night</div>
+            </div> -->
+        </div>
+        <div class="header-right">
             <div class="time-display" id="current-time">00:00</div>
             <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme (Ctrl+K)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
             </button>
             <button class="btn-primary" onclick="openPeopleModal()" title="Manage Staff">
                 Staff
@@ -46,12 +63,7 @@
         <div class="schedule-container">
             <!-- Calendar Section - Full Width -->
             <div class="schedule-calendar full-width">
-                <div class="calendar-legend">
-                    <div class="legend-item"><span class="shift-badge shift-a">A</span> Morning (08:00-17:00)</div>
-                    <div class="legend-item"><span class="shift-badge shift-m">M</span> Middle (11:00-20:00)</div>
-                    <div class="legend-item"><span class="shift-badge shift-b">B</span> Late (15:00-00:00)</div>
-                    <div class="legend-item"><span class="shift-badge shift-c">C</span> Night (00:00-08:00)</div>
-                </div>
+
 
                 <div class="calendar-weekdays">
                     <div class="weekday">Sun</div>
@@ -79,6 +91,11 @@
             </div>
             <div id="hover-preview-content" class="hover-preview-content">
                 <!-- Staff assignments will be rendered here -->
+            </div>
+            <div id="hover-preview-pagination" class="hover-preview-pagination" style="display: none;">
+                <button class="preview-page-btn" id="preview-page-prev">‹</button>
+                <span class="preview-page-label" id="preview-page-label"></span>
+                <button class="preview-page-btn" id="preview-page-next">›</button>
             </div>
         </div>
     </div>
@@ -122,7 +139,8 @@
                     <h3>Add New Staff Member</h3>
                     <div class="form-row">
                         <input type="text" id="new-person-name" placeholder="Full Name" class="form-input">
-                        <input type="color" id="new-person-color" value="#3498db" class="form-input color-input" title="Pick a color">
+                        <input type="color" id="new-person-color" value="#3498db" class="form-input color-input"
+                            title="Pick a color">
                         <button class="btn-primary" onclick="addPerson()">+ Add</button>
                     </div>
                 </div>

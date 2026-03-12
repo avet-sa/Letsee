@@ -308,6 +308,10 @@ function getInitials(name) {
         .slice(0, 2);
 }
 
+// Hover preview state
+let hoverPreviewState = null;
+const PREVIEW_PAGE_SIZE = 4;
+
 // Show hover preview
 function showHoverPreview(dateStr, event) {
     if (selectedDate === dateStr) {
@@ -316,8 +320,12 @@ function showHoverPreview(dateStr, event) {
 
     const schedule = scheduleData[dateStr] || { shifts: { A: [], M: [], B: [], C: [] } };
     const preview = document.getElementById('hover-preview');
-    const content = document.getElementById('hover-preview-content');
-
+    
+    // Initialize or update hover preview state
+    if (!hoverPreviewState || hoverPreviewState.dateStr !== dateStr) {
+        hoverPreviewState = { dateStr, page: 0 };
+    }
+    
     // Extract day and month from dateStr
     const dateParts = dateStr.split('-');
     const day = parseInt(dateParts[2]);
@@ -328,56 +336,22 @@ function showHoverPreview(dateStr, event) {
     document.getElementById('hover-preview-day').textContent = day;
     document.getElementById('hover-preview-month').textContent = monthNames[monthIndex].toUpperCase();
 
-    // Build staff rows like the example
-    let html = '';
-    const hasAnyShifts = Object.values(schedule.shifts).some(people => people && people.length > 0);
-
-    if (!hasAnyShifts) {
-        html = '<div class="preview-no-data">No shifts assigned</div>';
-    } else {
-        // Group staff by shift and render each staff member
-        peopleData.forEach((person, idx) => {
-            let assignedShift = null;
-
-            // Find which shift this person is assigned to
-            for (const [shift, people] of Object.entries(schedule.shifts)) {
-                if (people && people.includes(person.name)) {
-                    assignedShift = shift;
-                    break;
-                }
-            }
-
-            if (assignedShift) {
-                const shiftInfo = SHIFTS[assignedShift];
-                const initials = getInitials(person.name);
-
-                html += `
-                    <div class="preview-staff-row">
-                        <div class="preview-staff-name-row">
-                            <div class="preview-staff-avatar"
-                                style="background:${person.color}18;border:1px solid ${person.color}44;color:${person.color}">
-                                ${initials}
-                            </div>
-                            <span class="preview-staff-name">${person.name}</span>
-                            <span class="preview-staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${assignedShift}</span>
-                        </div>
-                    </div>
-                `;
-
-                // Add divider if not last item
-                if (idx < peopleData.length - 1) {
-                    html += '<div class="preview-staff-divider"></div>';
-                }
+    // Build staff rows sorted by shift (A, M, B, C)
+    const assignedStaff = [];
+    
+    // Sort by shift order
+    ['A', 'M', 'B', 'C'].forEach(shift => {
+        const people = schedule.shifts[shift] || [];
+        people.forEach(personName => {
+            const person = peopleData.find(p => p.name === personName);
+            if (person) {
+                assignedStaff.push({ person, shift });
             }
         });
+    });
 
-        // If no staff rows were added, show no data
-        if (!html) {
-            html = '<div class="preview-no-data">No shifts assigned</div>';
-        }
-    }
-
-    content.innerHTML = html;
+    // Render with pagination
+    renderHoverPreviewContent(assignedStaff);
 
     // Show preview temporarily to get actual dimensions
     preview.style.display = 'block';
@@ -419,9 +393,63 @@ function showHoverPreview(dateStr, event) {
     preview.style.visibility = 'visible';
 }
 
+// Render hover preview content with pagination
+function renderHoverPreviewContent(assignedStaff) {
+    const content = document.getElementById('hover-preview-content');
+    const pagination = document.getElementById('hover-preview-pagination');
+    
+    if (assignedStaff.length === 0) {
+        content.innerHTML = '<div class="preview-no-data">No shifts assigned</div>';
+        pagination.style.display = 'none';
+        return;
+    }
+    
+    const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
+    const page = hoverPreviewState.page;
+    const pageStaff = assignedStaff.slice(page * PREVIEW_PAGE_SIZE, (page + 1) * PREVIEW_PAGE_SIZE);
+    
+    let html = '';
+    pageStaff.forEach((item, idx) => {
+        const { person, shift } = item;
+        const shiftInfo = SHIFTS[shift];
+        const initials = getInitials(person.name);
+        
+        html += `
+            <div class="preview-staff-row">
+                <div class="preview-staff-name-row">
+                    <div class="preview-staff-avatar"
+                        style="background:${person.color}18;border:1px solid ${person.color}44;color:${person.color}">
+                        ${initials}
+                    </div>
+                    <span class="preview-staff-name">${person.name}</span>
+                    <span class="preview-staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${shift}</span>
+                </div>
+            </div>
+        `;
+        
+        // Add divider if not last item on this page
+        if (idx < pageStaff.length - 1) {
+            html += '<div class="preview-staff-divider"></div>';
+        }
+    });
+    
+    content.innerHTML = html;
+    
+    // Show/hide pagination
+    if (totalPages > 1) {
+        pagination.style.display = 'flex';
+        document.getElementById('preview-page-label').textContent = `${page + 1} / ${totalPages}`;
+        document.getElementById('preview-page-prev').disabled = page === 0;
+        document.getElementById('preview-page-next').disabled = page === totalPages - 1;
+    } else {
+        pagination.style.display = 'none';
+    }
+}
+
 // Hide hover preview
 function hideHoverPreview() {
     document.getElementById('hover-preview').style.display = 'none';
+    hoverPreviewState = null;
 }
 
 // Open day modal
@@ -434,32 +462,53 @@ function openDayModal(dateStr, dayEl) {
     selectedDate = dateStr;
     openDayCell = dayEl;
     hideHoverPreview();
-
-    const schedule = scheduleData[dateStr] || {
-        shifts: { A: [], M: [], B: [], C: [] },
-        edited_by: null,
-        edited_at: null
-    };
-
+    modalPageState = 0; // Reset pagination when opening modal
+    
     // Extract day and month
     const dateParts = dateStr.split('-');
     const day = parseInt(dateParts[2]);
     const monthIndex = parseInt(dateParts[1]) - 1;
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    // Render modal like the example - one row per staff member with shift options
+    // Render modal content
+    renderDayModalContent(dateStr, day, monthNames[monthIndex]);
+
+    // Show modal
+    const modal = document.getElementById('day-modal');
+    modal.style.display = 'flex';
+
+    renderCalendar();
+    openDayCell = document.querySelector(`.calendar-day[data-date="${selectedDate}"]`);
+    requestAnimationFrame(positionDayModal);
+}
+
+// Separate function to render modal content
+let modalPageState = 0;
+const MODAL_PAGE_SIZE = 4;
+
+function renderDayModalContent(dateStr, day, monthName) {
+    const schedule = scheduleData[dateStr] || {
+        shifts: { A: [], M: [], B: [], C: [] }
+    };
+    
     const modalContent = document.getElementById('modal-content');
+    
+    // Calculate pagination
+    const totalStaff = peopleData.length;
+    const totalPages = Math.ceil(totalStaff / MODAL_PAGE_SIZE);
+    const pageStaff = peopleData.slice(modalPageState * MODAL_PAGE_SIZE, (modalPageState + 1) * MODAL_PAGE_SIZE);
+    
     let html = `
         <div class="modal-header">
             <span class="hover-preview-day">${day}</span>
-            <span class="hover-preview-month">${monthNames[monthIndex].toUpperCase()}</span>
+            <span class="hover-preview-month">${monthName.toUpperCase()}</span>
         </div>
         <div class="modal-staff-content">
     `;
 
-    peopleData.forEach((person, idx) => {
+    pageStaff.forEach((person, idx) => {
         const initials = getInitials(person.name);
-
+        
         // Find current shift for this person
         let currentShift = 'off';
         for (const [shift, people] of Object.entries(schedule.shifts)) {
@@ -468,7 +517,7 @@ function openDayModal(dateStr, dayEl) {
                 break;
             }
         }
-
+        
         const shiftInfo = currentShift !== 'off' ? SHIFTS[currentShift] : null;
         const badgeHtml = shiftInfo
             ? `<span class="staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${currentShift}</span>`
@@ -488,7 +537,7 @@ function openDayModal(dateStr, dayEl) {
                 </button>`;
         }).join('');
 
-        const divider = idx < peopleData.length - 1
+        const divider = idx < pageStaff.length - 1
             ? `<div class="staff-divider"></div>` : "";
 
         html += `
@@ -507,56 +556,76 @@ function openDayModal(dateStr, dayEl) {
     });
 
     html += '</div>';
+    
+    // Add pagination if needed
+    if (totalPages > 1) {
+        html += `
+            <div class="hover-preview-pagination">
+                <button class="preview-page-btn" id="modal-page-prev">‹</button>
+                <span class="preview-page-label">${modalPageState + 1} / ${totalPages}</span>
+                <button class="preview-page-btn" id="modal-page-next">›</button>
+            </div>
+        `;
+    }
+    
     modalContent.innerHTML = html;
-
-    // Add event listeners for shift buttons
+    
+    // Re-attach event listeners for shift buttons
     modalContent.querySelectorAll('.shift-opt').forEach(btn => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            
             const personName = btn.dataset.person;
             const shift = btn.dataset.shift;
-
-            // Ensure scheduleData entry exists
+            
             if (!scheduleData[selectedDate]) {
-                scheduleData[selectedDate] = {
-                    shifts: { A: [], M: [], B: [], C: [] }
-                };
+                scheduleData[selectedDate] = { shifts: { A: [], M: [], B: [], C: [] } };
             }
-
-            // Get current schedule
+            
             const currentSchedule = scheduleData[selectedDate];
-
-            // Ensure all shift arrays exist
             for (const s of ['A', 'M', 'B', 'C']) {
-                if (!currentSchedule.shifts[s]) {
-                    currentSchedule.shifts[s] = [];
-                }
+                if (!currentSchedule.shifts[s]) currentSchedule.shifts[s] = [];
             }
-
-            // Remove person from all shifts first
+            
             for (const s of ['A', 'M', 'B', 'C']) {
                 currentSchedule.shifts[s] = currentSchedule.shifts[s].filter(name => name !== personName);
             }
-
-            // Check if we're unsetting or setting
+            
             const isCurrentlyActive = btn.classList.contains('active');
             if (!isCurrentlyActive) {
-                // Add to selected shift
                 currentSchedule.shifts[shift].push(personName);
             }
-
-            // Save and refresh
+            
             await saveDaySchedule();
-            openDayModal(selectedDate, openDayCell); // Refresh modal
+            renderDayModalContent(selectedDate, day, monthName);
         });
     });
-
-    // Show modal
-    const modal = document.getElementById('day-modal');
-    modal.style.display = 'flex';
-
-    renderCalendar();
-    openDayCell = document.querySelector(`.calendar-day[data-date="${selectedDate}"]`);
-    requestAnimationFrame(positionDayModal);
+    
+    // Attach pagination handlers
+    const prevBtn = document.getElementById('modal-page-prev');
+    const nextBtn = document.getElementById('modal-page-next');
+    
+    if (prevBtn) {
+        prevBtn.disabled = modalPageState === 0;
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (modalPageState > 0) {
+                modalPageState--;
+                renderDayModalContent(dateStr, day, monthName);
+            }
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = modalPageState === totalPages - 1;
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (modalPageState < totalPages - 1) {
+                modalPageState++;
+                renderDayModalContent(dateStr, day, monthName);
+            }
+        });
+    }
 }
 
 // Toggle shift section in modal
@@ -877,3 +946,41 @@ async function deletePerson(id, name) {
 
 // Initialize on load
 init();
+
+// Hover preview pagination handlers
+document.getElementById('preview-page-prev').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (hoverPreviewState && hoverPreviewState.page > 0) {
+        hoverPreviewState.page--;
+        const schedule = scheduleData[hoverPreviewState.dateStr] || { shifts: { A: [], M: [], B: [], C: [] } };
+        const assignedStaff = [];
+        ['A', 'M', 'B', 'C'].forEach(shift => {
+            const people = schedule.shifts[shift] || [];
+            people.forEach(personName => {
+                const person = peopleData.find(p => p.name === personName);
+                if (person) assignedStaff.push({ person, shift });
+            });
+        });
+        renderHoverPreviewContent(assignedStaff);
+    }
+});
+
+document.getElementById('preview-page-next').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (hoverPreviewState) {
+        const schedule = scheduleData[hoverPreviewState.dateStr] || { shifts: { A: [], M: [], B: [], C: [] } };
+        const assignedStaff = [];
+        ['A', 'M', 'B', 'C'].forEach(shift => {
+            const people = schedule.shifts[shift] || [];
+            people.forEach(personName => {
+                const person = peopleData.find(p => p.name === personName);
+                if (person) assignedStaff.push({ person, shift });
+            });
+        });
+        const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
+        if (hoverPreviewState.page < totalPages - 1) {
+            hoverPreviewState.page++;
+            renderHoverPreviewContent(assignedStaff);
+        }
+    }
+});

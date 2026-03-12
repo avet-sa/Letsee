@@ -2,16 +2,20 @@
 
 /* SCHEDULE PAGE STYLES */
 
+.header-info {
+    font-size: 18px;
+}
+
 .schedule-main {
     padding: 20px;
     max-width: 1600px;
-    margin: 0 auto;
+    margin: 0 150px;
 }
 
 .schedule-container {
     display: flex;
     gap: 30px;
-    /* height: calc(100vh - 120px); */
+    height: calc(100vh - 120px);
 }
 
 /* Calendar Section */
@@ -55,11 +59,7 @@
 
 .calendar-legend {
     display: flex;
-    flex-wrap: wrap;
     gap: 15px;
-    padding: 15px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-secondary);
     font-size: 13px;
 }
 
@@ -110,6 +110,7 @@
 
 .weekday {
     padding: 10px;
+    font-size: 14px;
 }
 
 .calendar-grid {
@@ -123,9 +124,9 @@
 
 .calendar-day {
     background: var(--bg-secondary);
-    padding: 6px;
-    height: 100px;
-    max-height: 100px;
+    padding: 10px;
+    height: 115px;
+    max-height: 120px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
@@ -150,12 +151,12 @@
     background: var(--text-primary);
     color: var(--bg-primary);
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
+    width: 25px;
+    height: 25px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 700;
 }
 
@@ -166,7 +167,7 @@
 
 .day-number {
     font-weight: 600;
-    font-size: 11px;
+    font-size: 14px;
     margin-bottom: 2px;
 }
 
@@ -175,6 +176,21 @@
     flex-direction: column;
     gap: 4px;
     flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.day-shifts-grid::-webkit-scrollbar {
+    width: 3px;
+}
+
+.day-shifts-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.day-shifts-grid::-webkit-scrollbar-thumb {
+    background: var(--border-primary);
+    border-radius: 3px;
 }
 
 .day-shift {
@@ -185,6 +201,7 @@
     border-radius: 2px;
     position: relative;
     margin-left: 25px;
+    margin-right: 6px;
 }
 
 .day-shift.has-assignment {
@@ -505,6 +522,7 @@
 .modal-dialog {
     background: var(--bg-secondary);
     border-radius: 8px;
+    width: 260px !important;
     max-width: 500px;
     width: 90%;
     max-height: 90vh;
@@ -536,7 +554,8 @@
     padding: 10px 14px 8px;
     border-bottom: 1px solid var(--border-secondary);
     display: flex;
-    align-items: baseline;
+    justify-content: center;
+    align-items: center;
     gap: 8px;
 }
 
@@ -609,7 +628,7 @@
 
 .shift-opts {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 3px;
     padding: 0 6px 4px;
 }
@@ -748,4 +767,42 @@
     padding: 40px;
     text-align: center;
     color: var(--text-tertiary);
+}
+
+#confirm-modal.modal-overlay {
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.hover-preview-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* padding: 0 10px 10px; */
+}
+
+.preview-page-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    font-family: var(--primary-font);
+    transition: color 0.1s;
+    color: var(--text-secondary);
+}
+
+.preview-page-btn:disabled {
+    color: var(--border-primary);
+    cursor: default;
+}
+
+.preview-page-btn:not(:disabled):hover {
+    color: var(--text-primary);
+}
+
+.preview-page-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.1em;
 }
