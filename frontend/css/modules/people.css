@@ -52,6 +52,8 @@
 .person-actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .btn-icon {
@@ -93,6 +95,7 @@
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .form-input {
@@ -110,11 +113,50 @@
     border-color: var(--text-primary);
 }
 
-.color-input {
-    flex: 0 0 60px;
-    padding: 5px;
-    height: 42px;
+.form-row .form-input {
+    min-width: 220px;
+}
+
+.form-row .btn-primary,
+.form-row .btn-secondary {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.preset-color-picker {
+    display: grid;
+    grid-template-columns: repeat(4, 30px);
+    gap: 10px 12px;
+    justify-content: start;
+    margin-top: 12px;
+}
+
+#cancel-person-edit {
+    padding: 8px 16px !important;
+}
+
+.color-swatch {
+    width: 30px;
+    aspect-ratio: 1;
+    border: none;
+    border-radius: 999px;
+    background: var(--swatch-color);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+        0 0 0 1px var(--border-primary);
     cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.color-swatch:hover {
+    transform: translateY(-1px);
+}
+
+.color-swatch.is-selected {
+    box-shadow:
+        inset 0 0 0 2px rgba(255, 255, 255, 0.9),
+        0 0 0 2px var(--text-primary);
+    transform: translateY(-1px);
 }
 
 .empty-state {
@@ -304,5 +346,3 @@
 .modal-actions .btn-save {
     border-right: 1px solid var(--border-secondary);
 }
-
-.modal-actions .btn-clear {

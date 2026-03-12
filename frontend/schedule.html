@@ -18,9 +18,42 @@
     <header class="header">
         <div class="header-left">
             <div class="date-nav">
-                <button class="nav-btn" onclick="previousMonth()" title="Previous month">←</button>
-                <div class="calendar-month-display" id="month-year-display"></div>
-                <button class="nav-btn" onclick="nextMonth()" title="Next month">→</button>
+                <button class="nav-btn" onclick="changeMonth(-1)" title="Previous month">←</button>
+                <button class="btn-primary date-display-btn" id="month-year-display" onclick="toggleDatePicker()" title="Click to open date picker"></button>
+                <div id="custom-date-picker" class="custom-date-picker" style="display: none;">
+                    <div class="date-picker-header">
+                        <button class="date-picker-nav" onclick="changeMonth(-1)">←</button>
+                        <div class="date-picker-month-year">
+                            <select id="picker-month" onchange="updateDatePickerCalendar()">
+                                <option value="0">January</option>
+                                <option value="1">February</option>
+                                <option value="2">March</option>
+                                <option value="3">April</option>
+                                <option value="4">May</option>
+                                <option value="5">June</option>
+                                <option value="6">July</option>
+                                <option value="7">August</option>
+                                <option value="8">September</option>
+                                <option value="9">October</option>
+                                <option value="10">November</option>
+                                <option value="11">December</option>
+                            </select>
+                            <input type="number" id="picker-year" min="2000" max="2100" onchange="updateDatePickerCalendar()">
+                        </div>
+                        <button class="date-picker-nav" onclick="changeMonth(1)">→</button>
+                    </div>
+                    <div class="date-picker-weekdays">
+                        <div class="weekday">Sun</div>
+                        <div class="weekday">Mon</div>
+                        <div class="weekday">Tue</div>
+                        <div class="weekday">Wed</div>
+                        <div class="weekday">Thu</div>
+                        <div class="weekday">Fri</div>
+                        <div class="weekday">Sat</div>
+                    </div>
+                    <div id="picker-days" class="date-picker-days"></div>
+                </div>
+                <button class="nav-btn" onclick="changeMonth(1)" title="Next month">→</button>
             </div>
             <div class="header-info">
                 <span>Schedule Management</span>
@@ -136,13 +169,14 @@
                     <!-- People will be rendered here -->
                 </div>
                 <div class="add-person-form">
-                    <h3>Add New Staff Member</h3>
+                    <h3 id="person-form-title">Add New Staff Member</h3>
                     <div class="form-row">
                         <input type="text" id="new-person-name" placeholder="Full Name" class="form-input">
-                        <input type="color" id="new-person-color" value="#3498db" class="form-input color-input"
-                            title="Pick a color">
-                        <button class="btn-primary" onclick="addPerson()">+ Add</button>
+                        <button class="btn-secondary" id="cancel-person-edit" onclick="cancelPersonEdit()" style="display: none;">Cancel</button>
+                        <button class="btn-primary" id="save-person-btn" onclick="savePerson()">+ Add</button>
                     </div>
+                    <input type="hidden" id="new-person-color" value="#3498db">
+                    <div class="preset-color-picker" id="new-person-color-picker" aria-label="Choose a staff color"></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -151,7 +185,7 @@
         </div>
     </div>
 
-    <!-- <script src="js/api.js"></script> -->
+    <script src="js/api.js"></script>
     <script src="js/schedule.js"></script>
 </body>
 

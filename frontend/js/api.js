@@ -71,7 +71,21 @@ async function apiFetch(endpoint, options = {}) {
         throw new Error(error.detail || `API Error: ${response.status}`);
     }
 
-    return response.json();
+    if (response.status === 204 || response.status === 205) {
+        return null;
+    }
+
+    const responseText = await response.text();
+    if (!responseText) {
+        return null;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return JSON.parse(responseText);
+    }
+
+    return responseText;
 }
 
 // ============ Auth API ============
@@ -361,7 +375,47 @@ const DB = {
     // People
     async getPeople() {
         const people = await PeopleAPI.list();
-        return people.map(p => ({ name: p.name, color: p.color }));
+        return people.map(p => ({ id: p.id, name: p.name, color: p.color }));
+    },
+
+    async updatePerson(id, name, color, previousName = null) {
+        const updatedPerson = await PeopleAPI.update(id, name, color);
+
+        if (previousName && previousName !== name) {
+            const existingSchedules = await DB.getSchedule();
+            const schedulesToUpdate = {};
+
+            Object.entries(existingSchedules).forEach(([date, schedule]) => {
+                if (!schedule?.shifts) return;
+
+                let changed = false;
+                const updatedShifts = {};
+
+                ['A', 'M', 'B', 'C'].forEach((shift) => {
+                    const originalPeople = schedule.shifts[shift] || [];
+                    const renamedPeople = [...new Set(originalPeople.map((personName) => {
+                        if (personName === previousName) {
+                            changed = true;
+                            return name;
+                        }
+
+                        return personName;
+                    }))];
+
+                    updatedShifts[shift] = renamedPeople;
+                });
+
+                if (changed) {
+                    schedulesToUpdate[date] = { shifts: updatedShifts };
+                }
+            });
+
+            if (Object.keys(schedulesToUpdate).length > 0) {
+                await DB.saveSchedule(schedulesToUpdate);
+            }
+        }
+
+        return updatedPerson;
     },
 
     async savePeople(people) {

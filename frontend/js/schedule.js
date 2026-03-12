@@ -4,7 +4,7 @@
 // DEVELOPMENT MODE TOGGLE
 // Set to false when backend is ready
 // ============================================
-const DEV_MODE = true;
+const DEV_MODE = false;
 
 // State
 let currentMonth = new Date().getMonth();
@@ -23,6 +23,118 @@ const SHIFTS = {
     B: { name: 'Late', time: '15:00 - 00:00', color: 'rgba(255, 150, 150, 0.7)' },
     C: { name: 'Night', time: '00:00 - 08:00', color: 'rgba(150, 150, 200, 0.7)' }
 };
+const STAFF_COLOR_PRESETS = [
+    '#3498db',
+    '#e74c3c',
+    '#2ecc71',
+    '#f39c12',
+    '#9b59b6',
+    '#1abc9c',
+    '#f1c40f',
+    '#e84393',
+];
+const DEFAULT_PERSON_COLOR = STAFF_COLOR_PRESETS[0];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+let editingPersonId = null;
+let editingPersonOriginalName = '';
+
+function initPersonColorPicker() {
+    const picker = document.getElementById('new-person-color-picker');
+    const colorInput = document.getElementById('new-person-color');
+
+    if (!picker || !colorInput) return;
+
+    const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
+    colorInput.value = selectedColor;
+
+    picker.innerHTML = STAFF_COLOR_PRESETS.map((color) => `
+        <button
+            type="button"
+            class="color-swatch${color.toLowerCase() === selectedColor.toLowerCase() ? ' is-selected' : ''}"
+            style="--swatch-color: ${color}"
+            data-color="${color}"
+            onclick="selectPersonColor('${color}')"
+            aria-label="Select ${color}"
+            aria-pressed="${color.toLowerCase() === selectedColor.toLowerCase()}">
+        </button>
+    `).join('');
+}
+
+function selectPersonColor(color) {
+    const colorInput = document.getElementById('new-person-color');
+    if (!colorInput) return;
+
+    colorInput.value = color;
+    document.querySelectorAll('#new-person-color-picker .color-swatch').forEach((swatch) => {
+        const isSelected = swatch.dataset.color.toLowerCase() === color.toLowerCase();
+        swatch.classList.toggle('is-selected', isSelected);
+        swatch.setAttribute('aria-pressed', String(isSelected));
+    });
+}
+
+function resetPersonForm() {
+    editingPersonId = null;
+    editingPersonOriginalName = '';
+
+    const nameInput = document.getElementById('new-person-name');
+    const titleEl = document.getElementById('person-form-title');
+    const saveBtn = document.getElementById('save-person-btn');
+    const cancelBtn = document.getElementById('cancel-person-edit');
+
+    if (nameInput) {
+        nameInput.value = '';
+    }
+    if (titleEl) {
+        titleEl.textContent = 'Add New Staff Member';
+    }
+    if (saveBtn) {
+        saveBtn.textContent = '+ Add';
+    }
+    if (cancelBtn) {
+        cancelBtn.style.display = 'none';
+    }
+
+    initPersonColorPicker();
+    selectPersonColor(DEFAULT_PERSON_COLOR);
+}
+
+function startPersonEdit(id) {
+    const person = peopleData.find((candidate) => String(candidate.id) === String(id));
+    if (!person) return;
+
+    editingPersonId = String(person.id);
+    editingPersonOriginalName = person.name;
+
+    document.getElementById('person-form-title').textContent = 'Edit Staff Member';
+    document.getElementById('save-person-btn').textContent = 'Save';
+    document.getElementById('cancel-person-edit').style.display = 'inline-flex';
+    document.getElementById('new-person-name').value = person.name;
+    initPersonColorPicker();
+    selectPersonColor(person.color);
+    document.getElementById('new-person-name').focus();
+}
+
+function cancelPersonEdit() {
+    resetPersonForm();
+}
+
+async function refreshPeopleViews() {
+    await loadPeople();
+    await loadSchedules();
+    renderCalendar();
+
+    if (selectedDate && document.getElementById('day-modal').style.display !== 'none') {
+        const dateParts = selectedDate.split('-');
+        const day = parseInt(dateParts[2], 10);
+        const monthIndex = parseInt(dateParts[1], 10) - 1;
+
+        openDayCell = document.querySelector(`.calendar-day[data-date="${selectedDate}"]`);
+        renderDayModalContent(selectedDate, day, MONTH_NAMES[monthIndex]);
+        requestAnimationFrame(positionDayModal);
+    }
+
+    await renderPeopleList();
+}
 
 // ============================================
 // MOCK DATA (for development)
@@ -115,9 +227,9 @@ const MockSchedulesAPI = {
 // ============================================
 // API SELECTOR (switches between mock and real)
 // ============================================
-const DB = DEV_MODE ? MockDB : window.DB;
-const PeopleAPI = DEV_MODE ? MockPeopleAPI : window.PeopleAPI;
-const SchedulesAPI = DEV_MODE ? MockSchedulesAPI : window.SchedulesAPI;
+// const DB = DEV_MODE ? MockDB : window.DB;
+// const PeopleAPI = DEV_MODE ? MockPeopleAPI : window.PeopleAPI;
+// const SchedulesAPI = DEV_MODE ? MockSchedulesAPI : window.SchedulesAPI;
 
 // Initialize
 async function init() {
@@ -135,6 +247,7 @@ async function init() {
     updateClock();
     setInterval(updateClock, 1000);
     applyTheme();
+    resetPersonForm();
 }
 
 // Load current user
@@ -169,10 +282,9 @@ async function loadSchedules() {
 
 // Render calendar
 function renderCalendar() {
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const monthYearDisplay = document.getElementById('month-year-display');
     if (monthYearDisplay) {
-        monthYearDisplay.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+        monthYearDisplay.textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
     }
 
     const grid = document.getElementById('calendar-grid');
@@ -506,10 +618,9 @@ function openDayModal(dateStr, dayEl) {
     const dateParts = dateStr.split('-');
     const day = parseInt(dateParts[2]);
     const monthIndex = parseInt(dateParts[1]) - 1;
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     // Render modal content
-    renderDayModalContent(dateStr, day, monthNames[monthIndex]);
+    renderDayModalContent(dateStr, day, MONTH_NAMES[monthIndex]);
 
     // Show modal
     const modal = document.getElementById('day-modal');
@@ -774,42 +885,139 @@ function renderStaffList(selectedPeople = []) {
     // This function is no longer used with the new modal approach
 }
 
-// Month navigation
-function previousMonth() {
+// Month navigation and date picker
+function changeMonth(offset) {
     closeDayModal();
-    if (currentMonth === 0) {
-        currentMonth = 11;
-        currentYear--;
-    } else {
-        currentMonth--;
+
+    if (offset < 0) {
+        if (currentMonth === 0) {
+            currentMonth = 11;
+            currentYear--;
+        } else {
+            currentMonth--;
+        }
+    } else if (offset > 0) {
+        if (currentMonth === 11) {
+            currentMonth = 0;
+            currentYear++;
+        } else {
+            currentMonth++;
+        }
     }
+
     renderCalendar();
+
+    if (document.getElementById('custom-date-picker')?.style.display !== 'none') {
+        syncDatePickerControls();
+        renderDatePickerCalendar();
+    }
 }
 
-function nextMonth() {
-    closeDayModal();
-    if (currentMonth === 11) {
-        currentMonth = 0;
-        currentYear++;
+function toggleDatePicker() {
+    const picker = document.getElementById('custom-date-picker');
+    if (!picker) return;
+
+    if (picker.style.display === 'none') {
+        syncDatePickerControls();
+        renderDatePickerCalendar();
+        picker.style.display = 'block';
     } else {
-        currentMonth++;
+        picker.style.display = 'none';
     }
-    renderCalendar();
 }
 
-// Update calendar when month/year changed
+function syncDatePickerControls() {
+    const pickerMonth = document.getElementById('picker-month');
+    const pickerYear = document.getElementById('picker-year');
+
+    if (pickerMonth) {
+        pickerMonth.value = String(currentMonth);
+    }
+    if (pickerYear) {
+        pickerYear.value = String(currentYear);
+    }
+}
+
+function updateDatePickerCalendar() {
+    closeDayModal();
+    currentMonth = parseInt(document.getElementById('picker-month').value, 10) || 0;
+    currentYear = parseInt(document.getElementById('picker-year').value, 10) || new Date().getFullYear();
+    renderCalendar();
+    renderDatePickerCalendar();
+}
+
+function renderDatePickerCalendar() {
+    const year = currentYear;
+    const month = currentMonth;
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    const daysContainer = document.getElementById('picker-days');
+
+    if (!daysContainer) return;
+
+    daysContainer.innerHTML = '';
+
+    for (let i = firstDay - 1; i >= 0; i--) {
+        const day = daysInPrevMonth - i;
+        const dayEl = createDatePickerDay(day, 'other-month', new Date(year, month - 1, day));
+        daysContainer.appendChild(dayEl);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const className = selectedDate === dateStr ? 'selected' : '';
+        const dayEl = createDatePickerDay(day, className, date);
+        daysContainer.appendChild(dayEl);
+    }
+
+    const totalCells = daysContainer.children.length;
+    const remainingCells = 42 - totalCells;
+    for (let day = 1; day <= remainingCells; day++) {
+        const dayEl = createDatePickerDay(day, 'other-month', new Date(year, month + 1, day));
+        daysContainer.appendChild(dayEl);
+    }
+}
+
+function createDatePickerDay(day, className, date) {
+    const dayEl = document.createElement('div');
+    dayEl.className = `date-picker-day ${className}`.trim();
+    dayEl.textContent = day;
+
+    if (!className.includes('other-month')) {
+        dayEl.onclick = () => selectDateFromPicker(date);
+    }
+
+    return dayEl;
+}
+
+function selectDateFromPicker(date) {
+    closeDayModal();
+    currentMonth = date.getMonth();
+    currentYear = date.getFullYear();
+    renderCalendar();
+    syncDatePickerControls();
+    document.getElementById('custom-date-picker').style.display = 'none';
+
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const dayEl = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
+    if (dayEl && !dayEl.classList.contains('other-month')) {
+        openDayModal(dateStr, dayEl);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    const monthYearDisplay = document.getElementById('month-year-display');
-    if (monthYearDisplay) {
-        monthYearDisplay.addEventListener('change', (e) => {
-            currentMonth = parseInt(e.target.value);
-            renderCalendar();
-        });
+    resetPersonForm();
+    syncDatePickerControls();
+});
 
-        monthYearDisplay.addEventListener('change', (e) => {
-            currentYear = parseInt(e.target.value);
-            renderCalendar();
-        });
+document.addEventListener('click', (event) => {
+    const picker = document.getElementById('custom-date-picker');
+    const dateNav = document.querySelector('.date-nav');
+
+    if (picker && picker.style.display !== 'none' && !dateNav?.contains(event.target)) {
+        picker.style.display = 'none';
     }
 });
 
@@ -880,6 +1088,7 @@ function handleLogout() {
 
 async function openPeopleModal() {
     document.getElementById('people-modal').style.display = 'flex';
+    resetPersonForm();
     await renderPeopleList();
 }
 
@@ -911,8 +1120,7 @@ window.addEventListener('resize', () => {
 
 function closePeopleModal() {
     document.getElementById('people-modal').style.display = 'none';
-    document.getElementById('new-person-name').value = '';
-    document.getElementById('new-person-color').value = '#3498db';
+    resetPersonForm();
     // Reload people data
     loadPeople();
 }
@@ -928,7 +1136,7 @@ async function renderPeopleList() {
 
     peopleList.innerHTML = '';
 
-    peopleData.forEach((person, index) => {
+    peopleData.forEach((person) => {
         const personEl = document.createElement('div');
         personEl.className = 'person-item';
 
@@ -939,7 +1147,8 @@ async function renderPeopleList() {
                 <div class="person-color-code">${person.color}</div>
             </div>
             <div class="person-actions">
-                <button class="btn-icon btn-danger" onclick="deletePerson(${person.id}, '${person.name.replace(/'/g, "\\'")}')">Delete</button>
+                <button class="btn-icon" onclick='startPersonEdit(${JSON.stringify(String(person.id))})'>Edit</button>
+                <button class="btn-icon btn-danger" onclick='deletePerson(${JSON.stringify(String(person.id))}, ${JSON.stringify(person.name)})'>Delete</button>
             </div>
         `;
 
@@ -947,12 +1156,12 @@ async function renderPeopleList() {
     });
 }
 
-async function addPerson() {
+async function savePerson() {
     const nameInput = document.getElementById('new-person-name');
     const colorInput = document.getElementById('new-person-color');
 
     const name = nameInput.value.trim();
-    const color = colorInput.value;
+    const color = colorInput.value || DEFAULT_PERSON_COLOR;
 
     if (!name) {
         alert('Please enter a name');
@@ -960,13 +1169,17 @@ async function addPerson() {
     }
 
     try {
-        await PeopleAPI.create(name, color);
-        nameInput.value = '';
-        colorInput.value = '#3498db';
-        await renderPeopleList();
+        if (editingPersonId) {
+            await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
+        } else {
+            await PeopleAPI.create(name, color);
+        }
+
+        resetPersonForm();
+        await refreshPeopleViews();
     } catch (error) {
-        console.error('Error adding person:', error);
-        alert('Failed to add staff member. Please try again.');
+        console.error('Error saving person:', error);
+        alert('Failed to save staff member. Please try again.');
     }
 }
 
@@ -974,7 +1187,10 @@ async function deletePerson(id, name) {
     showConfirm('Delete Staff Member', `Are you sure you want to delete ${name}? This action cannot be undone.`, async () => {
         try {
             await PeopleAPI.delete(id);
-            await renderPeopleList();
+            if (String(editingPersonId) === String(id)) {
+                resetPersonForm();
+            }
+            await refreshPeopleViews();
         } catch (error) {
             console.error('Error deleting person:', error);
             alert('Failed to delete staff member. Please try again.');

@@ -11,12 +11,114 @@ let currentFilter = 'all';
 let currentQuickFilter = '';
 let selectedNotes = new Set();
 const DRAFT_KEY = 'letsee_note_draft';
+const STAFF_COLOR_PRESETS = [
+    '#3498db',
+    '#e74c3c',
+    '#2ecc71',
+    '#f39c12',
+    '#9b59b6',
+    '#1abc9c',
+    '#e67e22',
+    '#34495e',
+    '#f1c40f',
+    '#e84393',
+];
+const DEFAULT_PERSON_COLOR = STAFF_COLOR_PRESETS[0];
+let editingPersonId = null;
+let editingPersonOriginalName = '';
 
 // Cache for render performance
 let cachedDateData = null;
 let cachedDateKey = null;
 let cachedSchedule = null;
 let cachedShiftPeople = null;
+
+function initPersonColorPicker() {
+    const picker = document.getElementById('new-person-color-picker');
+    const colorInput = document.getElementById('new-person-color');
+
+    if (!picker || !colorInput) return;
+
+    const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
+    colorInput.value = selectedColor;
+
+    picker.innerHTML = STAFF_COLOR_PRESETS.map((color) => `
+        <button
+            type="button"
+            class="color-swatch${color.toLowerCase() === selectedColor.toLowerCase() ? ' is-selected' : ''}"
+            style="--swatch-color: ${color}"
+            data-color="${color}"
+            onclick="selectPersonColor('${color}')"
+            aria-label="Select ${color}"
+            aria-pressed="${color.toLowerCase() === selectedColor.toLowerCase()}">
+        </button>
+    `).join('');
+}
+
+function selectPersonColor(color) {
+    const colorInput = document.getElementById('new-person-color');
+    if (!colorInput) return;
+
+    colorInput.value = color;
+    document.querySelectorAll('#new-person-color-picker .color-swatch').forEach((swatch) => {
+        const isSelected = swatch.dataset.color.toLowerCase() === color.toLowerCase();
+        swatch.classList.toggle('is-selected', isSelected);
+        swatch.setAttribute('aria-pressed', String(isSelected));
+    });
+}
+
+function resetPersonForm() {
+    editingPersonId = null;
+    editingPersonOriginalName = '';
+
+    const nameInput = document.getElementById('new-person-name');
+    const titleEl = document.getElementById('person-form-title');
+    const saveBtn = document.getElementById('save-person-btn');
+    const cancelBtn = document.getElementById('cancel-person-edit');
+
+    if (nameInput) {
+        nameInput.value = '';
+    }
+    if (titleEl) {
+        titleEl.textContent = 'Add New Staff Member';
+    }
+    if (saveBtn) {
+        saveBtn.textContent = '+ Add';
+    }
+    if (cancelBtn) {
+        cancelBtn.style.display = 'none';
+    }
+
+    initPersonColorPicker();
+    selectPersonColor(DEFAULT_PERSON_COLOR);
+}
+
+async function startPersonEdit(id) {
+    const people = await getPeople();
+    const person = people.find((candidate) => String(candidate.id) === String(id));
+    if (!person) return;
+
+    editingPersonId = String(person.id);
+    editingPersonOriginalName = person.name;
+
+    document.getElementById('person-form-title').textContent = 'Edit Staff Member';
+    document.getElementById('save-person-btn').textContent = 'Save';
+    document.getElementById('cancel-person-edit').style.display = 'inline-flex';
+    document.getElementById('new-person-name').value = person.name;
+    initPersonColorPicker();
+    selectPersonColor(person.color);
+    document.getElementById('new-person-name').focus();
+}
+
+function cancelPersonEdit() {
+    resetPersonForm();
+}
+
+async function refreshPeopleViews() {
+    await updatePeopleBlock();
+    await renderHandoverNotes(true);
+    await renderPeopleList();
+}
 
 // Initialize database on load
 let dbInitialized = false;
@@ -1440,6 +1542,7 @@ window.downloadAttachment = downloadAttachment;
 document.addEventListener('DOMContentLoaded', async () => {
     await ensureDB();
     await loadTheme();
+    resetPersonForm();
     
     // Initial render
     await updatePeopleBlock();
@@ -1526,13 +1629,13 @@ updateDateDisplay();
 
 async function openPeopleModal() {
     document.getElementById('people-modal').style.display = 'flex';
+    resetPersonForm();
     await renderPeopleList();
 }
 
 function closePeopleModal() {
     document.getElementById('people-modal').style.display = 'none';
-    document.getElementById('new-person-name').value = '';
-    document.getElementById('new-person-color').value = '#3498db';
+    resetPersonForm();
     // Reload people data
     getPeople();
 }
@@ -1548,7 +1651,7 @@ async function renderPeopleList() {
     
     peopleList.innerHTML = '';
     
-    people.forEach((person, index) => {
+    people.forEach((person) => {
         const personEl = document.createElement('div');
         personEl.className = 'person-item';
         
@@ -1559,7 +1662,8 @@ async function renderPeopleList() {
                 <div class="person-color-code">${person.color}</div>
             </div>
             <div class="person-actions">
-                <button class="btn-icon btn-danger" onclick="deletePerson(${index}, '${person.name.replace(/'/g, "\\'")}')">Delete</button>
+                <button class="btn-icon" onclick='startPersonEdit(${JSON.stringify(String(person.id))})'>Edit</button>
+                <button class="btn-icon btn-danger" onclick='deletePerson(${JSON.stringify(String(person.id))}, ${JSON.stringify(person.name)})'>Delete</button>
             </div>
         `;
         
@@ -1567,12 +1671,12 @@ async function renderPeopleList() {
     });
 }
 
-async function addPerson() {
+async function savePerson() {
     const nameInput = document.getElementById('new-person-name');
     const colorInput = document.getElementById('new-person-color');
     
     const name = nameInput.value.trim();
-    const color = colorInput.value;
+    const color = colorInput.value || DEFAULT_PERSON_COLOR;
     
     if (!name) {
         alert('Please enter a name');
@@ -1580,28 +1684,29 @@ async function addPerson() {
     }
     
     try {
-        await PeopleAPI.create(name, color);
-        nameInput.value = '';
-        colorInput.value = '#3498db';
-        await renderPeopleList();
+        if (editingPersonId) {
+            await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
+        } else {
+            await PeopleAPI.create(name, color);
+        }
+
+        resetPersonForm();
+        await refreshPeopleViews();
     } catch (error) {
-        console.error('Error adding person:', error);
-        alert('Failed to add staff member. Please try again.');
+        console.error('Error saving person:', error);
+        alert('Failed to save staff member. Please try again.');
     }
 }
 
-async function deletePerson(index, name) {
+async function deletePerson(id, name) {
     if (!confirm(`Are you sure you want to delete ${name}?`)) return;
     
     try {
-        // Get current people from API to get the ID
-        const allPeople = await PeopleAPI.list();
-        const personToDelete = allPeople.find(p => p.name === name);
-        
-        if (personToDelete) {
-            await PeopleAPI.delete(personToDelete.id);
-            await renderPeopleList();
+        await PeopleAPI.delete(id);
+        if (String(editingPersonId) === String(id)) {
+            resetPersonForm();
         }
+        await refreshPeopleViews();
     } catch (error) {
         console.error('Error deleting person:', error);
         alert('Failed to delete staff member. Please try again.');

@@ -353,12 +353,14 @@
                     <!-- People will be rendered here -->
                 </div>
                 <div class="add-person-form">
-                    <h3>Add New Staff Member</h3>
+                    <h3 id="person-form-title">Add New Staff Member</h3>
                     <div class="form-row">
                         <input type="text" id="new-person-name" placeholder="Full Name" class="form-input">
-                        <input type="color" id="new-person-color" value="#3498db" class="form-input color-input" title="Pick a color">
-                        <button class="btn-primary" onclick="addPerson()">+ Add</button>
+                        <button class="btn-secondary" id="cancel-person-edit" onclick="cancelPersonEdit()" style="display: none;">Cancel</button>
+                        <button class="btn-primary" id="save-person-btn" onclick="savePerson()">+ Add</button>
                     </div>
+                    <input type="hidden" id="new-person-color" value="#3498db">
+                    <div class="preset-color-picker" id="new-person-color-picker" aria-label="Choose a staff color"></div>
                 </div>
             </div>
             <div class="modal-footer">
