@@ -18,8 +18,6 @@ const STAFF_COLOR_PRESETS = [
     '#f39c12',
     '#9b59b6',
     '#1abc9c',
-    '#e67e22',
-    '#34495e',
     '#f1c40f',
     '#e84393',
 ];
