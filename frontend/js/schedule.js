@@ -10,7 +10,7 @@ const DEV_MODE = false;
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let selectedDate = null;
-let selectedShift = 'A'; // Track which shift is currently selected
+let selectedShift = "A"; // Track which shift is currently selected
 let scheduleData = {};
 let peopleData = [];
 let currentUser = null;
@@ -18,210 +18,248 @@ let openDayCell = null;
 
 // Shift definitions
 const SHIFTS = {
-    A: { name: 'Morning', time: '08:00 - 17:00', color: 'rgba(255, 200, 100, 0.7)' },
-    M: { name: 'Middle', time: '11:00 - 20:00', color: 'rgba(150, 200, 255, 0.7)' },
-    B: { name: 'Late', time: '15:00 - 00:00', color: 'rgba(255, 150, 150, 0.7)' },
-    C: { name: 'Night', time: '00:00 - 08:00', color: 'rgba(150, 150, 200, 0.7)' }
+  A: {
+    name: "Morning",
+    time: "08:00 - 17:00",
+    color: "rgba(255, 200, 100, 0.7)",
+  },
+  M: {
+    name: "Middle",
+    time: "11:00 - 20:00",
+    color: "rgba(150, 200, 255, 0.7)",
+  },
+  B: { name: "Late", time: "15:00 - 00:00", color: "rgba(255, 150, 150, 0.7)" },
+  C: {
+    name: "Night",
+    time: "00:00 - 08:00",
+    color: "rgba(150, 150, 200, 0.7)",
+  },
 };
 const STAFF_COLOR_PRESETS = [
-    '#3498db',
-    '#e74c3c',
-    '#2ecc71',
-    '#f39c12',
-    '#9b59b6',
-    '#1abc9c',
-    '#f1c40f',
-    '#e84393',
+  "#3498db",
+  "#e74c3c",
+  "#2ecc71",
+  "#f39c12",
+  "#9b59b6",
+  "#1abc9c",
+  "#f1c40f",
+  "#e84393",
 ];
 const DEFAULT_PERSON_COLOR = STAFF_COLOR_PRESETS[0];
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 let editingPersonId = null;
-let editingPersonOriginalName = '';
+let editingPersonOriginalName = "";
 
 function initPersonColorPicker() {
-    const picker = document.getElementById('new-person-color-picker');
-    const colorInput = document.getElementById('new-person-color');
+  const picker = document.getElementById("new-person-color-picker");
+  const colorInput = document.getElementById("new-person-color");
 
-    if (!picker || !colorInput) return;
+  if (!picker || !colorInput) return;
 
-    const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
-    colorInput.value = selectedColor;
+  const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
+  colorInput.value = selectedColor;
 
-    picker.innerHTML = STAFF_COLOR_PRESETS.map((color) => `
+  picker.innerHTML = STAFF_COLOR_PRESETS.map(
+    (color) => `
         <button
             type="button"
-            class="color-swatch${color.toLowerCase() === selectedColor.toLowerCase() ? ' is-selected' : ''}"
+            class="color-swatch${color.toLowerCase() === selectedColor.toLowerCase() ? " is-selected" : ""}"
             style="--swatch-color: ${color}"
             data-color="${color}"
             onclick="selectPersonColor('${color}')"
             aria-label="Select ${color}"
             aria-pressed="${color.toLowerCase() === selectedColor.toLowerCase()}">
         </button>
-    `).join('');
+    `,
+  ).join("");
 }
 
 function selectPersonColor(color) {
-    const colorInput = document.getElementById('new-person-color');
-    if (!colorInput) return;
+  const colorInput = document.getElementById("new-person-color");
+  if (!colorInput) return;
 
-    colorInput.value = color;
-    document.querySelectorAll('#new-person-color-picker .color-swatch').forEach((swatch) => {
-        const isSelected = swatch.dataset.color.toLowerCase() === color.toLowerCase();
-        swatch.classList.toggle('is-selected', isSelected);
-        swatch.setAttribute('aria-pressed', String(isSelected));
+  colorInput.value = color;
+  document
+    .querySelectorAll("#new-person-color-picker .color-swatch")
+    .forEach((swatch) => {
+      const isSelected =
+        swatch.dataset.color.toLowerCase() === color.toLowerCase();
+      swatch.classList.toggle("is-selected", isSelected);
+      swatch.setAttribute("aria-pressed", String(isSelected));
     });
 }
 
 function resetPersonForm() {
-    editingPersonId = null;
-    editingPersonOriginalName = '';
+  editingPersonId = null;
+  editingPersonOriginalName = "";
 
-    const nameInput = document.getElementById('new-person-name');
-    const titleEl = document.getElementById('person-form-title');
-    const saveBtn = document.getElementById('save-person-btn');
-    const cancelBtn = document.getElementById('cancel-person-edit');
+  const nameInput = document.getElementById("new-person-name");
+  const titleEl = document.getElementById("person-form-title");
+  const saveBtn = document.getElementById("save-person-btn");
+  const cancelBtn = document.getElementById("cancel-person-edit");
 
-    if (nameInput) {
-        nameInput.value = '';
-    }
-    if (titleEl) {
-        titleEl.textContent = 'Add New Staff Member';
-    }
-    if (saveBtn) {
-        saveBtn.textContent = '+ Add';
-    }
-    if (cancelBtn) {
-        cancelBtn.style.display = 'none';
-    }
+  if (nameInput) {
+    nameInput.value = "";
+  }
+  if (titleEl) {
+    titleEl.textContent = "Add New Staff Member";
+  }
+  if (saveBtn) {
+    saveBtn.textContent = "+ Add";
+  }
+  if (cancelBtn) {
+    cancelBtn.style.display = "none";
+  }
 
-    initPersonColorPicker();
-    selectPersonColor(DEFAULT_PERSON_COLOR);
+  initPersonColorPicker();
+  selectPersonColor(DEFAULT_PERSON_COLOR);
 }
 
 function startPersonEdit(id) {
-    const person = peopleData.find((candidate) => String(candidate.id) === String(id));
-    if (!person) return;
+  const person = peopleData.find(
+    (candidate) => String(candidate.id) === String(id),
+  );
+  if (!person) return;
 
-    editingPersonId = String(person.id);
-    editingPersonOriginalName = person.name;
+  editingPersonId = String(person.id);
+  editingPersonOriginalName = person.name;
 
-    document.getElementById('person-form-title').textContent = 'Edit Staff Member';
-    document.getElementById('save-person-btn').textContent = 'Save';
-    document.getElementById('cancel-person-edit').style.display = 'inline-flex';
-    document.getElementById('new-person-name').value = person.name;
-    initPersonColorPicker();
-    selectPersonColor(person.color);
-    document.getElementById('new-person-name').focus();
+  document.getElementById("person-form-title").textContent =
+    "Edit Staff Member";
+  document.getElementById("save-person-btn").textContent = "Save";
+  document.getElementById("cancel-person-edit").style.display = "inline-flex";
+  document.getElementById("new-person-name").value = person.name;
+  initPersonColorPicker();
+  selectPersonColor(person.color);
+  document.getElementById("new-person-name").focus();
 }
 
 function cancelPersonEdit() {
-    resetPersonForm();
+  resetPersonForm();
 }
 
 async function refreshPeopleViews() {
-    await loadPeople();
-    await loadSchedules();
-    renderCalendar();
+  await loadPeople();
+  await loadSchedules();
+  renderCalendar();
 
-    if (selectedDate && document.getElementById('day-modal').style.display !== 'none') {
-        const dateParts = selectedDate.split('-');
-        const day = parseInt(dateParts[2], 10);
-        const monthIndex = parseInt(dateParts[1], 10) - 1;
+  if (
+    selectedDate &&
+    document.getElementById("day-modal").style.display !== "none"
+  ) {
+    const dateParts = selectedDate.split("-");
+    const day = parseInt(dateParts[2], 10);
+    const monthIndex = parseInt(dateParts[1], 10) - 1;
 
-        openDayCell = document.querySelector(`.calendar-day[data-date="${selectedDate}"]`);
-        renderDayModalContent(selectedDate, day, MONTH_NAMES[monthIndex]);
-        requestAnimationFrame(positionDayModal);
-    }
+    openDayCell = document.querySelector(
+      `.calendar-day[data-date="${selectedDate}"]`,
+    );
+    renderDayModalContent(selectedDate, day, MONTH_NAMES[monthIndex]);
+    requestAnimationFrame(positionDayModal);
+  }
 
-    await renderPeopleList();
+  await renderPeopleList();
 }
 
 // ============================================
 // MOCK DATA (for development)
 // ============================================
 const MOCK_PEOPLE = [
-    { id: 1, name: 'Alice Johnson', color: '#3498db' },
-    { id: 2, name: 'Bob Smith', color: '#e74c3c' },
-    { id: 3, name: 'Carol Davis', color: '#2ecc71' },
-    { id: 4, name: 'David Wilson', color: '#f39c12' },
-    { id: 5, name: 'Emma Brown', color: '#9b59b6' }
+  { id: 1, name: "Alice Johnson", color: "#3498db" },
+  { id: 2, name: "Bob Smith", color: "#e74c3c" },
+  { id: 3, name: "Carol Davis", color: "#2ecc71" },
+  { id: 4, name: "David Wilson", color: "#f39c12" },
+  { id: 5, name: "Emma Brown", color: "#9b59b6" },
 ];
 
 const MOCK_SCHEDULES = {
-    // Example: '2025-03-15': { shifts: { A: ['Alice Johnson'], M: ['Bob Smith'], B: [], C: [] } }
+  // Example: '2025-03-15': { shifts: { A: ['Alice Johnson'], M: ['Bob Smith'], B: [], C: [] } }
 };
 
 // Mock current user
-const MOCK_USER = { id: 1, name: 'Admin User' };
+const MOCK_USER = { id: 1, name: "Admin User" };
 
 // ============================================
 // MOCK API (for development)
 // ============================================
 const MockDB = {
-    init: async () => {
-        console.log('[MOCK] DB initialized');
-        return Promise.resolve();
-    },
-    getCurrentUser: async () => {
-        console.log('[MOCK] Getting current user');
-        return Promise.resolve(MOCK_USER);
-    },
-    getPeople: async () => {
-        console.log('[MOCK] Getting people');
-        return Promise.resolve([...MOCK_PEOPLE]);
-    },
-    getSchedule: async () => {
-        console.log('[MOCK] Getting schedules');
-        return Promise.resolve({ ...MOCK_SCHEDULES });
-    },
-    saveSchedule: async (schedule) => {
-        console.log('[MOCK] Saving schedule:', schedule);
-        // Update mock data
-        Object.assign(MOCK_SCHEDULES, schedule);
-        return Promise.resolve(schedule);
-    },
-    logout: () => {
-        console.log('[MOCK] Logging out');
-        window.location.href = '/';
-    }
+  init: async () => {
+    console.log("[MOCK] DB initialized");
+    return Promise.resolve();
+  },
+  getCurrentUser: async () => {
+    console.log("[MOCK] Getting current user");
+    return Promise.resolve(MOCK_USER);
+  },
+  getPeople: async () => {
+    console.log("[MOCK] Getting people");
+    return Promise.resolve([...MOCK_PEOPLE]);
+  },
+  getSchedule: async () => {
+    console.log("[MOCK] Getting schedules");
+    return Promise.resolve({ ...MOCK_SCHEDULES });
+  },
+  saveSchedule: async (schedule) => {
+    console.log("[MOCK] Saving schedule:", schedule);
+    // Update mock data
+    Object.assign(MOCK_SCHEDULES, schedule);
+    return Promise.resolve(schedule);
+  },
+  logout: () => {
+    console.log("[MOCK] Logging out");
+    window.location.href = "/";
+  },
 };
 
 const MockPeopleAPI = {
-    create: async (name, color) => {
-        console.log('[MOCK] Creating person:', name, color);
-        const newPerson = {
-            id: MOCK_PEOPLE.length + 1,
-            name,
-            color
-        };
-        MOCK_PEOPLE.push(newPerson);
-        return Promise.resolve(newPerson);
-    },
-    list: async () => {
-        console.log('[MOCK] Listing people');
-        return Promise.resolve([...MOCK_PEOPLE]);
-    },
-    delete: async (id) => {
-        console.log('[MOCK] Deleting person:', id);
-        const index = MOCK_PEOPLE.findIndex(p => p.id === id);
-        if (index > -1) {
-            MOCK_PEOPLE.splice(index, 1);
-        }
-        return Promise.resolve({ id });
+  create: async (name, color) => {
+    console.log("[MOCK] Creating person:", name, color);
+    const newPerson = {
+      id: MOCK_PEOPLE.length + 1,
+      name,
+      color,
+    };
+    MOCK_PEOPLE.push(newPerson);
+    return Promise.resolve(newPerson);
+  },
+  list: async () => {
+    console.log("[MOCK] Listing people");
+    return Promise.resolve([...MOCK_PEOPLE]);
+  },
+  delete: async (id) => {
+    console.log("[MOCK] Deleting person:", id);
+    const index = MOCK_PEOPLE.findIndex((p) => p.id === id);
+    if (index > -1) {
+      MOCK_PEOPLE.splice(index, 1);
     }
+    return Promise.resolve({ id });
+  },
 };
 
 const MockSchedulesAPI = {
-    list: async (dateStr) => {
-        console.log('[MOCK] Listing schedules for:', dateStr);
-        const schedule = MOCK_SCHEDULES[dateStr];
-        return Promise.resolve(schedule ? [{ id: dateStr, ...schedule }] : []);
-    },
-    delete: async (id) => {
-        console.log('[MOCK] Deleting schedule:', id);
-        delete MOCK_SCHEDULES[id];
-        return Promise.resolve({ id });
-    }
+  list: async (dateStr) => {
+    console.log("[MOCK] Listing schedules for:", dateStr);
+    const schedule = MOCK_SCHEDULES[dateStr];
+    return Promise.resolve(schedule ? [{ id: dateStr, ...schedule }] : []);
+  },
+  delete: async (id) => {
+    console.log("[MOCK] Deleting schedule:", id);
+    delete MOCK_SCHEDULES[id];
+    return Promise.resolve({ id });
+  },
 };
 
 // ============================================
@@ -233,210 +271,219 @@ const MockSchedulesAPI = {
 
 // Initialize
 async function init() {
-    if (DEV_MODE) {
-        await MockDB.init();
-    } else {
-        // PRODUCTION: Uncomment when backend is ready
-        // await DB.init();
-    }
+  if (DEV_MODE) {
+    await MockDB.init();
+  } else {
+    // PRODUCTION: Uncomment when backend is ready
+    // await DB.init();
+  }
 
-    await loadCurrentUser();
-    await loadPeople();
-    await loadSchedules();
-    renderCalendar();
-    updateClock();
-    setInterval(updateClock, 1000);
-    applyTheme();
-    resetPersonForm();
+  await loadCurrentUser();
+  await loadPeople();
+  await loadSchedules();
+  renderCalendar();
+  updateClock();
+  setInterval(updateClock, 1000);
+  applyTheme();
+  resetPersonForm();
 }
 
 // Load current user
 async function loadCurrentUser() {
-    try {
-        currentUser = await DB.getCurrentUser();
-    } catch (error) {
-        console.error('Error loading user:', error);
-    }
+  try {
+    currentUser = await DB.getCurrentUser();
+  } catch (error) {
+    console.error("Error loading user:", error);
+  }
 }
 
 // Load people
 async function loadPeople() {
-    try {
-        peopleData = await DB.getPeople();
-    } catch (error) {
-        console.error('Error loading people:', error);
-        peopleData = [];
-    }
+  try {
+    peopleData = await DB.getPeople();
+  } catch (error) {
+    console.error("Error loading people:", error);
+    peopleData = [];
+  }
 }
 
 // Load schedules for current month
 async function loadSchedules() {
-    try {
-        const allSchedules = await DB.getSchedule();
-        scheduleData = allSchedules;
-    } catch (error) {
-        console.error('Error loading schedules:', error);
-        scheduleData = {};
-    }
+  try {
+    const allSchedules = await DB.getSchedule();
+    scheduleData = allSchedules;
+  } catch (error) {
+    console.error("Error loading schedules:", error);
+    scheduleData = {};
+  }
 }
 
 // Render calendar
 function renderCalendar() {
-    const monthYearDisplay = document.getElementById('month-year-display');
-    if (monthYearDisplay) {
-        monthYearDisplay.textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
-    }
+  const monthYearDisplay = document.getElementById("month-year-display");
+  if (monthYearDisplay) {
+    monthYearDisplay.textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
+  }
 
-    const grid = document.getElementById('calendar-grid');
-    grid.innerHTML = '';
+  const grid = document.getElementById("calendar-grid");
+  grid.innerHTML = "";
 
-    // Get first day of month and total days
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startDayOfWeek = firstDay.getDay();
+  // Get first day of month and total days
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const lastDay = new Date(currentYear, currentMonth + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startDayOfWeek = firstDay.getDay();
 
-    // Get previous month days
-    const prevLastDay = new Date(currentYear, currentMonth, 0);
-    const prevDaysInMonth = prevLastDay.getDate();
+  // Get previous month days
+  const prevLastDay = new Date(currentYear, currentMonth, 0);
+  const prevDaysInMonth = prevLastDay.getDate();
 
-    // Today
-    const today = new Date();
-    const todayDay = today.getDate();
-    const todayMonth = today.getMonth();
-    const todayYear = today.getFullYear();
+  // Today
+  const today = new Date();
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
+  const todayYear = today.getFullYear();
 
-    // Render previous month's trailing days
-    for (let i = startDayOfWeek - 1; i >= 0; i--) {
-        const day = prevDaysInMonth - i;
-        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-        const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  // Render previous month's trailing days
+  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+    const day = prevDaysInMonth - i;
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
-        const dayEl = createDayElement(day, dateStr, true);
-        grid.appendChild(dayEl);
-    }
+    const dayEl = createDayElement(day, dateStr, true);
+    grid.appendChild(dayEl);
+  }
 
-    // Render current month days
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const isToday = day === todayDay && currentMonth === todayMonth && currentYear === todayYear;
-        const isSelected = dateStr === selectedDate;
+  // Render current month days
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const isToday =
+      day === todayDay &&
+      currentMonth === todayMonth &&
+      currentYear === todayYear;
+    const isSelected = dateStr === selectedDate;
 
-        const dayEl = createDayElement(day, dateStr, false, isToday, isSelected);
-        grid.appendChild(dayEl);
-    }
+    const dayEl = createDayElement(day, dateStr, false, isToday, isSelected);
+    grid.appendChild(dayEl);
+  }
 
-    // Render next month's leading days
-    const totalCells = startDayOfWeek + daysInMonth;
-    const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  // Render next month's leading days
+  const totalCells = startDayOfWeek + daysInMonth;
+  const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
 
-    for (let i = 1; i <= remainingCells; i++) {
-        const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
-        const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-        const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+  for (let i = 1; i <= remainingCells; i++) {
+    const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+    const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+    const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
 
-        const dayEl = createDayElement(i, dateStr, true);
-        grid.appendChild(dayEl);
-    }
+    const dayEl = createDayElement(i, dateStr, true);
+    grid.appendChild(dayEl);
+  }
 }
 
 // Create day element
-function createDayElement(day, dateStr, isOtherMonth, isToday = false, isSelected = false) {
-    const dayEl = document.createElement('div');
-    dayEl.className = 'calendar-day';
+function createDayElement(
+  day,
+  dateStr,
+  isOtherMonth,
+  isToday = false,
+  isSelected = false,
+) {
+  const dayEl = document.createElement("div");
+  dayEl.className = "calendar-day";
 
-    if (isOtherMonth) dayEl.classList.add('other-month');
-    if (isToday) dayEl.classList.add('today');
-    if (isSelected) dayEl.classList.add('selected');
+  if (isOtherMonth) dayEl.classList.add("other-month");
+  if (isToday) dayEl.classList.add("today");
+  if (isSelected) dayEl.classList.add("selected");
 
-    dayEl.dataset.date = dateStr;
-    dayEl.onclick = () => !isOtherMonth && openDayModal(dateStr, dayEl);
-    dayEl.onmouseenter = (e) => !isOtherMonth && showHoverPreview(dateStr, e);
-    dayEl.onmouseleave = () => hideHoverPreview();
+  dayEl.dataset.date = dateStr;
+  dayEl.onclick = () => !isOtherMonth && openDayModal(dateStr, dayEl);
+  dayEl.onmouseenter = (e) => !isOtherMonth && showHoverPreview(dateStr, e);
+  dayEl.onmouseleave = () => hideHoverPreview();
 
-    // Day number wrapper collapses on hover so schedule items can move up.
-    const dayNumberSlot = document.createElement('div');
-    dayNumberSlot.className = 'day-number-slot';
+  // Day number wrapper collapses on hover so schedule items can move up.
+  const dayNumberSlot = document.createElement("div");
+  dayNumberSlot.className = "day-number-slot";
 
-    const dayNumber = document.createElement('div');
-    dayNumber.className = 'day-number';
-    dayNumber.textContent = day;
-    dayNumberSlot.dataset.day = String(day);
+  const dayNumber = document.createElement("div");
+  dayNumber.className = "day-number";
+  dayNumber.textContent = day;
+  dayNumberSlot.dataset.day = String(day);
 
-    dayNumberSlot.appendChild(dayNumber);
-    dayEl.appendChild(dayNumberSlot);
+  dayNumberSlot.appendChild(dayNumber);
+  dayEl.appendChild(dayNumberSlot);
 
-    // Schedule info - 2x2 shift grid, one quadrant per shift.
-    const schedule = scheduleData[dateStr];
-    if (schedule && !isOtherMonth && schedule.shifts) {
-        const gridContainer = document.createElement('div');
-        gridContainer.className = 'day-shifts-grid';
+  // Schedule info - 2x2 shift grid, one quadrant per shift.
+  const schedule = scheduleData[dateStr];
+  if (schedule && !isOtherMonth && schedule.shifts) {
+    const gridContainer = document.createElement("div");
+    gridContainer.className = "day-shifts-grid";
 
-        ['A', 'M', 'B', 'C'].forEach(shift => {
-            const shiftInfo = SHIFTS[shift];
-            const people = (schedule.shifts[shift] || [])
-                .map(personName => peopleData.find(p => p.name === personName))
-                .filter(Boolean);
+    ["A", "M", "B", "C"].forEach((shift) => {
+      const shiftInfo = SHIFTS[shift];
+      const people = (schedule.shifts[shift] || [])
+        .map((personName) => peopleData.find((p) => p.name === personName))
+        .filter(Boolean);
 
-            const shiftLane = document.createElement('div');
-            shiftLane.className = 'day-shift-quadrant';
-            shiftLane.style.background = shiftInfo.color.replace('0.7', '0.10');
-            shiftLane.style.borderColor = shiftInfo.color.replace('0.7', '0.28');
+      const shiftLane = document.createElement("div");
+      shiftLane.className = "day-shift-quadrant";
+      shiftLane.style.background = shiftInfo.color.replace("0.7", "0.10");
+      shiftLane.style.borderColor = shiftInfo.color.replace("0.7", "0.28");
 
-            const shiftLabel = document.createElement('span');
-            shiftLabel.className = 'day-shift-quadrant-label';
-            shiftLabel.textContent = shift;
-            shiftLabel.style.color = shiftInfo.color.replace('0.7', '1');
-            shiftLane.appendChild(shiftLabel);
+      const shiftLabel = document.createElement("span");
+      shiftLabel.className = "day-shift-quadrant-label";
+      shiftLabel.textContent = shift;
+      shiftLabel.style.color = shiftInfo.color.replace("0.7", "1");
+      shiftLane.appendChild(shiftLabel);
 
-            const shiftPeople = document.createElement('div');
-            shiftPeople.className = 'day-shift-quadrant-people';
+      const shiftPeople = document.createElement("div");
+      shiftPeople.className = "day-shift-quadrant-people";
 
-            people.slice(0, DAY_CELL_SHIFT_VISIBLE_LIMIT).forEach(person => {
-                const personCircle = document.createElement('span');
-                personCircle.className = 'day-shift-person';
-                personCircle.textContent = getInitials(person.name);
-                personCircle.title = `${person.name} (${shift})`;
-                personCircle.style.setProperty('--person-color', person.color);
-                personCircle.style.setProperty('--person-bg', person.color + '20');
-                personCircle.style.setProperty('--person-border', person.color + '55');
-                shiftPeople.appendChild(personCircle);
-            });
+      people.slice(0, DAY_CELL_SHIFT_VISIBLE_LIMIT).forEach((person) => {
+        const personCircle = document.createElement("span");
+        personCircle.className = "day-shift-person";
+        personCircle.textContent = getInitials(person.name);
+        personCircle.title = `${person.name} (${shift})`;
+        personCircle.style.setProperty("--person-color", person.color);
+        personCircle.style.setProperty("--person-bg", person.color + "20");
+        personCircle.style.setProperty("--person-border", person.color + "55");
+        shiftPeople.appendChild(personCircle);
+      });
 
-            if (people.length > DAY_CELL_SHIFT_VISIBLE_LIMIT) {
-                const overflowIndicator = document.createElement('span');
-                overflowIndicator.className = 'day-shift-person-more';
-                overflowIndicator.textContent = `+${people.length - DAY_CELL_SHIFT_VISIBLE_LIMIT}`;
-                overflowIndicator.title = `${people.length - DAY_CELL_SHIFT_VISIBLE_LIMIT} more on ${shift}`;
-                shiftPeople.appendChild(overflowIndicator);
-            }
+      if (people.length > DAY_CELL_SHIFT_VISIBLE_LIMIT) {
+        const overflowIndicator = document.createElement("span");
+        overflowIndicator.className = "day-shift-person-more";
+        overflowIndicator.textContent = `+${people.length - DAY_CELL_SHIFT_VISIBLE_LIMIT}`;
+        overflowIndicator.title = `${people.length - DAY_CELL_SHIFT_VISIBLE_LIMIT} more on ${shift}`;
+        shiftPeople.appendChild(overflowIndicator);
+      }
 
-            if (people.length === 0) {
-                const emptyIndicator = document.createElement('span');
-                emptyIndicator.className = 'day-shift-quadrant-empty';
-                emptyIndicator.textContent = '';
-                shiftPeople.appendChild(emptyIndicator);
-            }
+      if (people.length === 0) {
+        const emptyIndicator = document.createElement("span");
+        emptyIndicator.className = "day-shift-quadrant-empty";
+        emptyIndicator.textContent = "";
+        shiftPeople.appendChild(emptyIndicator);
+      }
 
-            shiftLane.appendChild(shiftPeople);
-            gridContainer.appendChild(shiftLane);
-        });
+      shiftLane.appendChild(shiftPeople);
+      gridContainer.appendChild(shiftLane);
+    });
 
-        dayEl.appendChild(gridContainer);
-    }
+    dayEl.appendChild(gridContainer);
+  }
 
-    return dayEl;
+  return dayEl;
 }
 
 // Get initials from name
 function getInitials(name) {
-    return name
-        .split(' ')
-        .map(part => part[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 // Hover preview state
@@ -447,118 +494,137 @@ const DAY_CELL_SHIFT_VISIBLE_LIMIT = 4;
 
 // Show hover preview
 function showHoverPreview(dateStr, event) {
-    if (selectedDate === dateStr) {
-        return;
-    }
+  if (selectedDate === dateStr) {
+    return;
+  }
 
-    const schedule = scheduleData[dateStr] || { shifts: { A: [], M: [], B: [], C: [] } };
-    const preview = document.getElementById('hover-preview');
+  const schedule = scheduleData[dateStr] || {
+    shifts: { A: [], M: [], B: [], C: [] },
+  };
+  const preview = document.getElementById("hover-preview");
 
-    // Initialize or update hover preview state
-    if (!hoverPreviewState || hoverPreviewState.dateStr !== dateStr) {
-        hoverPreviewState = { dateStr, page: 0 };
-    }
+  // Initialize or update hover preview state
+  if (!hoverPreviewState || hoverPreviewState.dateStr !== dateStr) {
+    hoverPreviewState = { dateStr, page: 0 };
+  }
 
-    // Extract day and month from dateStr
-    const dateParts = dateStr.split('-');
-    const day = parseInt(dateParts[2]);
-    const monthIndex = parseInt(dateParts[1]) - 1;
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  // Extract day and month from dateStr
+  const dateParts = dateStr.split("-");
+  const day = parseInt(dateParts[2]);
+  const monthIndex = parseInt(dateParts[1]) - 1;
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
 
-    // Set header
-    document.getElementById('hover-preview-day').textContent = day;
-    document.getElementById('hover-preview-month').textContent = monthNames[monthIndex].toUpperCase();
+  // Set header
+  document.getElementById("hover-preview-day").textContent = day;
+  document.getElementById("hover-preview-month").textContent =
+    monthNames[monthIndex].toUpperCase();
 
-    // Build staff rows sorted by shift (A, M, B, C)
-    const assignedStaff = [];
+  // Build staff rows sorted by shift (A, M, B, C)
+  const assignedStaff = [];
 
-    // Sort by shift order
-    ['A', 'M', 'B', 'C'].forEach(shift => {
-        const people = schedule.shifts[shift] || [];
-        people.forEach(personName => {
-            const person = peopleData.find(p => p.name === personName);
-            if (person) {
-                assignedStaff.push({ person, shift });
-            }
-        });
+  // Sort by shift order
+  ["A", "M", "B", "C"].forEach((shift) => {
+    const people = schedule.shifts[shift] || [];
+    people.forEach((personName) => {
+      const person = peopleData.find((p) => p.name === personName);
+      if (person) {
+        assignedStaff.push({ person, shift });
+      }
     });
+  });
 
-    // Render with pagination
-    renderHoverPreviewContent(assignedStaff);
+  // Render with pagination
+  renderHoverPreviewContent(assignedStaff);
 
-    // Show preview temporarily to get actual dimensions
-    preview.style.display = 'block';
-    preview.style.visibility = 'hidden';
+  // Show preview temporarily to get actual dimensions
+  preview.style.display = "block";
+  preview.style.visibility = "hidden";
 
-    // Position preview like modal - centered below the cell
-    const cellEl = event.target.closest('.calendar-day');
+  // Position preview like modal - centered below the cell
+  const cellEl = event.target.closest(".calendar-day");
 
-    if (hoverPreviewCell && hoverPreviewCell !== cellEl) {
-        hoverPreviewCell.classList.remove('preview-open');
+  if (hoverPreviewCell && hoverPreviewCell !== cellEl) {
+    hoverPreviewCell.classList.remove("preview-open");
+  }
+
+  hoverPreviewCell = cellEl;
+
+  if (hoverPreviewCell) {
+    hoverPreviewCell.classList.add("preview-open");
+  }
+
+  if (cellEl) {
+    const rect = cellEl.getBoundingClientRect();
+    const previewDialog = preview.querySelector(".hover-preview-dialog");
+    const pw = 240;
+    const ph = previewDialog ? previewDialog.offsetHeight : 200;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    let left = rect.left + rect.width / 2 - pw / 2;
+    let top = rect.bottom + 25;
+
+    // Keep within viewport horizontally
+    if (left + pw > vw - 8) left = vw - pw - 8;
+    if (left < 8) left = 8;
+
+    // Keep within viewport vertically - position above if needed
+    if (top + ph > vh - 8) {
+      // Position above the cell, not at the top of viewport
+      top = rect.top - ph - 45;
     }
 
-    hoverPreviewCell = cellEl;
-
-    if (hoverPreviewCell) {
-        hoverPreviewCell.classList.add('preview-open');
+    // If still doesn't fit, position at top with small margin
+    if (top < 8) {
+      top = 8;
     }
 
-    if (cellEl) {
-        const rect = cellEl.getBoundingClientRect();
-        const previewDialog = preview.querySelector('.hover-preview-dialog');
-        const pw = 240;
-        const ph = previewDialog ? previewDialog.offsetHeight : 200;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
+    preview.style.left = left + "px";
+    preview.style.top = top + "px";
+  }
 
-        let left = rect.left + rect.width / 2 - pw / 2;
-        let top = rect.bottom + 25;
-
-        // Keep within viewport horizontally
-        if (left + pw > vw - 8) left = vw - pw - 8;
-        if (left < 8) left = 8;
-
-        // Keep within viewport vertically - position above if needed
-        if (top + ph > vh - 8) {
-            // Position above the cell, not at the top of viewport
-            top = rect.top - ph - 45;
-        }
-
-        // If still doesn't fit, position at top with small margin
-        if (top < 8) {
-            top = 8;
-        }
-
-        preview.style.left = left + 'px';
-        preview.style.top = top + 'px';
-    }
-
-    // Make preview visible
-    preview.style.visibility = 'visible';
+  // Make preview visible
+  preview.style.visibility = "visible";
 }
 
 // Render hover preview content with pagination
 function renderHoverPreviewContent(assignedStaff) {
-    const content = document.getElementById('hover-preview-content');
-    const pagination = document.getElementById('hover-preview-pagination');
+  const content = document.getElementById("hover-preview-content");
+  const pagination = document.getElementById("hover-preview-pagination");
 
-    if (assignedStaff.length === 0) {
-        content.innerHTML = '<div class="preview-no-data">No shifts assigned</div>';
-        pagination.style.display = 'none';
-        return;
-    }
+  if (assignedStaff.length === 0) {
+    content.innerHTML = '<div class="preview-no-data">No shifts assigned</div>';
+    pagination.style.display = "none";
+    return;
+  }
 
-    const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
-    const page = hoverPreviewState.page;
-    const pageStaff = assignedStaff.slice(page * PREVIEW_PAGE_SIZE, (page + 1) * PREVIEW_PAGE_SIZE);
+  const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
+  const page = hoverPreviewState.page;
+  const pageStaff = assignedStaff.slice(
+    page * PREVIEW_PAGE_SIZE,
+    (page + 1) * PREVIEW_PAGE_SIZE,
+  );
 
-    let html = '';
-    pageStaff.forEach((item, idx) => {
-        const { person, shift } = item;
-        const shiftInfo = SHIFTS[shift];
-        const initials = getInitials(person.name);
+  let html = "";
+  pageStaff.forEach((item, idx) => {
+    const { person, shift } = item;
+    const shiftInfo = SHIFTS[shift];
+    const initials = getInitials(person.name);
 
-        html += `
+    html += `
             <div class="preview-staff-row">
                 <div class="preview-staff-name-row">
                     <div class="preview-staff-avatar"
@@ -566,69 +632,73 @@ function renderHoverPreviewContent(assignedStaff) {
                         ${initials}
                     </div>
                     <span class="preview-staff-name">${person.name}</span>
-                    <span class="preview-staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${shift}</span>
+                    <span class="preview-staff-shift-badge" style="color:${shiftInfo.color.replace("0.7", "1")}">${shift}</span>
                 </div>
             </div>
         `;
 
-        // Add divider if not last item on this page
-        if (idx < pageStaff.length - 1) {
-            html += '<div class="preview-staff-divider"></div>';
-        }
-    });
-
-    content.innerHTML = html;
-
-    // Show/hide pagination
-    if (totalPages > 1) {
-        pagination.style.display = 'flex';
-        document.getElementById('preview-page-label').textContent = `${page + 1} / ${totalPages}`;
-        document.getElementById('preview-page-prev').disabled = page === 0;
-        document.getElementById('preview-page-next').disabled = page === totalPages - 1;
-    } else {
-        pagination.style.display = 'none';
+    // Add divider if not last item on this page
+    if (idx < pageStaff.length - 1) {
+      html += '<div class="preview-staff-divider"></div>';
     }
+  });
+
+  content.innerHTML = html;
+
+  // Show/hide pagination
+  if (totalPages > 1) {
+    pagination.style.display = "flex";
+    document.getElementById("preview-page-label").textContent =
+      `${page + 1} / ${totalPages}`;
+    document.getElementById("preview-page-prev").disabled = page === 0;
+    document.getElementById("preview-page-next").disabled =
+      page === totalPages - 1;
+  } else {
+    pagination.style.display = "none";
+  }
 }
 
 // Hide hover preview
 function hideHoverPreview() {
-    document.getElementById('hover-preview').style.display = 'none';
-    
-    if (hoverPreviewCell) {
-        hoverPreviewCell.classList.remove('preview-open');
-        hoverPreviewCell = null;
-    }
+  document.getElementById("hover-preview").style.display = "none";
 
-    hoverPreviewState = null;
+  if (hoverPreviewCell) {
+    hoverPreviewCell.classList.remove("preview-open");
+    hoverPreviewCell = null;
+  }
+
+  hoverPreviewState = null;
 }
 
 // Open day modal
 function openDayModal(dateStr, dayEl) {
-    if (selectedDate === dateStr) {
-        closeDayModal();
-        return;
-    }
+  if (selectedDate === dateStr) {
+    closeDayModal();
+    return;
+  }
 
-    selectedDate = dateStr;
-    openDayCell = dayEl;
-    hideHoverPreview();
-    modalPageState = 0; // Reset pagination when opening modal
+  selectedDate = dateStr;
+  openDayCell = dayEl;
+  hideHoverPreview();
+  modalPageState = 0; // Reset pagination when opening modal
 
-    // Extract day and month
-    const dateParts = dateStr.split('-');
-    const day = parseInt(dateParts[2]);
-    const monthIndex = parseInt(dateParts[1]) - 1;
+  // Extract day and month
+  const dateParts = dateStr.split("-");
+  const day = parseInt(dateParts[2]);
+  const monthIndex = parseInt(dateParts[1]) - 1;
 
-    // Render modal content
-    renderDayModalContent(dateStr, day, MONTH_NAMES[monthIndex]);
+  // Render modal content
+  renderDayModalContent(dateStr, day, MONTH_NAMES[monthIndex]);
 
-    // Show modal
-    const modal = document.getElementById('day-modal');
-    modal.style.display = 'flex';
+  // Show modal
+  const modal = document.getElementById("day-modal");
+  modal.style.display = "flex";
 
-    renderCalendar();
-    openDayCell = document.querySelector(`.calendar-day[data-date="${selectedDate}"]`);
-    requestAnimationFrame(positionDayModal);
+  renderCalendar();
+  openDayCell = document.querySelector(
+    `.calendar-day[data-date="${selectedDate}"]`,
+  );
+  requestAnimationFrame(positionDayModal);
 }
 
 // Separate function to render modal content
@@ -636,18 +706,21 @@ let modalPageState = 0;
 const MODAL_PAGE_SIZE = 4;
 
 function renderDayModalContent(dateStr, day, monthName) {
-    const schedule = scheduleData[dateStr] || {
-        shifts: { A: [], M: [], B: [], C: [] }
-    };
+  const schedule = scheduleData[dateStr] || {
+    shifts: { A: [], M: [], B: [], C: [] },
+  };
 
-    const modalContent = document.getElementById('modal-content');
+  const modalContent = document.getElementById("modal-content");
 
-    // Calculate pagination
-    const totalStaff = peopleData.length;
-    const totalPages = Math.ceil(totalStaff / MODAL_PAGE_SIZE);
-    const pageStaff = peopleData.slice(modalPageState * MODAL_PAGE_SIZE, (modalPageState + 1) * MODAL_PAGE_SIZE);
+  // Calculate pagination
+  const totalStaff = peopleData.length;
+  const totalPages = Math.ceil(totalStaff / MODAL_PAGE_SIZE);
+  const pageStaff = peopleData.slice(
+    modalPageState * MODAL_PAGE_SIZE,
+    (modalPageState + 1) * MODAL_PAGE_SIZE,
+  );
 
-    let html = `
+  let html = `
         <div class="modal-header">
             <span class="hover-preview-day">${day}</span>
             <span class="hover-preview-month">${monthName.toUpperCase()}</span>
@@ -655,41 +728,43 @@ function renderDayModalContent(dateStr, day, monthName) {
         <div class="modal-staff-content">
     `;
 
-    pageStaff.forEach((person, idx) => {
-        const initials = getInitials(person.name);
+  pageStaff.forEach((person, idx) => {
+    const initials = getInitials(person.name);
 
-        // Find current shift for this person
-        let currentShift = 'off';
-        for (const [shift, people] of Object.entries(schedule.shifts)) {
-            if (people && people.includes(person.name)) {
-                currentShift = shift;
-                break;
-            }
-        }
+    // Find current shift for this person
+    let currentShift = "off";
+    for (const [shift, people] of Object.entries(schedule.shifts)) {
+      if (people && people.includes(person.name)) {
+        currentShift = shift;
+        break;
+      }
+    }
 
-        const shiftInfo = currentShift !== 'off' ? SHIFTS[currentShift] : null;
-        const badgeHtml = shiftInfo
-            ? `<span class="staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${currentShift}</span>`
-            : "";
+    const shiftInfo = currentShift !== "off" ? SHIFTS[currentShift] : null;
+    const badgeHtml = shiftInfo
+      ? `<span class="staff-shift-badge" style="color:${shiftInfo.color.replace("0.7", "1")}">${currentShift}</span>`
+      : "";
 
-        // Shift option buttons
-        const optsHtml = ['A', 'M', 'B', 'C'].map(shift => {
-            const shiftData = SHIFTS[shift];
-            const isActive = currentShift === shift;
-            return `
-                <button class="shift-opt${isActive ? ' active' : ''}"
-                    style="background:${isActive ? shiftData.color.replace('0.7', '0.2') : 'var(--bg-primary)'};
-                           border-color:${isActive ? shiftData.color.replace('0.7', '0.5') : 'var(--border-secondary)'};
-                           color:${isActive ? shiftData.color.replace('0.7', '1') : 'var(--text-tertiary)'}"
+    // Shift option buttons
+    const optsHtml = ["A", "M", "B", "C"]
+      .map((shift) => {
+        const shiftData = SHIFTS[shift];
+        const isActive = currentShift === shift;
+        return `
+                <button class="shift-opt${isActive ? " active" : ""}"
+                    style="background:${isActive ? shiftData.color.replace("0.7", "0.2") : "var(--bg-primary)"};
+                           border-color:${isActive ? shiftData.color.replace("0.7", "0.5") : "var(--border-secondary)"};
+                           color:${isActive ? shiftData.color.replace("0.7", "1") : "var(--text-tertiary)"}"
                     data-person="${person.name}" data-shift="${shift}">
                     ${shift}
                 </button>`;
-        }).join('');
+      })
+      .join("");
 
-        const divider = idx < pageStaff.length - 1
-            ? `<div class="staff-divider"></div>` : "";
+    const divider =
+      idx < pageStaff.length - 1 ? `<div class="staff-divider"></div>` : "";
 
-        html += `
+    html += `
             <div class="staff-row">
                 <div class="staff-name-row">
                     <div class="staff-avatar"
@@ -702,445 +777,451 @@ function renderDayModalContent(dateStr, day, monthName) {
                 <div class="shift-opts">${optsHtml}</div>
                 ${divider}
             </div>`;
-    });
+  });
 
-    html += '</div>';
+  html += "</div>";
 
-    // Add pagination if needed
-    if (totalPages > 1) {
-        html += `
+  // Add pagination if needed
+  if (totalPages > 1) {
+    html += `
             <div class="hover-preview-pagination">
                 <button class="preview-page-btn" id="modal-page-prev">‹</button>
                 <span class="preview-page-label">${modalPageState + 1} / ${totalPages}</span>
                 <button class="preview-page-btn" id="modal-page-next">›</button>
             </div>
         `;
-    }
+  }
 
-    modalContent.innerHTML = html;
+  modalContent.innerHTML = html;
 
-    // Re-attach event listeners for shift buttons
-    modalContent.querySelectorAll('.shift-opt').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
+  // Re-attach event listeners for shift buttons
+  modalContent.querySelectorAll(".shift-opt").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
 
-            const personName = btn.dataset.person;
-            const shift = btn.dataset.shift;
+      const personName = btn.dataset.person;
+      const shift = btn.dataset.shift;
 
-            if (!scheduleData[selectedDate]) {
-                scheduleData[selectedDate] = { shifts: { A: [], M: [], B: [], C: [] } };
-            }
+      if (!scheduleData[selectedDate]) {
+        scheduleData[selectedDate] = { shifts: { A: [], M: [], B: [], C: [] } };
+      }
 
-            const currentSchedule = scheduleData[selectedDate];
-            for (const s of ['A', 'M', 'B', 'C']) {
-                if (!currentSchedule.shifts[s]) currentSchedule.shifts[s] = [];
-            }
+      const currentSchedule = scheduleData[selectedDate];
+      for (const s of ["A", "M", "B", "C"]) {
+        if (!currentSchedule.shifts[s]) currentSchedule.shifts[s] = [];
+      }
 
-            for (const s of ['A', 'M', 'B', 'C']) {
-                currentSchedule.shifts[s] = currentSchedule.shifts[s].filter(name => name !== personName);
-            }
+      for (const s of ["A", "M", "B", "C"]) {
+        currentSchedule.shifts[s] = currentSchedule.shifts[s].filter(
+          (name) => name !== personName,
+        );
+      }
 
-            const isCurrentlyActive = btn.classList.contains('active');
-            if (!isCurrentlyActive) {
-                currentSchedule.shifts[shift].push(personName);
-            }
+      const isCurrentlyActive = btn.classList.contains("active");
+      if (!isCurrentlyActive) {
+        currentSchedule.shifts[shift].push(personName);
+      }
 
-            await saveDaySchedule();
-            renderDayModalContent(selectedDate, day, monthName);
-        });
+      await saveDaySchedule();
+      renderDayModalContent(selectedDate, day, monthName);
     });
+  });
 
-    // Attach pagination handlers
-    const prevBtn = document.getElementById('modal-page-prev');
-    const nextBtn = document.getElementById('modal-page-next');
+  // Attach pagination handlers
+  const prevBtn = document.getElementById("modal-page-prev");
+  const nextBtn = document.getElementById("modal-page-next");
 
-    if (prevBtn) {
-        prevBtn.disabled = modalPageState === 0;
-        prevBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (modalPageState > 0) {
-                modalPageState--;
-                renderDayModalContent(dateStr, day, monthName);
-            }
-        });
-    }
+  if (prevBtn) {
+    prevBtn.disabled = modalPageState === 0;
+    prevBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (modalPageState > 0) {
+        modalPageState--;
+        renderDayModalContent(dateStr, day, monthName);
+      }
+    });
+  }
 
-    if (nextBtn) {
-        nextBtn.disabled = modalPageState === totalPages - 1;
-        nextBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (modalPageState < totalPages - 1) {
-                modalPageState++;
-                renderDayModalContent(dateStr, day, monthName);
-            }
-        });
-    }
+  if (nextBtn) {
+    nextBtn.disabled = modalPageState === totalPages - 1;
+    nextBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (modalPageState < totalPages - 1) {
+        modalPageState++;
+        renderDayModalContent(dateStr, day, monthName);
+      }
+    });
+  }
 }
 
 // Toggle shift section in modal
 function toggleShiftSection(header) {
-    const staff = header.nextElementSibling;
-    staff.style.display = staff.style.display === 'flex' ? 'none' : 'flex';
-    header.classList.toggle('collapsed');
+  const staff = header.nextElementSibling;
+  staff.style.display = staff.style.display === "flex" ? "none" : "flex";
+  header.classList.toggle("collapsed");
 }
 
 // Close day modal
 function closeDayModal(event) {
-    // Only close if clicking on the overlay itself, not the modal dialog
-    if (event && event.target.id !== 'day-modal') return;
+  // Only close if clicking on the overlay itself, not the modal dialog
+  if (event && event.target.id !== "day-modal") return;
 
-    document.getElementById('day-modal').style.display = 'none';
-    selectedDate = null;
-    openDayCell = null;
-    renderCalendar();
+  document.getElementById("day-modal").style.display = "none";
+  selectedDate = null;
+  openDayCell = null;
+  renderCalendar();
 }
 
 function positionDayModal() {
-    const modal = document.getElementById('day-modal');
-    const modalDialog = modal.querySelector('.modal-dialog');
+  const modal = document.getElementById("day-modal");
+  const modalDialog = modal.querySelector(".modal-dialog");
 
-    if (!modalDialog || !openDayCell || !selectedDate || modal.style.display === 'none') {
-        return;
-    }
+  if (
+    !modalDialog ||
+    !openDayCell ||
+    !selectedDate ||
+    modal.style.display === "none"
+  ) {
+    return;
+  }
 
-    const rect = openDayCell.getBoundingClientRect();
-    const modalWidth = modalDialog.offsetWidth || 280;
-    const modalHeight = modalDialog.offsetHeight || 400;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+  const rect = openDayCell.getBoundingClientRect();
+  const modalWidth = modalDialog.offsetWidth || 280;
+  const modalHeight = modalDialog.offsetHeight || 400;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
 
-    let left = rect.left + (rect.width / 2) - (modalWidth / 2);
-    let top = rect.bottom + 8;
+  let left = rect.left + rect.width / 2 - modalWidth / 2;
+  let top = rect.bottom + 8;
 
-    if (left + modalWidth > viewportWidth - 8) {
-        left = viewportWidth - modalWidth - 8;
-    }
+  if (left + modalWidth > viewportWidth - 8) {
+    left = viewportWidth - modalWidth - 8;
+  }
 
-    if (left < 8) {
-        left = 8;
-    }
+  if (left < 8) {
+    left = 8;
+  }
 
-    if (top + modalHeight > viewportHeight - 8) {
-        top = rect.top - modalHeight - 8;
-    }
+  if (top + modalHeight > viewportHeight - 8) {
+    top = rect.top - modalHeight - 8;
+  }
 
-    if (top < 8) {
-        top = 8;
-    }
+  if (top < 8) {
+    top = 8;
+  }
 
-    modalDialog.style.left = `${left}px`;
-    modalDialog.style.top = `${top}px`;
+  modalDialog.style.left = `${left}px`;
+  modalDialog.style.top = `${top}px`;
 }
 
 // Save day schedule from modal
 async function saveDaySchedule() {
-    if (!selectedDate) return;
+  if (!selectedDate) return;
 
-    try {
-        // Ensure the schedule exists
-        const currentSchedule = scheduleData[selectedDate] || {
-            shifts: { A: [], M: [], B: [], C: [] }
-        };
+  try {
+    // Ensure the schedule exists
+    const currentSchedule = scheduleData[selectedDate] || {
+      shifts: { A: [], M: [], B: [], C: [] },
+    };
 
-        const scheduleToSave = {};
-        scheduleToSave[selectedDate] = { shifts: currentSchedule.shifts };
+    const scheduleToSave = {};
+    scheduleToSave[selectedDate] = { shifts: currentSchedule.shifts };
 
-        await DB.saveSchedule(scheduleToSave);
+    await DB.saveSchedule(scheduleToSave);
 
-        // Reload schedules and update calendar (keep modal open)
-        await loadSchedules();
-        renderCalendar();
-    } catch (error) {
-        console.error('Error saving schedule:', error);
-        alert('Failed to save schedule. Please try again.');
-    }
+    // Reload schedules and update calendar (keep modal open)
+    await loadSchedules();
+    renderCalendar();
+  } catch (error) {
+    console.error("Error saving schedule:", error);
+    showAlert("Error", "Failed to save schedule. Please try again.");
+  }
 }
 
 // Clear day schedule
 async function clearDaySchedule() {
-    if (!selectedDate) return;
+  if (!selectedDate) return;
 
-    showConfirm('Clear Schedule', `Are you sure you want to clear all shifts for this day?`, async () => {
-        try {
-            // Delete from backend
-            const existing = await SchedulesAPI.list(selectedDate);
-            if (existing && existing.length > 0) {
-                await SchedulesAPI.delete(existing[0].id);
-            }
-
-            // Remove from local data
-            delete scheduleData[selectedDate];
-
-            renderCalendar();
-            closeDayModal();
-        } catch (error) {
-            console.error('Error clearing schedule:', error);
-            alert('Failed to clear schedule. Please try again.');
+  showConfirm(
+    "Clear Schedule",
+    `Are you sure you want to clear all shifts for this day?`,
+    async () => {
+      try {
+        // Delete from backend
+        const existing = await SchedulesAPI.list(selectedDate);
+        if (existing && existing.length > 0) {
+          await SchedulesAPI.delete(existing[0].id);
         }
-    });
+
+        // Remove from local data
+        delete scheduleData[selectedDate];
+
+        renderCalendar();
+        closeDayModal();
+      } catch (error) {
+        console.error("Error clearing schedule:", error);
+        showAlert("Error", "Failed to clear schedule. Please try again.");
+      }
+    },
+  );
 }
 
 // Render staff list (no longer used in modal, kept for compatibility)
 function renderStaffList(selectedPeople = []) {
-    // This function is no longer used with the new modal approach
+  // This function is no longer used with the new modal approach
 }
 
 // Month navigation and date picker
 function changeMonth(offset) {
-    closeDayModal();
+  closeDayModal();
 
-    if (offset < 0) {
-        if (currentMonth === 0) {
-            currentMonth = 11;
-            currentYear--;
-        } else {
-            currentMonth--;
-        }
-    } else if (offset > 0) {
-        if (currentMonth === 11) {
-            currentMonth = 0;
-            currentYear++;
-        } else {
-            currentMonth++;
-        }
+  if (offset < 0) {
+    if (currentMonth === 0) {
+      currentMonth = 11;
+      currentYear--;
+    } else {
+      currentMonth--;
     }
-
-    renderCalendar();
-
-    if (document.getElementById('custom-date-picker')?.style.display !== 'none') {
-        syncDatePickerControls();
-        renderDatePickerCalendar();
+  } else if (offset > 0) {
+    if (currentMonth === 11) {
+      currentMonth = 0;
+      currentYear++;
+    } else {
+      currentMonth++;
     }
+  }
+
+  renderCalendar();
+
+  if (document.getElementById("custom-date-picker")?.style.display !== "none") {
+    syncDatePickerControls();
+    renderDatePickerCalendar();
+  }
 }
 
 function toggleDatePicker() {
-    const picker = document.getElementById('custom-date-picker');
-    if (!picker) return;
+  const picker = document.getElementById("custom-date-picker");
+  if (!picker) return;
 
-    if (picker.style.display === 'none') {
-        syncDatePickerControls();
-        renderDatePickerCalendar();
-        picker.style.display = 'block';
-    } else {
-        picker.style.display = 'none';
-    }
+  if (picker.style.display === "none") {
+    syncDatePickerControls();
+    renderDatePickerCalendar();
+    picker.style.display = "block";
+  } else {
+    picker.style.display = "none";
+  }
 }
 
 function syncDatePickerControls() {
-    const pickerMonth = document.getElementById('picker-month');
-    const pickerYear = document.getElementById('picker-year');
+  const pickerMonth = document.getElementById("picker-month");
+  const pickerYear = document.getElementById("picker-year");
 
-    if (pickerMonth) {
-        pickerMonth.value = String(currentMonth);
-    }
-    if (pickerYear) {
-        pickerYear.value = String(currentYear);
-    }
+  if (pickerMonth) {
+    pickerMonth.value = String(currentMonth);
+  }
+  if (pickerYear) {
+    pickerYear.value = String(currentYear);
+  }
 }
 
 function updateDatePickerCalendar() {
-    closeDayModal();
-    currentMonth = parseInt(document.getElementById('picker-month').value, 10) || 0;
-    currentYear = parseInt(document.getElementById('picker-year').value, 10) || new Date().getFullYear();
-    renderCalendar();
-    renderDatePickerCalendar();
+  closeDayModal();
+  currentMonth =
+    parseInt(document.getElementById("picker-month").value, 10) || 0;
+  currentYear =
+    parseInt(document.getElementById("picker-year").value, 10) ||
+    new Date().getFullYear();
+  renderCalendar();
+  renderDatePickerCalendar();
 }
 
 function renderDatePickerCalendar() {
-    const year = currentYear;
-    const month = currentMonth;
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrevMonth = new Date(year, month, 0).getDate();
-    const daysContainer = document.getElementById('picker-days');
+  const year = currentYear;
+  const month = currentMonth;
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const daysContainer = document.getElementById("picker-days");
 
-    if (!daysContainer) return;
+  if (!daysContainer) return;
 
-    daysContainer.innerHTML = '';
+  daysContainer.innerHTML = "";
 
-    for (let i = firstDay - 1; i >= 0; i--) {
-        const day = daysInPrevMonth - i;
-        const dayEl = createDatePickerDay(day, 'other-month', new Date(year, month - 1, day));
-        daysContainer.appendChild(dayEl);
-    }
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const day = daysInPrevMonth - i;
+    const dayEl = createDatePickerDay(
+      day,
+      "other-month",
+      new Date(year, month - 1, day),
+    );
+    daysContainer.appendChild(dayEl);
+  }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const className = selectedDate === dateStr ? 'selected' : '';
-        const dayEl = createDatePickerDay(day, className, date);
-        daysContainer.appendChild(dayEl);
-    }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const className = selectedDate === dateStr ? "selected" : "";
+    const dayEl = createDatePickerDay(day, className, date);
+    daysContainer.appendChild(dayEl);
+  }
 
-    const totalCells = daysContainer.children.length;
-    const remainingCells = 42 - totalCells;
-    for (let day = 1; day <= remainingCells; day++) {
-        const dayEl = createDatePickerDay(day, 'other-month', new Date(year, month + 1, day));
-        daysContainer.appendChild(dayEl);
-    }
+  const totalCells = daysContainer.children.length;
+  const remainingCells = 42 - totalCells;
+  for (let day = 1; day <= remainingCells; day++) {
+    const dayEl = createDatePickerDay(
+      day,
+      "other-month",
+      new Date(year, month + 1, day),
+    );
+    daysContainer.appendChild(dayEl);
+  }
 }
 
 function createDatePickerDay(day, className, date) {
-    const dayEl = document.createElement('div');
-    dayEl.className = `date-picker-day ${className}`.trim();
-    dayEl.textContent = day;
+  const dayEl = document.createElement("div");
+  dayEl.className = `date-picker-day ${className}`.trim();
+  dayEl.textContent = day;
 
-    if (!className.includes('other-month')) {
-        dayEl.onclick = () => selectDateFromPicker(date);
-    }
+  if (!className.includes("other-month")) {
+    dayEl.onclick = () => selectDateFromPicker(date);
+  }
 
-    return dayEl;
+  return dayEl;
 }
 
 function selectDateFromPicker(date) {
-    closeDayModal();
-    currentMonth = date.getMonth();
-    currentYear = date.getFullYear();
-    renderCalendar();
-    syncDatePickerControls();
-    document.getElementById('custom-date-picker').style.display = 'none';
+  closeDayModal();
+  currentMonth = date.getMonth();
+  currentYear = date.getFullYear();
+  renderCalendar();
+  syncDatePickerControls();
+  document.getElementById("custom-date-picker").style.display = "none";
 
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    const dayEl = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
-    if (dayEl && !dayEl.classList.contains('other-month')) {
-        openDayModal(dateStr, dayEl);
-    }
+  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const dayEl = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
+  if (dayEl && !dayEl.classList.contains("other-month")) {
+    openDayModal(dateStr, dayEl);
+  }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    resetPersonForm();
-    syncDatePickerControls();
+document.addEventListener("DOMContentLoaded", () => {
+  resetPersonForm();
+  syncDatePickerControls();
 });
 
-document.addEventListener('click', (event) => {
-    const picker = document.getElementById('custom-date-picker');
-    const dateNav = document.querySelector('.date-nav');
+document.addEventListener("click", (event) => {
+  const picker = document.getElementById("custom-date-picker");
+  const dateNav = document.querySelector(".date-nav");
 
-    if (picker && picker.style.display !== 'none' && !dateNav?.contains(event.target)) {
-        picker.style.display = 'none';
-    }
+  if (
+    picker &&
+    picker.style.display !== "none" &&
+    !dateNav?.contains(event.target)
+  ) {
+    picker.style.display = "none";
+  }
 });
 
 // Clock
 function updateClock() {
-    const clockEl = document.getElementById('current-time');
-    if (clockEl) {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        clockEl.textContent = `${hours}:${minutes}`;
-    }
+  const clockEl = document.getElementById("current-time");
+  if (clockEl) {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    clockEl.textContent = `${hours}:${minutes}`;
+  }
 }
 
 // Theme
 function toggleTheme() {
-    const html = document.documentElement;
-    const currentTheme = html.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    html.setAttribute('data-theme', newTheme);
-    localStorage.setItem('letsee_theme', newTheme);
-    updateFavicon(newTheme);
+  const html = document.documentElement;
+  const currentTheme = html.getAttribute("data-theme");
+  const newTheme = currentTheme === "dark" ? "light" : "dark";
+  html.setAttribute("data-theme", newTheme);
+  localStorage.setItem("letsee_theme", newTheme);
+  updateFavicon(newTheme);
 }
 
 function applyTheme() {
-    const savedTheme = localStorage.getItem('letsee_theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateFavicon(savedTheme);
+  const savedTheme = localStorage.getItem("letsee_theme") || "light";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  updateFavicon(savedTheme);
 }
 
 function updateFavicon(theme) {
-    const favicon = document.getElementById('favicon');
-    if (favicon) {
-        const color = theme === 'dark' ? '%23ffffff' : '%23333';
-        favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='${color}'>L</text></svg>`;
-    }
+  const favicon = document.getElementById("favicon");
+  if (favicon) {
+    const color = theme === "dark" ? "%23ffffff" : "%23333";
+    favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='${color}'>L</text></svg>`;
+  }
 }
 
 // Logout
-let confirmAction = null;
-
-function showConfirm(title, message, onConfirm) {
-    document.getElementById('confirm-title').textContent = title;
-    document.getElementById('confirm-message').textContent = message;
-    document.getElementById('confirm-modal').style.display = 'flex';
-    confirmAction = onConfirm;
-}
-
-function closeConfirmModal() {
-    document.getElementById('confirm-modal').style.display = 'none';
-    confirmAction = null;
-}
-
-function executeConfirmAction() {
-    if (confirmAction) {
-        confirmAction();
-    }
-    closeConfirmModal();
-}
-
 function handleLogout() {
-    showConfirm('Sign Out', 'Are you sure you want to sign out?', () => {
-        DB.logout();
-    });
+  showConfirm("Sign Out", "Are you sure you want to sign out?", () => {
+    DB.logout();
+  });
 }
 
 // ============ People Management ============
 
 async function openPeopleModal() {
-    document.getElementById('people-modal').style.display = 'flex';
-    resetPersonForm();
-    await renderPeopleList();
+  document.getElementById("people-modal").style.display = "flex";
+  resetPersonForm();
+  await renderPeopleList();
 }
 
-document.addEventListener('mousedown', (event) => {
-    if (!selectedDate) {
-        return;
-    }
+document.addEventListener("mousedown", (event) => {
+  if (!selectedDate) {
+    return;
+  }
 
-    const modal = document.getElementById('day-modal');
-    const dialog = modal?.querySelector('.modal-dialog');
-    const clickedDay = event.target.closest('.calendar-day');
+  const modal = document.getElementById("day-modal");
+  const dialog = modal?.querySelector(".modal-dialog");
+  const clickedDay = event.target.closest(".calendar-day");
 
-    if (dialog?.contains(event.target)) {
-        return;
-    }
+  if (dialog?.contains(event.target)) {
+    return;
+  }
 
-    if (clickedDay && clickedDay.dataset.date === selectedDate) {
-        return;
-    }
+  if (clickedDay && clickedDay.dataset.date === selectedDate) {
+    return;
+  }
 
-    closeDayModal();
+  closeDayModal();
 });
 
-window.addEventListener('resize', () => {
-    if (selectedDate) {
-        positionDayModal();
-    }
+window.addEventListener("resize", () => {
+  if (selectedDate) {
+    positionDayModal();
+  }
 });
 
 function closePeopleModal() {
-    document.getElementById('people-modal').style.display = 'none';
-    resetPersonForm();
-    // Reload people data
-    loadPeople();
+  document.getElementById("people-modal").style.display = "none";
+  resetPersonForm();
+  // Reload people data
+  loadPeople();
 }
 
 async function renderPeopleList() {
-    await loadPeople();
-    const peopleList = document.getElementById('people-list');
+  await loadPeople();
+  const peopleList = document.getElementById("people-list");
 
-    if (peopleData.length === 0) {
-        peopleList.innerHTML = '<div class="empty-state">No staff members yet. Add one below!</div>';
-        return;
-    }
+  if (peopleData.length === 0) {
+    peopleList.innerHTML =
+      '<div class="empty-state">No staff members yet. Add one below!</div>';
+    return;
+  }
 
-    peopleList.innerHTML = '';
+  peopleList.innerHTML = "";
 
-    peopleData.forEach((person) => {
-        const personEl = document.createElement('div');
-        personEl.className = 'person-item';
+  peopleData.forEach((person) => {
+    const personEl = document.createElement("div");
+    personEl.className = "person-item";
 
-        personEl.innerHTML = `
+    personEl.innerHTML = `
             <div class="person-color" style="background-color: ${person.color}"></div>
             <div class="person-info">
                 <div class="person-name">${person.name}</div>
@@ -1152,89 +1233,102 @@ async function renderPeopleList() {
             </div>
         `;
 
-        peopleList.appendChild(personEl);
-    });
+    peopleList.appendChild(personEl);
+  });
 }
 
 async function savePerson() {
-    const nameInput = document.getElementById('new-person-name');
-    const colorInput = document.getElementById('new-person-color');
+  const nameInput = document.getElementById("new-person-name");
+  const colorInput = document.getElementById("new-person-color");
 
-    const name = nameInput.value.trim();
-    const color = colorInput.value || DEFAULT_PERSON_COLOR;
+  const name = nameInput.value.trim();
+  const color = colorInput.value || DEFAULT_PERSON_COLOR;
 
-    if (!name) {
-        alert('Please enter a name');
-        return;
+  if (!name) {
+    showAlert("Validation Error", "Please enter a name");
+    return;
+  }
+
+  try {
+    if (editingPersonId) {
+      await DB.updatePerson(
+        editingPersonId,
+        name,
+        color,
+        editingPersonOriginalName,
+      );
+    } else {
+      await PeopleAPI.create(name, color);
     }
 
-    try {
-        if (editingPersonId) {
-            await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
-        } else {
-            await PeopleAPI.create(name, color);
-        }
-
-        resetPersonForm();
-        await refreshPeopleViews();
-    } catch (error) {
-        console.error('Error saving person:', error);
-        alert('Failed to save staff member. Please try again.');
-    }
+    resetPersonForm();
+    await refreshPeopleViews();
+  } catch (error) {
+    console.error("Error saving person:", error);
+    showAlert("Error", "Failed to save staff member. Please try again.");
+  }
 }
 
 async function deletePerson(id, name) {
-    showConfirm('Delete Staff Member', `Are you sure you want to delete ${name}? This action cannot be undone.`, async () => {
-        try {
-            await PeopleAPI.delete(id);
-            if (String(editingPersonId) === String(id)) {
-                resetPersonForm();
-            }
-            await refreshPeopleViews();
-        } catch (error) {
-            console.error('Error deleting person:', error);
-            alert('Failed to delete staff member. Please try again.');
+  showConfirm(
+    "Delete Staff Member",
+    `Are you sure you want to delete ${name}? This action cannot be undone.`,
+    async () => {
+      try {
+        await PeopleAPI.delete(id);
+        if (String(editingPersonId) === String(id)) {
+          resetPersonForm();
         }
-    });
+        await refreshPeopleViews();
+      } catch (error) {
+        console.error("Error deleting person:", error);
+        showAlert("Error", "Failed to delete staff member. Please try again.");
+      }
+    },
+  );
 }
 
 // Initialize on load
 init();
 
 // Hover preview pagination handlers
-document.getElementById('preview-page-prev').addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (hoverPreviewState && hoverPreviewState.page > 0) {
-        hoverPreviewState.page--;
-        const schedule = scheduleData[hoverPreviewState.dateStr] || { shifts: { A: [], M: [], B: [], C: [] } };
-        const assignedStaff = [];
-        ['A', 'M', 'B', 'C'].forEach(shift => {
-            const people = schedule.shifts[shift] || [];
-            people.forEach(personName => {
-                const person = peopleData.find(p => p.name === personName);
-                if (person) assignedStaff.push({ person, shift });
-            });
-        });
-        renderHoverPreviewContent(assignedStaff);
-    }
+document.getElementById("preview-page-prev").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (hoverPreviewState && hoverPreviewState.page > 0) {
+    hoverPreviewState.page--;
+    const schedule = scheduleData[hoverPreviewState.dateStr] || {
+      shifts: { A: [], M: [], B: [], C: [] },
+    };
+    const assignedStaff = [];
+    ["A", "M", "B", "C"].forEach((shift) => {
+      const people = schedule.shifts[shift] || [];
+      people.forEach((personName) => {
+        const person = peopleData.find((p) => p.name === personName);
+        if (person) assignedStaff.push({ person, shift });
+      });
+    });
+    renderHoverPreviewContent(assignedStaff);
+  }
 });
 
-document.getElementById('preview-page-next').addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (hoverPreviewState) {
-        const schedule = scheduleData[hoverPreviewState.dateStr] || { shifts: { A: [], M: [], B: [], C: [] } };
-        const assignedStaff = [];
-        ['A', 'M', 'B', 'C'].forEach(shift => {
-            const people = schedule.shifts[shift] || [];
-            people.forEach(personName => {
-                const person = peopleData.find(p => p.name === personName);
-                if (person) assignedStaff.push({ person, shift });
-            });
-        });
-        const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
-        if (hoverPreviewState.page < totalPages - 1) {
-            hoverPreviewState.page++;
-            renderHoverPreviewContent(assignedStaff);
-        }
+document.getElementById("preview-page-next").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (hoverPreviewState) {
+    const schedule = scheduleData[hoverPreviewState.dateStr] || {
+      shifts: { A: [], M: [], B: [], C: [] },
+    };
+    const assignedStaff = [];
+    ["A", "M", "B", "C"].forEach((shift) => {
+      const people = schedule.shifts[shift] || [];
+      people.forEach((personName) => {
+        const person = peopleData.find((p) => p.name === personName);
+        if (person) assignedStaff.push({ person, shift });
+      });
+    });
+    const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
+    if (hoverPreviewState.page < totalPages - 1) {
+      hoverPreviewState.page++;
+      renderHoverPreviewContent(assignedStaff);
     }
+  }
 });

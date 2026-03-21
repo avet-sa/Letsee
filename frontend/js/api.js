@@ -208,9 +208,6 @@ const HandoversAPI = {
             due_date: data.due_date || null,
             due_time: data.due_time || null,
         };
-        console.log('[CREATE] Input data.guestName:', data.guestName);
-        console.log('[CREATE] Payload guest_name:', payload.guest_name);
-        console.log('[CREATE] Full payload:', payload);
         return apiFetch('/handovers', {
             method: 'POST',
             body: JSON.stringify(payload),

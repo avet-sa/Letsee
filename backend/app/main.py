@@ -1,11 +1,11 @@
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
 import os
 
 from app.core.config import settings
-from app.core.database import Base, engine
+from app.core.database import engine
 from app.core.rate_limit import api_rate_limiter
 from app.core.scheduler import backup_scheduler
 from app.core.logging_config import setup_logging, get_logger
