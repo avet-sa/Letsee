@@ -81,3 +81,7 @@ loki_data/
 *backup*.key
 frontend/scheduler-example.html
 todo.py
+
+# Frontend
+frontend/node_modules/
+frontend/.eslintignore

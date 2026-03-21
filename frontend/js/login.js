@@ -1,262 +1,338 @@
-// Login page functionality
+/**
+ * Login page functionality for Letsee Frontend
+ */
 
-const STORAGE_KEY_THEME = "letsee_theme";
+const STORAGE_KEY_THEME = 'letsee_theme';
 
+/**
+ * Toggle between login and register forms
+ */
 function toggleMode() {
-  document.getElementById("login-form").classList.toggle("active");
-  document.getElementById("register-form").classList.toggle("active");
+  document.getElementById('login-form')?.classList.toggle('active');
+  document.getElementById('register-form')?.classList.toggle('active');
   clearErrors();
 }
 
+/**
+ * Clear all error and success messages
+ */
 function clearErrors() {
-  document.querySelectorAll(".error-message").forEach((el) => {
-    el.classList.remove("show");
-    el.textContent = "";
+  document.querySelectorAll('.error-message').forEach((el) => {
+    el.classList.remove('show');
+    el.textContent = '';
   });
-  document.querySelectorAll(".success-message").forEach((el) => {
-    el.classList.remove("show");
+  document.querySelectorAll('.success-message').forEach((el) => {
+    el.classList.remove('show');
   });
 }
 
-// Basic sanitization and validation helpers
+/**
+ * Sanitize email input
+ * @param {string} value - Email to sanitize
+ * @returns {string} - Sanitized email
+ */
 function sanitizeEmail(value) {
-  const v = (value || "").trim();
-  // Strip spaces and dangerous characters
-  const cleaned = v.replace(/[\s<>"'`]/g, "");
-  return cleaned;
+  const v = (value || '').trim();
+  return v.replace(/[\s<>"'`]/g, '');
 }
 
+/**
+ * Sanitize name input
+ * @param {string} value - Name to sanitize
+ * @returns {string} - Sanitized name
+ */
 function sanitizeName(value) {
-  const v = (value || "").trim();
-  // Remove control chars and HTML-sensitive chars
-  return v.replace(/[<>"'`]/g, "").slice(0, 100);
+  const v = (value || '').trim();
+  return v.replace(/[<>"'`]/g, '').slice(0, 100);
 }
 
+/**
+ * Sanitize password (trim only)
+ * @param {string} value - Password to sanitize
+ * @returns {string} - Sanitized password
+ */
 function sanitizePassword(value) {
-  // Do not aggressively mutate passwords; trim only
-  return (value || "").trim();
+  return (value || '').trim();
 }
 
+/**
+ * Validate email format
+ * @param {string} value - Email to validate
+ * @returns {boolean} - True if valid email
+ */
 function isValidEmail(value) {
   return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value);
 }
 
+/**
+ * Check if password meets minimum requirements
+ * @param {string} value - Password to check
+ * @returns {boolean} - True if password is strong enough
+ */
 function isStrongEnoughPassword(value) {
-  // Minimal client-side check; backend will enforce hashing/security
-  return typeof value === "string" && value.length >= 8;
+  return typeof value === 'string' && value.length >= 8;
 }
 
+/**
+ * Handle login form submission
+ * @param {Event} event - Form submit event
+ */
 async function handleLogin(event) {
   event.preventDefault();
   clearErrors();
 
-  const emailInput = document.getElementById("login-email").value;
-  const passwordInput = document.getElementById("login-password").value;
+  const emailInput = document.getElementById('login-email')?.value || '';
+  const passwordInput = document.getElementById('login-password')?.value || '';
   const email = sanitizeEmail(emailInput);
   const password = sanitizePassword(passwordInput);
-  const btn = document.getElementById("login-btn");
-  const loading = document.getElementById("login-loading");
-  const errorEl = document.getElementById("login-error");
+  const btn = document.getElementById('login-btn');
+  const loading = document.getElementById('login-loading');
+  const errorEl = document.getElementById('login-error');
 
-  btn.disabled = true;
-  loading.classList.add("show");
+  if (btn) {btn.disabled = true;}
+  if (loading) {loading.classList.add('show');}
 
   try {
     if (!isValidEmail(email)) {
-      throw new Error("Please enter a valid email address.");
+      throw new Error('Please enter a valid email address.');
     }
     if (!isStrongEnoughPassword(password)) {
-      throw new Error("Password must be at least 8 characters.");
+      throw new Error('Password must be at least 8 characters.');
     }
-    const loginPayload = { email, password };
 
     const response = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(loginPayload),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      const errorMsg = data.detail || data.message || "Login failed";
+      const errorMsg = data.detail || data.message || 'Login failed';
       throw new Error(errorMsg);
     }
 
     // Save tokens
-    localStorage.setItem("letsee_access_token", data.access_token);
-    localStorage.setItem("letsee_refresh_token", data.refresh_token);
+    localStorage.setItem('letsee_access_token', data.access_token);
+    localStorage.setItem('letsee_refresh_token', data.refresh_token);
 
     // Redirect to main app
-    window.location.href = "/index.html";
+    window.location.href = '/index.html';
   } catch (error) {
-    console.error("Login error:", error);
-    errorEl.textContent = error.message;
-    errorEl.classList.add("show");
-    btn.disabled = false;
-    loading.classList.remove("show");
+    console.error('Login error:', error);
+    if (errorEl) {
+      errorEl.textContent = error.message;
+      errorEl.classList.add('show');
+    }
+    if (btn) {btn.disabled = false;}
+    if (loading) {loading.classList.remove('show');}
   }
 }
 
+/**
+ * Handle registration form submission
+ * @param {Event} event - Form submit event
+ */
 async function handleRegister(event) {
   event.preventDefault();
   clearErrors();
 
-  const nameRaw = document.getElementById("register-name").value;
-  const emailRaw = document.getElementById("register-email").value;
-  const passwordRaw = document.getElementById("register-password").value;
-  const confirmRaw = document.getElementById("register-confirm").value;
+  const nameRaw = document.getElementById('register-name')?.value || '';
+  const emailRaw = document.getElementById('register-email')?.value || '';
+  const passwordRaw = document.getElementById('register-password')?.value || '';
+  const confirmRaw = document.getElementById('register-confirm')?.value || '';
+
   const name = sanitizeName(nameRaw);
   const email = sanitizeEmail(emailRaw);
   const password = sanitizePassword(passwordRaw);
   const confirm = sanitizePassword(confirmRaw);
-  const btn = document.getElementById("register-btn");
-  const loading = document.getElementById("register-loading");
-  const successEl = document.getElementById("register-success");
-  const errorEl = document.getElementById("register-error");
+
+  const btn = document.getElementById('register-btn');
+  const loading = document.getElementById('register-loading');
+  const successEl = document.getElementById('register-success');
+  const errorEl = document.getElementById('register-error');
 
   // Validate passwords match
   if (password !== confirm) {
-    document.getElementById("register-confirm-error").textContent =
-      "Passwords do not match";
-    document.getElementById("register-confirm-error").classList.add("show");
+    const confirmErrorEl = document.getElementById('register-confirm-error');
+    if (confirmErrorEl) {
+      confirmErrorEl.textContent = 'Passwords do not match';
+      confirmErrorEl.classList.add('show');
+    }
     return;
   }
 
   // Basic input validation
   if (!name) {
-    document.getElementById("register-name-error").textContent =
-      "Name is required";
-    document.getElementById("register-name-error").classList.add("show");
+    const nameErrorEl = document.getElementById('register-name-error');
+    if (nameErrorEl) {
+      nameErrorEl.textContent = 'Name is required';
+      nameErrorEl.classList.add('show');
+    }
     return;
   }
   if (!isValidEmail(email)) {
-    document.getElementById("register-email-error").textContent =
-      "Please enter a valid email address";
-    document.getElementById("register-email-error").classList.add("show");
+    const emailErrorEl = document.getElementById('register-email-error');
+    if (emailErrorEl) {
+      emailErrorEl.textContent = 'Please enter a valid email address';
+      emailErrorEl.classList.add('show');
+    }
     return;
   }
   if (!isStrongEnoughPassword(password)) {
-    document.getElementById("register-password-error").textContent =
-      "Password must be at least 8 characters";
-    document.getElementById("register-password-error").classList.add("show");
+    const passwordErrorEl = document.getElementById('register-password-error');
+    if (passwordErrorEl) {
+      passwordErrorEl.textContent = 'Password must be at least 8 characters';
+      passwordErrorEl.classList.add('show');
+    }
     return;
   }
 
-  btn.disabled = true;
-  loading.classList.add("show");
+  if (btn) {btn.disabled = true;}
+  if (loading) {loading.classList.add('show');}
 
   try {
     const response = await fetch(`${API_BASE}/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        full_name: name,
-      }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, full_name: name }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.detail || "Registration failed");
+      throw new Error(data.detail || 'Registration failed');
     }
 
     // Now login with the new account
-    successEl.classList.add("show");
+    if (successEl) {successEl.classList.add('show');}
     setTimeout(() => {
       performLogin(email, password);
     }, 1500);
   } catch (error) {
-    errorEl.textContent = error.message;
-    errorEl.classList.add("show");
-    btn.disabled = false;
-    loading.classList.remove("show");
+    console.error('Registration error:', error);
+    if (errorEl) {
+      errorEl.textContent = error.message;
+      errorEl.classList.add('show');
+    }
+    if (btn) {btn.disabled = false;}
+    if (loading) {loading.classList.remove('show');}
   }
 }
 
-// Helper function to perform login without requiring a form event
+/**
+ * Perform login with credentials (used after registration)
+ * @param {string} email - User email
+ * @param {string} password - User password
+ */
 async function performLogin(email, password) {
   try {
     const safeEmail = sanitizeEmail(email);
     const safePassword = sanitizePassword(password);
+
     const response = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: safeEmail, password: safePassword }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.detail || "Login failed");
+      throw new Error(data.detail || 'Login failed');
     }
 
     // Save tokens
-    localStorage.setItem("letsee_access_token", data.access_token);
-    localStorage.setItem("letsee_refresh_token", data.refresh_token);
+    localStorage.setItem('letsee_access_token', data.access_token);
+    localStorage.setItem('letsee_refresh_token', data.refresh_token);
 
     // Redirect to main app
-    window.location.href = "/index.html";
+    window.location.href = '/index.html';
   } catch (error) {
-    console.error("Auto-login after registration failed:", error.message);
+    console.error('Auto-login after registration failed:', error);
     // Fall back to manual login
     setTimeout(() => {
-      showAlert(
-        "Account Created",
-        "Account created! Please log in with your credentials.",
-      );
+      showAlert('Account Created', 'Account created! Please log in with your credentials.');
       location.reload();
     }, 1000);
   }
 }
 
-// Ensure user is not already logged in
-window.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("letsee_access_token");
+/**
+ * Initialize login page on DOM ready
+ */
+window.addEventListener('DOMContentLoaded', () => {
+  // Check if already logged in
+  const token = localStorage.getItem('letsee_access_token');
   if (token) {
-    window.location.href = "/index.html";
+    window.location.href = '/index.html';
   }
 
   // Load saved theme
   loadTheme();
 });
 
-// Theme toggle
+/**
+ * Toggle between light and dark theme
+ */
 function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute("data-theme");
-  const newTheme = currentTheme === "dark" ? "light" : "dark";
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
 
-  document.documentElement.setAttribute("data-theme", newTheme);
+  document.documentElement.setAttribute('data-theme', newTheme);
   localStorage.setItem(STORAGE_KEY_THEME, newTheme);
   updateThemeIcon(newTheme);
 }
 
-// Update theme icon
+/**
+ * Update theme toggle button icon
+ * @param {string} theme - Current theme ('light' or 'dark')
+ */
 function updateThemeIcon(theme) {
-  const themeBtn = document.getElementById("theme-toggle-btn");
-  if (themeBtn) {
-    if (theme === "dark") {
-      themeBtn.innerHTML =
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-    } else {
-      themeBtn.innerHTML =
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-    }
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  if (!themeBtn) {return;}
+
+  if (theme === 'dark') {
+    themeBtn.innerHTML =
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  } else {
+    themeBtn.innerHTML =
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
   }
 
   // Update favicon color
-  const favicon = document.getElementById("favicon");
+  const favicon = document.getElementById('favicon');
   if (favicon) {
-    const color = theme === "dark" ? "%23eee" : "%23333";
+    const color = theme === 'dark' ? '%23eee' : '%23333';
     favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='${color}'>L</text></svg>`;
   }
 }
 
-// Load theme on startup
+/**
+ * Load saved theme from localStorage
+ */
 function loadTheme() {
-  const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) || "light";
-  document.documentElement.setAttribute("data-theme", savedTheme);
+  const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
   updateThemeIcon(savedTheme);
+}
+
+// Export for module usage
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    toggleMode,
+    clearErrors,
+    sanitizeEmail,
+    sanitizeName,
+    sanitizePassword,
+    isValidEmail,
+    isStrongEnoughPassword,
+    handleLogin,
+    handleRegister,
+    performLogin,
+    toggleTheme,
+    updateThemeIcon,
+    loadTheme,
+  };
 }

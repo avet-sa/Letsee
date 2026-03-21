@@ -1,0 +1,27 @@
+{
+  "name": "letsee-frontend",
+  "version": "1.0.0",
+  "description": "Letsee Staff Shift Management - Frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint js/*.js",
+    "lint:fix": "eslint js/*.js --fix",
+    "format": "prettier --write \"js/*.js\" \"css/*.css\" \"*.html\"",
+    "format:check": "prettier --check \"js/*.js\" \"css/*.css\" \"*.html\"",
+    "check": "npm run lint && npm run format:check",
+    "dev": "python -m http.server 3000",
+    "serve": "python -m http.server 3000"
+  },
+  "keywords": [
+    "hotel",
+    "shift-management",
+    "handover"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
+  }
+}

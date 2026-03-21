@@ -10,7 +10,7 @@ const DEV_MODE = false;
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let selectedDate = null;
-let selectedShift = "A"; // Track which shift is currently selected
+const selectedShift = 'A'; // Track which shift is currently selected
 let scheduleData = {};
 let peopleData = [];
 let currentUser = null;
@@ -19,55 +19,55 @@ let openDayCell = null;
 // Shift definitions
 const SHIFTS = {
   A: {
-    name: "Morning",
-    time: "08:00 - 17:00",
-    color: "rgba(255, 200, 100, 0.7)",
+    name: 'Morning',
+    time: '08:00 - 17:00',
+    color: 'rgba(255, 200, 100, 0.7)',
   },
   M: {
-    name: "Middle",
-    time: "11:00 - 20:00",
-    color: "rgba(150, 200, 255, 0.7)",
+    name: 'Middle',
+    time: '11:00 - 20:00',
+    color: 'rgba(150, 200, 255, 0.7)',
   },
-  B: { name: "Late", time: "15:00 - 00:00", color: "rgba(255, 150, 150, 0.7)" },
+  B: { name: 'Late', time: '15:00 - 00:00', color: 'rgba(255, 150, 150, 0.7)' },
   C: {
-    name: "Night",
-    time: "00:00 - 08:00",
-    color: "rgba(150, 150, 200, 0.7)",
+    name: 'Night',
+    time: '00:00 - 08:00',
+    color: 'rgba(150, 150, 200, 0.7)',
   },
 };
 const STAFF_COLOR_PRESETS = [
-  "#3498db",
-  "#e74c3c",
-  "#2ecc71",
-  "#f39c12",
-  "#9b59b6",
-  "#1abc9c",
-  "#f1c40f",
-  "#e84393",
+  '#3498db',
+  '#e74c3c',
+  '#2ecc71',
+  '#f39c12',
+  '#9b59b6',
+  '#1abc9c',
+  '#f1c40f',
+  '#e84393',
 ];
 const DEFAULT_PERSON_COLOR = STAFF_COLOR_PRESETS[0];
 const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 let editingPersonId = null;
-let editingPersonOriginalName = "";
+let editingPersonOriginalName = '';
 
 function initPersonColorPicker() {
-  const picker = document.getElementById("new-person-color-picker");
-  const colorInput = document.getElementById("new-person-color");
+  const picker = document.getElementById('new-person-color-picker');
+  const colorInput = document.getElementById('new-person-color');
 
-  if (!picker || !colorInput) return;
+  if (!picker || !colorInput) {return;}
 
   const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
   colorInput.value = selectedColor;
@@ -76,52 +76,49 @@ function initPersonColorPicker() {
     (color) => `
         <button
             type="button"
-            class="color-swatch${color.toLowerCase() === selectedColor.toLowerCase() ? " is-selected" : ""}"
+            class="color-swatch${color.toLowerCase() === selectedColor.toLowerCase() ? ' is-selected' : ''}"
             style="--swatch-color: ${color}"
             data-color="${color}"
             onclick="selectPersonColor('${color}')"
             aria-label="Select ${color}"
             aria-pressed="${color.toLowerCase() === selectedColor.toLowerCase()}">
         </button>
-    `,
-  ).join("");
+    `
+  ).join('');
 }
 
 function selectPersonColor(color) {
-  const colorInput = document.getElementById("new-person-color");
-  if (!colorInput) return;
+  const colorInput = document.getElementById('new-person-color');
+  if (!colorInput) {return;}
 
   colorInput.value = color;
-  document
-    .querySelectorAll("#new-person-color-picker .color-swatch")
-    .forEach((swatch) => {
-      const isSelected =
-        swatch.dataset.color.toLowerCase() === color.toLowerCase();
-      swatch.classList.toggle("is-selected", isSelected);
-      swatch.setAttribute("aria-pressed", String(isSelected));
-    });
+  document.querySelectorAll('#new-person-color-picker .color-swatch').forEach((swatch) => {
+    const isSelected = swatch.dataset.color.toLowerCase() === color.toLowerCase();
+    swatch.classList.toggle('is-selected', isSelected);
+    swatch.setAttribute('aria-pressed', String(isSelected));
+  });
 }
 
 function resetPersonForm() {
   editingPersonId = null;
-  editingPersonOriginalName = "";
+  editingPersonOriginalName = '';
 
-  const nameInput = document.getElementById("new-person-name");
-  const titleEl = document.getElementById("person-form-title");
-  const saveBtn = document.getElementById("save-person-btn");
-  const cancelBtn = document.getElementById("cancel-person-edit");
+  const nameInput = document.getElementById('new-person-name');
+  const titleEl = document.getElementById('person-form-title');
+  const saveBtn = document.getElementById('save-person-btn');
+  const cancelBtn = document.getElementById('cancel-person-edit');
 
   if (nameInput) {
-    nameInput.value = "";
+    nameInput.value = '';
   }
   if (titleEl) {
-    titleEl.textContent = "Add New Staff Member";
+    titleEl.textContent = 'Add New Staff Member';
   }
   if (saveBtn) {
-    saveBtn.textContent = "+ Add";
+    saveBtn.textContent = '+ Add';
   }
   if (cancelBtn) {
-    cancelBtn.style.display = "none";
+    cancelBtn.style.display = 'none';
   }
 
   initPersonColorPicker();
@@ -129,22 +126,19 @@ function resetPersonForm() {
 }
 
 function startPersonEdit(id) {
-  const person = peopleData.find(
-    (candidate) => String(candidate.id) === String(id),
-  );
-  if (!person) return;
+  const person = peopleData.find((candidate) => String(candidate.id) === String(id));
+  if (!person) {return;}
 
   editingPersonId = String(person.id);
   editingPersonOriginalName = person.name;
 
-  document.getElementById("person-form-title").textContent =
-    "Edit Staff Member";
-  document.getElementById("save-person-btn").textContent = "Save";
-  document.getElementById("cancel-person-edit").style.display = "inline-flex";
-  document.getElementById("new-person-name").value = person.name;
+  document.getElementById('person-form-title').textContent = 'Edit Staff Member';
+  document.getElementById('save-person-btn').textContent = 'Save';
+  document.getElementById('cancel-person-edit').style.display = 'inline-flex';
+  document.getElementById('new-person-name').value = person.name;
   initPersonColorPicker();
   selectPersonColor(person.color);
-  document.getElementById("new-person-name").focus();
+  document.getElementById('new-person-name').focus();
 }
 
 function cancelPersonEdit() {
@@ -156,17 +150,12 @@ async function refreshPeopleViews() {
   await loadSchedules();
   renderCalendar();
 
-  if (
-    selectedDate &&
-    document.getElementById("day-modal").style.display !== "none"
-  ) {
-    const dateParts = selectedDate.split("-");
+  if (selectedDate && document.getElementById('day-modal').style.display !== 'none') {
+    const dateParts = selectedDate.split('-');
     const day = parseInt(dateParts[2], 10);
     const monthIndex = parseInt(dateParts[1], 10) - 1;
 
-    openDayCell = document.querySelector(
-      `.calendar-day[data-date="${selectedDate}"]`,
-    );
+    openDayCell = document.querySelector(`.calendar-day[data-date="${selectedDate}"]`);
     renderDayModalContent(selectedDate, day, MONTH_NAMES[monthIndex]);
     requestAnimationFrame(positionDayModal);
   }
@@ -178,11 +167,11 @@ async function refreshPeopleViews() {
 // MOCK DATA (for development)
 // ============================================
 const MOCK_PEOPLE = [
-  { id: 1, name: "Alice Johnson", color: "#3498db" },
-  { id: 2, name: "Bob Smith", color: "#e74c3c" },
-  { id: 3, name: "Carol Davis", color: "#2ecc71" },
-  { id: 4, name: "David Wilson", color: "#f39c12" },
-  { id: 5, name: "Emma Brown", color: "#9b59b6" },
+  { id: 1, name: 'Alice Johnson', color: '#3498db' },
+  { id: 2, name: 'Bob Smith', color: '#e74c3c' },
+  { id: 3, name: 'Carol Davis', color: '#2ecc71' },
+  { id: 4, name: 'David Wilson', color: '#f39c12' },
+  { id: 5, name: 'Emma Brown', color: '#9b59b6' },
 ];
 
 const MOCK_SCHEDULES = {
@@ -190,43 +179,43 @@ const MOCK_SCHEDULES = {
 };
 
 // Mock current user
-const MOCK_USER = { id: 1, name: "Admin User" };
+const MOCK_USER = { id: 1, name: 'Admin User' };
 
 // ============================================
 // MOCK API (for development)
 // ============================================
 const MockDB = {
   init: async () => {
-    console.log("[MOCK] DB initialized");
+    console.log('[MOCK] DB initialized');
     return Promise.resolve();
   },
   getCurrentUser: async () => {
-    console.log("[MOCK] Getting current user");
+    console.log('[MOCK] Getting current user');
     return Promise.resolve(MOCK_USER);
   },
   getPeople: async () => {
-    console.log("[MOCK] Getting people");
+    console.log('[MOCK] Getting people');
     return Promise.resolve([...MOCK_PEOPLE]);
   },
   getSchedule: async () => {
-    console.log("[MOCK] Getting schedules");
+    console.log('[MOCK] Getting schedules');
     return Promise.resolve({ ...MOCK_SCHEDULES });
   },
   saveSchedule: async (schedule) => {
-    console.log("[MOCK] Saving schedule:", schedule);
+    console.log('[MOCK] Saving schedule:', schedule);
     // Update mock data
     Object.assign(MOCK_SCHEDULES, schedule);
     return Promise.resolve(schedule);
   },
   logout: () => {
-    console.log("[MOCK] Logging out");
-    window.location.href = "/";
+    console.log('[MOCK] Logging out');
+    window.location.href = '/';
   },
 };
 
 const MockPeopleAPI = {
   create: async (name, color) => {
-    console.log("[MOCK] Creating person:", name, color);
+    console.log('[MOCK] Creating person:', name, color);
     const newPerson = {
       id: MOCK_PEOPLE.length + 1,
       name,
@@ -236,11 +225,11 @@ const MockPeopleAPI = {
     return Promise.resolve(newPerson);
   },
   list: async () => {
-    console.log("[MOCK] Listing people");
+    console.log('[MOCK] Listing people');
     return Promise.resolve([...MOCK_PEOPLE]);
   },
   delete: async (id) => {
-    console.log("[MOCK] Deleting person:", id);
+    console.log('[MOCK] Deleting person:', id);
     const index = MOCK_PEOPLE.findIndex((p) => p.id === id);
     if (index > -1) {
       MOCK_PEOPLE.splice(index, 1);
@@ -251,12 +240,12 @@ const MockPeopleAPI = {
 
 const MockSchedulesAPI = {
   list: async (dateStr) => {
-    console.log("[MOCK] Listing schedules for:", dateStr);
+    console.log('[MOCK] Listing schedules for:', dateStr);
     const schedule = MOCK_SCHEDULES[dateStr];
     return Promise.resolve(schedule ? [{ id: dateStr, ...schedule }] : []);
   },
   delete: async (id) => {
-    console.log("[MOCK] Deleting schedule:", id);
+    console.log('[MOCK] Deleting schedule:', id);
     delete MOCK_SCHEDULES[id];
     return Promise.resolve({ id });
   },
@@ -293,7 +282,7 @@ async function loadCurrentUser() {
   try {
     currentUser = await DB.getCurrentUser();
   } catch (error) {
-    console.error("Error loading user:", error);
+    console.error('Error loading user:', error);
   }
 }
 
@@ -302,7 +291,7 @@ async function loadPeople() {
   try {
     peopleData = await DB.getPeople();
   } catch (error) {
-    console.error("Error loading people:", error);
+    console.error('Error loading people:', error);
     peopleData = [];
   }
 }
@@ -313,20 +302,20 @@ async function loadSchedules() {
     const allSchedules = await DB.getSchedule();
     scheduleData = allSchedules;
   } catch (error) {
-    console.error("Error loading schedules:", error);
+    console.error('Error loading schedules:', error);
     scheduleData = {};
   }
 }
 
 // Render calendar
 function renderCalendar() {
-  const monthYearDisplay = document.getElementById("month-year-display");
+  const monthYearDisplay = document.getElementById('month-year-display');
   if (monthYearDisplay) {
     monthYearDisplay.textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
   }
 
-  const grid = document.getElementById("calendar-grid");
-  grid.innerHTML = "";
+  const grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '';
 
   // Get first day of month and total days
   const firstDay = new Date(currentYear, currentMonth, 1);
@@ -349,7 +338,7 @@ function renderCalendar() {
     const day = prevDaysInMonth - i;
     const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-    const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     const dayEl = createDayElement(day, dateStr, true);
     grid.appendChild(dayEl);
@@ -357,11 +346,8 @@ function renderCalendar() {
 
   // Render current month days
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const isToday =
-      day === todayDay &&
-      currentMonth === todayMonth &&
-      currentYear === todayYear;
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isToday = day === todayDay && currentMonth === todayMonth && currentYear === todayYear;
     const isSelected = dateStr === selectedDate;
 
     const dayEl = createDayElement(day, dateStr, false, isToday, isSelected);
@@ -375,7 +361,7 @@ function renderCalendar() {
   for (let i = 1; i <= remainingCells; i++) {
     const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
     const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-    const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+    const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
 
     const dayEl = createDayElement(i, dateStr, true);
     grid.appendChild(dayEl);
@@ -383,19 +369,13 @@ function renderCalendar() {
 }
 
 // Create day element
-function createDayElement(
-  day,
-  dateStr,
-  isOtherMonth,
-  isToday = false,
-  isSelected = false,
-) {
-  const dayEl = document.createElement("div");
-  dayEl.className = "calendar-day";
+function createDayElement(day, dateStr, isOtherMonth, isToday = false, isSelected = false) {
+  const dayEl = document.createElement('div');
+  dayEl.className = 'calendar-day';
 
-  if (isOtherMonth) dayEl.classList.add("other-month");
-  if (isToday) dayEl.classList.add("today");
-  if (isSelected) dayEl.classList.add("selected");
+  if (isOtherMonth) {dayEl.classList.add('other-month');}
+  if (isToday) {dayEl.classList.add('today');}
+  if (isSelected) {dayEl.classList.add('selected');}
 
   dayEl.dataset.date = dateStr;
   dayEl.onclick = () => !isOtherMonth && openDayModal(dateStr, dayEl);
@@ -403,11 +383,11 @@ function createDayElement(
   dayEl.onmouseleave = () => hideHoverPreview();
 
   // Day number wrapper collapses on hover so schedule items can move up.
-  const dayNumberSlot = document.createElement("div");
-  dayNumberSlot.className = "day-number-slot";
+  const dayNumberSlot = document.createElement('div');
+  dayNumberSlot.className = 'day-number-slot';
 
-  const dayNumber = document.createElement("div");
-  dayNumber.className = "day-number";
+  const dayNumber = document.createElement('div');
+  dayNumber.className = 'day-number';
   dayNumber.textContent = day;
   dayNumberSlot.dataset.day = String(day);
 
@@ -417,52 +397,52 @@ function createDayElement(
   // Schedule info - 2x2 shift grid, one quadrant per shift.
   const schedule = scheduleData[dateStr];
   if (schedule && !isOtherMonth && schedule.shifts) {
-    const gridContainer = document.createElement("div");
-    gridContainer.className = "day-shifts-grid";
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'day-shifts-grid';
 
-    ["A", "M", "B", "C"].forEach((shift) => {
+    ['A', 'M', 'B', 'C'].forEach((shift) => {
       const shiftInfo = SHIFTS[shift];
       const people = (schedule.shifts[shift] || [])
         .map((personName) => peopleData.find((p) => p.name === personName))
         .filter(Boolean);
 
-      const shiftLane = document.createElement("div");
-      shiftLane.className = "day-shift-quadrant";
-      shiftLane.style.background = shiftInfo.color.replace("0.7", "0.10");
-      shiftLane.style.borderColor = shiftInfo.color.replace("0.7", "0.28");
+      const shiftLane = document.createElement('div');
+      shiftLane.className = 'day-shift-quadrant';
+      shiftLane.style.background = shiftInfo.color.replace('0.7', '0.10');
+      shiftLane.style.borderColor = shiftInfo.color.replace('0.7', '0.28');
 
-      const shiftLabel = document.createElement("span");
-      shiftLabel.className = "day-shift-quadrant-label";
+      const shiftLabel = document.createElement('span');
+      shiftLabel.className = 'day-shift-quadrant-label';
       shiftLabel.textContent = shift;
-      shiftLabel.style.color = shiftInfo.color.replace("0.7", "1");
+      shiftLabel.style.color = shiftInfo.color.replace('0.7', '1');
       shiftLane.appendChild(shiftLabel);
 
-      const shiftPeople = document.createElement("div");
-      shiftPeople.className = "day-shift-quadrant-people";
+      const shiftPeople = document.createElement('div');
+      shiftPeople.className = 'day-shift-quadrant-people';
 
       people.slice(0, DAY_CELL_SHIFT_VISIBLE_LIMIT).forEach((person) => {
-        const personCircle = document.createElement("span");
-        personCircle.className = "day-shift-person";
+        const personCircle = document.createElement('span');
+        personCircle.className = 'day-shift-person';
         personCircle.textContent = getInitials(person.name);
         personCircle.title = `${person.name} (${shift})`;
-        personCircle.style.setProperty("--person-color", person.color);
-        personCircle.style.setProperty("--person-bg", person.color + "20");
-        personCircle.style.setProperty("--person-border", person.color + "55");
+        personCircle.style.setProperty('--person-color', person.color);
+        personCircle.style.setProperty('--person-bg', person.color + '20');
+        personCircle.style.setProperty('--person-border', person.color + '55');
         shiftPeople.appendChild(personCircle);
       });
 
       if (people.length > DAY_CELL_SHIFT_VISIBLE_LIMIT) {
-        const overflowIndicator = document.createElement("span");
-        overflowIndicator.className = "day-shift-person-more";
+        const overflowIndicator = document.createElement('span');
+        overflowIndicator.className = 'day-shift-person-more';
         overflowIndicator.textContent = `+${people.length - DAY_CELL_SHIFT_VISIBLE_LIMIT}`;
         overflowIndicator.title = `${people.length - DAY_CELL_SHIFT_VISIBLE_LIMIT} more on ${shift}`;
         shiftPeople.appendChild(overflowIndicator);
       }
 
       if (people.length === 0) {
-        const emptyIndicator = document.createElement("span");
-        emptyIndicator.className = "day-shift-quadrant-empty";
-        emptyIndicator.textContent = "";
+        const emptyIndicator = document.createElement('span');
+        emptyIndicator.className = 'day-shift-quadrant-empty';
+        emptyIndicator.textContent = '';
         shiftPeople.appendChild(emptyIndicator);
       }
 
@@ -479,9 +459,9 @@ function createDayElement(
 // Get initials from name
 function getInitials(name) {
   return name
-    .split(" ")
+    .split(' ')
     .map((part) => part[0])
-    .join("")
+    .join('')
     .toUpperCase()
     .slice(0, 2);
 }
@@ -501,7 +481,7 @@ function showHoverPreview(dateStr, event) {
   const schedule = scheduleData[dateStr] || {
     shifts: { A: [], M: [], B: [], C: [] },
   };
-  const preview = document.getElementById("hover-preview");
+  const preview = document.getElementById('hover-preview');
 
   // Initialize or update hover preview state
   if (!hoverPreviewState || hoverPreviewState.dateStr !== dateStr) {
@@ -509,34 +489,33 @@ function showHoverPreview(dateStr, event) {
   }
 
   // Extract day and month from dateStr
-  const dateParts = dateStr.split("-");
+  const dateParts = dateStr.split('-');
   const day = parseInt(dateParts[2]);
   const monthIndex = parseInt(dateParts[1]) - 1;
   const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   // Set header
-  document.getElementById("hover-preview-day").textContent = day;
-  document.getElementById("hover-preview-month").textContent =
-    monthNames[monthIndex].toUpperCase();
+  document.getElementById('hover-preview-day').textContent = day;
+  document.getElementById('hover-preview-month').textContent = monthNames[monthIndex].toUpperCase();
 
   // Build staff rows sorted by shift (A, M, B, C)
   const assignedStaff = [];
 
   // Sort by shift order
-  ["A", "M", "B", "C"].forEach((shift) => {
+  ['A', 'M', 'B', 'C'].forEach((shift) => {
     const people = schedule.shifts[shift] || [];
     people.forEach((personName) => {
       const person = peopleData.find((p) => p.name === personName);
@@ -550,25 +529,25 @@ function showHoverPreview(dateStr, event) {
   renderHoverPreviewContent(assignedStaff);
 
   // Show preview temporarily to get actual dimensions
-  preview.style.display = "block";
-  preview.style.visibility = "hidden";
+  preview.style.display = 'block';
+  preview.style.visibility = 'hidden';
 
   // Position preview like modal - centered below the cell
-  const cellEl = event.target.closest(".calendar-day");
+  const cellEl = event.target.closest('.calendar-day');
 
   if (hoverPreviewCell && hoverPreviewCell !== cellEl) {
-    hoverPreviewCell.classList.remove("preview-open");
+    hoverPreviewCell.classList.remove('preview-open');
   }
 
   hoverPreviewCell = cellEl;
 
   if (hoverPreviewCell) {
-    hoverPreviewCell.classList.add("preview-open");
+    hoverPreviewCell.classList.add('preview-open');
   }
 
   if (cellEl) {
     const rect = cellEl.getBoundingClientRect();
-    const previewDialog = preview.querySelector(".hover-preview-dialog");
+    const previewDialog = preview.querySelector('.hover-preview-dialog');
     const pw = 240;
     const ph = previewDialog ? previewDialog.offsetHeight : 200;
     const vw = window.innerWidth;
@@ -578,8 +557,8 @@ function showHoverPreview(dateStr, event) {
     let top = rect.bottom + 25;
 
     // Keep within viewport horizontally
-    if (left + pw > vw - 8) left = vw - pw - 8;
-    if (left < 8) left = 8;
+    if (left + pw > vw - 8) {left = vw - pw - 8;}
+    if (left < 8) {left = 8;}
 
     // Keep within viewport vertically - position above if needed
     if (top + ph > vh - 8) {
@@ -592,33 +571,30 @@ function showHoverPreview(dateStr, event) {
       top = 8;
     }
 
-    preview.style.left = left + "px";
-    preview.style.top = top + "px";
+    preview.style.left = left + 'px';
+    preview.style.top = top + 'px';
   }
 
   // Make preview visible
-  preview.style.visibility = "visible";
+  preview.style.visibility = 'visible';
 }
 
 // Render hover preview content with pagination
 function renderHoverPreviewContent(assignedStaff) {
-  const content = document.getElementById("hover-preview-content");
-  const pagination = document.getElementById("hover-preview-pagination");
+  const content = document.getElementById('hover-preview-content');
+  const pagination = document.getElementById('hover-preview-pagination');
 
   if (assignedStaff.length === 0) {
     content.innerHTML = '<div class="preview-no-data">No shifts assigned</div>';
-    pagination.style.display = "none";
+    pagination.style.display = 'none';
     return;
   }
 
   const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
   const page = hoverPreviewState.page;
-  const pageStaff = assignedStaff.slice(
-    page * PREVIEW_PAGE_SIZE,
-    (page + 1) * PREVIEW_PAGE_SIZE,
-  );
+  const pageStaff = assignedStaff.slice(page * PREVIEW_PAGE_SIZE, (page + 1) * PREVIEW_PAGE_SIZE);
 
-  let html = "";
+  let html = '';
   pageStaff.forEach((item, idx) => {
     const { person, shift } = item;
     const shiftInfo = SHIFTS[shift];
@@ -632,7 +608,7 @@ function renderHoverPreviewContent(assignedStaff) {
                         ${initials}
                     </div>
                     <span class="preview-staff-name">${person.name}</span>
-                    <span class="preview-staff-shift-badge" style="color:${shiftInfo.color.replace("0.7", "1")}">${shift}</span>
+                    <span class="preview-staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${shift}</span>
                 </div>
             </div>
         `;
@@ -647,23 +623,21 @@ function renderHoverPreviewContent(assignedStaff) {
 
   // Show/hide pagination
   if (totalPages > 1) {
-    pagination.style.display = "flex";
-    document.getElementById("preview-page-label").textContent =
-      `${page + 1} / ${totalPages}`;
-    document.getElementById("preview-page-prev").disabled = page === 0;
-    document.getElementById("preview-page-next").disabled =
-      page === totalPages - 1;
+    pagination.style.display = 'flex';
+    document.getElementById('preview-page-label').textContent = `${page + 1} / ${totalPages}`;
+    document.getElementById('preview-page-prev').disabled = page === 0;
+    document.getElementById('preview-page-next').disabled = page === totalPages - 1;
   } else {
-    pagination.style.display = "none";
+    pagination.style.display = 'none';
   }
 }
 
 // Hide hover preview
 function hideHoverPreview() {
-  document.getElementById("hover-preview").style.display = "none";
+  document.getElementById('hover-preview').style.display = 'none';
 
   if (hoverPreviewCell) {
-    hoverPreviewCell.classList.remove("preview-open");
+    hoverPreviewCell.classList.remove('preview-open');
     hoverPreviewCell = null;
   }
 
@@ -683,7 +657,7 @@ function openDayModal(dateStr, dayEl) {
   modalPageState = 0; // Reset pagination when opening modal
 
   // Extract day and month
-  const dateParts = dateStr.split("-");
+  const dateParts = dateStr.split('-');
   const day = parseInt(dateParts[2]);
   const monthIndex = parseInt(dateParts[1]) - 1;
 
@@ -691,13 +665,11 @@ function openDayModal(dateStr, dayEl) {
   renderDayModalContent(dateStr, day, MONTH_NAMES[monthIndex]);
 
   // Show modal
-  const modal = document.getElementById("day-modal");
-  modal.style.display = "flex";
+  const modal = document.getElementById('day-modal');
+  modal.style.display = 'flex';
 
   renderCalendar();
-  openDayCell = document.querySelector(
-    `.calendar-day[data-date="${selectedDate}"]`,
-  );
+  openDayCell = document.querySelector(`.calendar-day[data-date="${selectedDate}"]`);
   requestAnimationFrame(positionDayModal);
 }
 
@@ -710,14 +682,14 @@ function renderDayModalContent(dateStr, day, monthName) {
     shifts: { A: [], M: [], B: [], C: [] },
   };
 
-  const modalContent = document.getElementById("modal-content");
+  const modalContent = document.getElementById('modal-content');
 
   // Calculate pagination
   const totalStaff = peopleData.length;
   const totalPages = Math.ceil(totalStaff / MODAL_PAGE_SIZE);
   const pageStaff = peopleData.slice(
     modalPageState * MODAL_PAGE_SIZE,
-    (modalPageState + 1) * MODAL_PAGE_SIZE,
+    (modalPageState + 1) * MODAL_PAGE_SIZE
   );
 
   let html = `
@@ -732,7 +704,7 @@ function renderDayModalContent(dateStr, day, monthName) {
     const initials = getInitials(person.name);
 
     // Find current shift for this person
-    let currentShift = "off";
+    let currentShift = 'off';
     for (const [shift, people] of Object.entries(schedule.shifts)) {
       if (people && people.includes(person.name)) {
         currentShift = shift;
@@ -740,29 +712,28 @@ function renderDayModalContent(dateStr, day, monthName) {
       }
     }
 
-    const shiftInfo = currentShift !== "off" ? SHIFTS[currentShift] : null;
+    const shiftInfo = currentShift !== 'off' ? SHIFTS[currentShift] : null;
     const badgeHtml = shiftInfo
-      ? `<span class="staff-shift-badge" style="color:${shiftInfo.color.replace("0.7", "1")}">${currentShift}</span>`
-      : "";
+      ? `<span class="staff-shift-badge" style="color:${shiftInfo.color.replace('0.7', '1')}">${currentShift}</span>`
+      : '';
 
     // Shift option buttons
-    const optsHtml = ["A", "M", "B", "C"]
+    const optsHtml = ['A', 'M', 'B', 'C']
       .map((shift) => {
         const shiftData = SHIFTS[shift];
         const isActive = currentShift === shift;
         return `
-                <button class="shift-opt${isActive ? " active" : ""}"
-                    style="background:${isActive ? shiftData.color.replace("0.7", "0.2") : "var(--bg-primary)"};
-                           border-color:${isActive ? shiftData.color.replace("0.7", "0.5") : "var(--border-secondary)"};
-                           color:${isActive ? shiftData.color.replace("0.7", "1") : "var(--text-tertiary)"}"
+                <button class="shift-opt${isActive ? ' active' : ''}"
+                    style="background:${isActive ? shiftData.color.replace('0.7', '0.2') : 'var(--bg-primary)'};
+                           border-color:${isActive ? shiftData.color.replace('0.7', '0.5') : 'var(--border-secondary)'};
+                           color:${isActive ? shiftData.color.replace('0.7', '1') : 'var(--text-tertiary)'}"
                     data-person="${person.name}" data-shift="${shift}">
                     ${shift}
                 </button>`;
       })
-      .join("");
+      .join('');
 
-    const divider =
-      idx < pageStaff.length - 1 ? `<div class="staff-divider"></div>` : "";
+    const divider = idx < pageStaff.length - 1 ? `<div class="staff-divider"></div>` : '';
 
     html += `
             <div class="staff-row">
@@ -779,7 +750,7 @@ function renderDayModalContent(dateStr, day, monthName) {
             </div>`;
   });
 
-  html += "</div>";
+  html += '</div>';
 
   // Add pagination if needed
   if (totalPages > 1) {
@@ -795,8 +766,8 @@ function renderDayModalContent(dateStr, day, monthName) {
   modalContent.innerHTML = html;
 
   // Re-attach event listeners for shift buttons
-  modalContent.querySelectorAll(".shift-opt").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
+  modalContent.querySelectorAll('.shift-opt').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
 
       const personName = btn.dataset.person;
@@ -807,17 +778,15 @@ function renderDayModalContent(dateStr, day, monthName) {
       }
 
       const currentSchedule = scheduleData[selectedDate];
-      for (const s of ["A", "M", "B", "C"]) {
-        if (!currentSchedule.shifts[s]) currentSchedule.shifts[s] = [];
+      for (const s of ['A', 'M', 'B', 'C']) {
+        if (!currentSchedule.shifts[s]) {currentSchedule.shifts[s] = [];}
       }
 
-      for (const s of ["A", "M", "B", "C"]) {
-        currentSchedule.shifts[s] = currentSchedule.shifts[s].filter(
-          (name) => name !== personName,
-        );
+      for (const s of ['A', 'M', 'B', 'C']) {
+        currentSchedule.shifts[s] = currentSchedule.shifts[s].filter((name) => name !== personName);
       }
 
-      const isCurrentlyActive = btn.classList.contains("active");
+      const isCurrentlyActive = btn.classList.contains('active');
       if (!isCurrentlyActive) {
         currentSchedule.shifts[shift].push(personName);
       }
@@ -828,12 +797,12 @@ function renderDayModalContent(dateStr, day, monthName) {
   });
 
   // Attach pagination handlers
-  const prevBtn = document.getElementById("modal-page-prev");
-  const nextBtn = document.getElementById("modal-page-next");
+  const prevBtn = document.getElementById('modal-page-prev');
+  const nextBtn = document.getElementById('modal-page-next');
 
   if (prevBtn) {
     prevBtn.disabled = modalPageState === 0;
-    prevBtn.addEventListener("click", (e) => {
+    prevBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (modalPageState > 0) {
         modalPageState--;
@@ -844,7 +813,7 @@ function renderDayModalContent(dateStr, day, monthName) {
 
   if (nextBtn) {
     nextBtn.disabled = modalPageState === totalPages - 1;
-    nextBtn.addEventListener("click", (e) => {
+    nextBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (modalPageState < totalPages - 1) {
         modalPageState++;
@@ -857,31 +826,26 @@ function renderDayModalContent(dateStr, day, monthName) {
 // Toggle shift section in modal
 function toggleShiftSection(header) {
   const staff = header.nextElementSibling;
-  staff.style.display = staff.style.display === "flex" ? "none" : "flex";
-  header.classList.toggle("collapsed");
+  staff.style.display = staff.style.display === 'flex' ? 'none' : 'flex';
+  header.classList.toggle('collapsed');
 }
 
 // Close day modal
 function closeDayModal(event) {
   // Only close if clicking on the overlay itself, not the modal dialog
-  if (event && event.target.id !== "day-modal") return;
+  if (event && event.target.id !== 'day-modal') {return;}
 
-  document.getElementById("day-modal").style.display = "none";
+  document.getElementById('day-modal').style.display = 'none';
   selectedDate = null;
   openDayCell = null;
   renderCalendar();
 }
 
 function positionDayModal() {
-  const modal = document.getElementById("day-modal");
-  const modalDialog = modal.querySelector(".modal-dialog");
+  const modal = document.getElementById('day-modal');
+  const modalDialog = modal.querySelector('.modal-dialog');
 
-  if (
-    !modalDialog ||
-    !openDayCell ||
-    !selectedDate ||
-    modal.style.display === "none"
-  ) {
+  if (!modalDialog || !openDayCell || !selectedDate || modal.style.display === 'none') {
     return;
   }
 
@@ -916,7 +880,7 @@ function positionDayModal() {
 
 // Save day schedule from modal
 async function saveDaySchedule() {
-  if (!selectedDate) return;
+  if (!selectedDate) {return;}
 
   try {
     // Ensure the schedule exists
@@ -933,17 +897,17 @@ async function saveDaySchedule() {
     await loadSchedules();
     renderCalendar();
   } catch (error) {
-    console.error("Error saving schedule:", error);
-    showAlert("Error", "Failed to save schedule. Please try again.");
+    console.error('Error saving schedule:', error);
+    showAlert('Error', 'Failed to save schedule. Please try again.');
   }
 }
 
 // Clear day schedule
 async function clearDaySchedule() {
-  if (!selectedDate) return;
+  if (!selectedDate) {return;}
 
   showConfirm(
-    "Clear Schedule",
+    'Clear Schedule',
     `Are you sure you want to clear all shifts for this day?`,
     async () => {
       try {
@@ -959,10 +923,10 @@ async function clearDaySchedule() {
         renderCalendar();
         closeDayModal();
       } catch (error) {
-        console.error("Error clearing schedule:", error);
-        showAlert("Error", "Failed to clear schedule. Please try again.");
+        console.error('Error clearing schedule:', error);
+        showAlert('Error', 'Failed to clear schedule. Please try again.');
       }
-    },
+    }
   );
 }
 
@@ -993,28 +957,28 @@ function changeMonth(offset) {
 
   renderCalendar();
 
-  if (document.getElementById("custom-date-picker")?.style.display !== "none") {
+  if (document.getElementById('custom-date-picker')?.style.display !== 'none') {
     syncDatePickerControls();
     renderDatePickerCalendar();
   }
 }
 
 function toggleDatePicker() {
-  const picker = document.getElementById("custom-date-picker");
-  if (!picker) return;
+  const picker = document.getElementById('custom-date-picker');
+  if (!picker) {return;}
 
-  if (picker.style.display === "none") {
+  if (picker.style.display === 'none') {
     syncDatePickerControls();
     renderDatePickerCalendar();
-    picker.style.display = "block";
+    picker.style.display = 'block';
   } else {
-    picker.style.display = "none";
+    picker.style.display = 'none';
   }
 }
 
 function syncDatePickerControls() {
-  const pickerMonth = document.getElementById("picker-month");
-  const pickerYear = document.getElementById("picker-year");
+  const pickerMonth = document.getElementById('picker-month');
+  const pickerYear = document.getElementById('picker-year');
 
   if (pickerMonth) {
     pickerMonth.value = String(currentMonth);
@@ -1026,11 +990,9 @@ function syncDatePickerControls() {
 
 function updateDatePickerCalendar() {
   closeDayModal();
-  currentMonth =
-    parseInt(document.getElementById("picker-month").value, 10) || 0;
+  currentMonth = parseInt(document.getElementById('picker-month').value, 10) || 0;
   currentYear =
-    parseInt(document.getElementById("picker-year").value, 10) ||
-    new Date().getFullYear();
+    parseInt(document.getElementById('picker-year').value, 10) || new Date().getFullYear();
   renderCalendar();
   renderDatePickerCalendar();
 }
@@ -1041,26 +1003,22 @@ function renderDatePickerCalendar() {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrevMonth = new Date(year, month, 0).getDate();
-  const daysContainer = document.getElementById("picker-days");
+  const daysContainer = document.getElementById('picker-days');
 
-  if (!daysContainer) return;
+  if (!daysContainer) {return;}
 
-  daysContainer.innerHTML = "";
+  daysContainer.innerHTML = '';
 
   for (let i = firstDay - 1; i >= 0; i--) {
     const day = daysInPrevMonth - i;
-    const dayEl = createDatePickerDay(
-      day,
-      "other-month",
-      new Date(year, month - 1, day),
-    );
+    const dayEl = createDatePickerDay(day, 'other-month', new Date(year, month - 1, day));
     daysContainer.appendChild(dayEl);
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const className = selectedDate === dateStr ? "selected" : "";
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const className = selectedDate === dateStr ? 'selected' : '';
     const dayEl = createDatePickerDay(day, className, date);
     daysContainer.appendChild(dayEl);
   }
@@ -1068,21 +1026,17 @@ function renderDatePickerCalendar() {
   const totalCells = daysContainer.children.length;
   const remainingCells = 42 - totalCells;
   for (let day = 1; day <= remainingCells; day++) {
-    const dayEl = createDatePickerDay(
-      day,
-      "other-month",
-      new Date(year, month + 1, day),
-    );
+    const dayEl = createDatePickerDay(day, 'other-month', new Date(year, month + 1, day));
     daysContainer.appendChild(dayEl);
   }
 }
 
 function createDatePickerDay(day, className, date) {
-  const dayEl = document.createElement("div");
+  const dayEl = document.createElement('div');
   dayEl.className = `date-picker-day ${className}`.trim();
   dayEl.textContent = day;
 
-  if (!className.includes("other-month")) {
+  if (!className.includes('other-month')) {
     dayEl.onclick = () => selectDateFromPicker(date);
   }
 
@@ -1095,40 +1049,36 @@ function selectDateFromPicker(date) {
   currentYear = date.getFullYear();
   renderCalendar();
   syncDatePickerControls();
-  document.getElementById("custom-date-picker").style.display = "none";
+  document.getElementById('custom-date-picker').style.display = 'none';
 
-  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const dayEl = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
-  if (dayEl && !dayEl.classList.contains("other-month")) {
+  if (dayEl && !dayEl.classList.contains('other-month')) {
     openDayModal(dateStr, dayEl);
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   resetPersonForm();
   syncDatePickerControls();
 });
 
-document.addEventListener("click", (event) => {
-  const picker = document.getElementById("custom-date-picker");
-  const dateNav = document.querySelector(".date-nav");
+document.addEventListener('click', (event) => {
+  const picker = document.getElementById('custom-date-picker');
+  const dateNav = document.querySelector('.date-nav');
 
-  if (
-    picker &&
-    picker.style.display !== "none" &&
-    !dateNav?.contains(event.target)
-  ) {
-    picker.style.display = "none";
+  if (picker && picker.style.display !== 'none' && !dateNav?.contains(event.target)) {
+    picker.style.display = 'none';
   }
 });
 
 // Clock
 function updateClock() {
-  const clockEl = document.getElementById("current-time");
+  const clockEl = document.getElementById('current-time');
   if (clockEl) {
     const now = new Date();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
     clockEl.textContent = `${hours}:${minutes}`;
   }
 }
@@ -1136,30 +1086,30 @@ function updateClock() {
 // Theme
 function toggleTheme() {
   const html = document.documentElement;
-  const currentTheme = html.getAttribute("data-theme");
-  const newTheme = currentTheme === "dark" ? "light" : "dark";
-  html.setAttribute("data-theme", newTheme);
-  localStorage.setItem("letsee_theme", newTheme);
+  const currentTheme = html.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('letsee_theme', newTheme);
   updateFavicon(newTheme);
 }
 
 function applyTheme() {
-  const savedTheme = localStorage.getItem("letsee_theme") || "light";
-  document.documentElement.setAttribute("data-theme", savedTheme);
+  const savedTheme = localStorage.getItem('letsee_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
   updateFavicon(savedTheme);
 }
 
 function updateFavicon(theme) {
-  const favicon = document.getElementById("favicon");
+  const favicon = document.getElementById('favicon');
   if (favicon) {
-    const color = theme === "dark" ? "%23ffffff" : "%23333";
+    const color = theme === 'dark' ? '%23ffffff' : '%23333';
     favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75' font-weight='bold' fill='${color}'>L</text></svg>`;
   }
 }
 
 // Logout
 function handleLogout() {
-  showConfirm("Sign Out", "Are you sure you want to sign out?", () => {
+  showConfirm('Sign Out', 'Are you sure you want to sign out?', () => {
     DB.logout();
   });
 }
@@ -1167,19 +1117,19 @@ function handleLogout() {
 // ============ People Management ============
 
 async function openPeopleModal() {
-  document.getElementById("people-modal").style.display = "flex";
+  document.getElementById('people-modal').style.display = 'flex';
   resetPersonForm();
   await renderPeopleList();
 }
 
-document.addEventListener("mousedown", (event) => {
+document.addEventListener('mousedown', (event) => {
   if (!selectedDate) {
     return;
   }
 
-  const modal = document.getElementById("day-modal");
-  const dialog = modal?.querySelector(".modal-dialog");
-  const clickedDay = event.target.closest(".calendar-day");
+  const modal = document.getElementById('day-modal');
+  const dialog = modal?.querySelector('.modal-dialog');
+  const clickedDay = event.target.closest('.calendar-day');
 
   if (dialog?.contains(event.target)) {
     return;
@@ -1192,14 +1142,14 @@ document.addEventListener("mousedown", (event) => {
   closeDayModal();
 });
 
-window.addEventListener("resize", () => {
+window.addEventListener('resize', () => {
   if (selectedDate) {
     positionDayModal();
   }
 });
 
 function closePeopleModal() {
-  document.getElementById("people-modal").style.display = "none";
+  document.getElementById('people-modal').style.display = 'none';
   resetPersonForm();
   // Reload people data
   loadPeople();
@@ -1207,19 +1157,18 @@ function closePeopleModal() {
 
 async function renderPeopleList() {
   await loadPeople();
-  const peopleList = document.getElementById("people-list");
+  const peopleList = document.getElementById('people-list');
 
   if (peopleData.length === 0) {
-    peopleList.innerHTML =
-      '<div class="empty-state">No staff members yet. Add one below!</div>';
+    peopleList.innerHTML = '<div class="empty-state">No staff members yet. Add one below!</div>';
     return;
   }
 
-  peopleList.innerHTML = "";
+  peopleList.innerHTML = '';
 
   peopleData.forEach((person) => {
-    const personEl = document.createElement("div");
-    personEl.className = "person-item";
+    const personEl = document.createElement('div');
+    personEl.className = 'person-item';
 
     personEl.innerHTML = `
             <div class="person-color" style="background-color: ${person.color}"></div>
@@ -1238,25 +1187,20 @@ async function renderPeopleList() {
 }
 
 async function savePerson() {
-  const nameInput = document.getElementById("new-person-name");
-  const colorInput = document.getElementById("new-person-color");
+  const nameInput = document.getElementById('new-person-name');
+  const colorInput = document.getElementById('new-person-color');
 
   const name = nameInput.value.trim();
   const color = colorInput.value || DEFAULT_PERSON_COLOR;
 
   if (!name) {
-    showAlert("Validation Error", "Please enter a name");
+    showAlert('Validation Error', 'Please enter a name');
     return;
   }
 
   try {
     if (editingPersonId) {
-      await DB.updatePerson(
-        editingPersonId,
-        name,
-        color,
-        editingPersonOriginalName,
-      );
+      await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
     } else {
       await PeopleAPI.create(name, color);
     }
@@ -1264,14 +1208,14 @@ async function savePerson() {
     resetPersonForm();
     await refreshPeopleViews();
   } catch (error) {
-    console.error("Error saving person:", error);
-    showAlert("Error", "Failed to save staff member. Please try again.");
+    console.error('Error saving person:', error);
+    showAlert('Error', 'Failed to save staff member. Please try again.');
   }
 }
 
 async function deletePerson(id, name) {
   showConfirm(
-    "Delete Staff Member",
+    'Delete Staff Member',
     `Are you sure you want to delete ${name}? This action cannot be undone.`,
     async () => {
       try {
@@ -1281,10 +1225,10 @@ async function deletePerson(id, name) {
         }
         await refreshPeopleViews();
       } catch (error) {
-        console.error("Error deleting person:", error);
-        showAlert("Error", "Failed to delete staff member. Please try again.");
+        console.error('Error deleting person:', error);
+        showAlert('Error', 'Failed to delete staff member. Please try again.');
       }
-    },
+    }
   );
 }
 
@@ -1292,7 +1236,7 @@ async function deletePerson(id, name) {
 init();
 
 // Hover preview pagination handlers
-document.getElementById("preview-page-prev").addEventListener("click", (e) => {
+document.getElementById('preview-page-prev').addEventListener('click', (e) => {
   e.stopPropagation();
   if (hoverPreviewState && hoverPreviewState.page > 0) {
     hoverPreviewState.page--;
@@ -1300,29 +1244,29 @@ document.getElementById("preview-page-prev").addEventListener("click", (e) => {
       shifts: { A: [], M: [], B: [], C: [] },
     };
     const assignedStaff = [];
-    ["A", "M", "B", "C"].forEach((shift) => {
+    ['A', 'M', 'B', 'C'].forEach((shift) => {
       const people = schedule.shifts[shift] || [];
       people.forEach((personName) => {
         const person = peopleData.find((p) => p.name === personName);
-        if (person) assignedStaff.push({ person, shift });
+        if (person) {assignedStaff.push({ person, shift });}
       });
     });
     renderHoverPreviewContent(assignedStaff);
   }
 });
 
-document.getElementById("preview-page-next").addEventListener("click", (e) => {
+document.getElementById('preview-page-next').addEventListener('click', (e) => {
   e.stopPropagation();
   if (hoverPreviewState) {
     const schedule = scheduleData[hoverPreviewState.dateStr] || {
       shifts: { A: [], M: [], B: [], C: [] },
     };
     const assignedStaff = [];
-    ["A", "M", "B", "C"].forEach((shift) => {
+    ['A', 'M', 'B', 'C'].forEach((shift) => {
       const people = schedule.shifts[shift] || [];
       people.forEach((personName) => {
         const person = peopleData.find((p) => p.name === personName);
-        if (person) assignedStaff.push({ person, shift });
+        if (person) {assignedStaff.push({ person, shift });}
       });
     });
     const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);

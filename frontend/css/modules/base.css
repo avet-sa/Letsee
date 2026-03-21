@@ -1,89 +1,147 @@
 :root {
-    --primary-font: "JetBrains Mono", monospace;
+  --primary-font: 'JetBrains Mono', monospace;
 
-    /* Light theme colors */
-    --bg-primary: #e8e8e8;
-    --bg-secondary: #ffffff;
-    --text-primary: #000000;
-    --text-secondary: #666666;
-    --text-tertiary: #999999;
-    --border-primary: #000000;
-    --border-secondary: #dddddd;
-    --empty-text: #cccccc;
-    --modal-overlay: rgba(0, 0, 0, 0.5);
+  /* Light theme colors */
+  --bg-primary: #e8e8e8;
+  --bg-secondary: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --border-primary: #000000;
+  --border-secondary: #dddddd;
+  --empty-text: #cccccc;
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Breakpoints */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
 }
 
 select {
-    -webkit-appearance: none; /* For Chrome, Safari, Edge, Opera */
-    -moz-appearance: none;    /* For Firefox */
-    appearance: none;         /* Standard property */
-    /* Optional: Remove default background, which may contain an arrow in some frameworks */
-    background: none; 
-    /* Optional: Adjust padding to remove space reserved for the original arrow */
-    padding-right: 1.5em; 
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: none;
+  padding-right: 1.5em;
 }
 
-/* For Internet Explorer 10 and 11 */
 select::-ms-expand {
-    display: none;
+  display: none;
 }
 
-
-/* Chrome, Safari, Edge, Opera */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
-  margin: 0; /* Important for older Chrome/Safari versions */
+  margin: 0;
 }
 
-/* Firefox */
-input[type=number] {
+input[type='number'] {
   -moz-appearance: textfield;
-  appearance: textfield; /* Standard property for newer browsers */
+  appearance: textfield;
 }
-
 
 .none {
-    display: none !important;
+  display: none !important;
 }
 
 .hidden {
-    opacity: 0 !important;
+  opacity: 0 !important;
 }
 
 .unavailable {
-    pointer-events: none;
-    opacity: 0.5;
+  pointer-events: none;
+  opacity: 0.5;
 }
 
-[data-theme="dark"] {
-    /* Dark theme colors */
-    --bg-primary: #1a1a1a;
-    --bg-secondary: #2a2a2a;
-    --text-primary: #e8e8e8;
-    --text-secondary: #999999;
-    --text-tertiary: #666666;
-    --border-primary: #444444;
-    --border-secondary: #333333;
-    --empty-text: #444444;
-    --modal-overlay: rgba(0, 0, 0, 0.8);
+[data-theme='dark'] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2a2a2a;
+  --text-primary: #e8e8e8;
+  --text-secondary: #999999;
+  --text-tertiary: #666666;
+  --border-primary: #444444;
+  --border-secondary: #333333;
+  --empty-text: #444444;
+  --modal-overlay: rgba(0, 0, 0, 0.8);
 }
-
 
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    text-decoration: none;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  text-decoration: none;
 }
 
 body {
-    font-family: var(--primary-font);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    transition: background-color 0.2s, color 0.2s;
+  font-family: var(--primary-font);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+  overflow-x: hidden;
 }
 
+/* Responsive utilities */
+@media (max-width: 768px) {
+  :root {
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+  }
+
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Animation keyframes */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
