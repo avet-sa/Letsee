@@ -8,9 +8,14 @@ venv/
 env/
 backend/venv/
 backend/env/
+backend/.venv/
 *.egg-info/
 .pytest_cache/
 .coverage
+
+# UV package manager
+backend/uv.lock
+backend/requirements.txt
 
 # IDE
 .vscode/

@@ -1,16 +1,14 @@
 """Database backup and recovery management."""
-import io
+
 import logging
 import os
 import subprocess
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import boto3
+
 from app.core.config import settings
-from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +50,7 @@ class BackupManager:
             "password": url.password or "",
         }
 
-    def create_backup(self, backup_type: str = "auto") -> Optional[str]:
+    def create_backup(self, backup_type: str = "auto") -> str | None:
         """
         Create a database backup using pg_dump.
 
@@ -64,7 +62,7 @@ class BackupManager:
         """
         try:
             creds = self._extract_postgres_credentials()
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             backup_filename = f"backup_{backup_type}_{timestamp}.sql"
 
             # Create backup using pg_dump
@@ -121,7 +119,7 @@ class BackupManager:
         except Exception as e:
             logger.error(f"Backup creation failed: {e}")
             return None
-        
+
     def restore_backup(self, backup_filename: str) -> bool:
         """
         Restore database from backup.
@@ -137,9 +135,7 @@ class BackupManager:
 
             # Download backup from S3/Minio
             try:
-                response = self.s3_client.get_object(
-                    Bucket=self.backup_bucket, Key=backup_filename
-                )
+                response = self.s3_client.get_object(Bucket=self.backup_bucket, Key=backup_filename)
                 backup_data = response["Body"].read()
             except Exception as e:
                 logger.error(f"Failed to download backup from S3: {e}")
@@ -187,9 +183,7 @@ class BackupManager:
             List of backup metadata
         """
         try:
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.backup_bucket, MaxKeys=limit
-            )
+            response = self.s3_client.list_objects_v2(Bucket=self.backup_bucket, MaxKeys=limit)
 
             backups = []
             if "Contents" in response:
@@ -208,9 +202,7 @@ class BackupManager:
             logger.error(f"Failed to list backups: {e}")
             return []
 
-    def cleanup_old_backups(
-        self, keep_daily: int = 7, keep_hourly: int = 24
-    ) -> int:
+    def cleanup_old_backups(self, keep_daily: int = 7, keep_hourly: int = 24) -> int:
         """
         Delete old backups to save storage.
 
@@ -238,9 +230,7 @@ class BackupManager:
             deleted_count = 0
             for backup in to_delete:
                 try:
-                    self.s3_client.delete_object(
-                        Bucket=self.backup_bucket, Key=backup["Key"]
-                    )
+                    self.s3_client.delete_object(Bucket=self.backup_bucket, Key=backup["Key"])
                     logger.info(f"Deleted old backup: {backup['Key']}")
                     deleted_count += 1
                 except Exception as e:

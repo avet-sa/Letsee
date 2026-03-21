@@ -1,13 +1,10 @@
 """Backup management routes."""
-from typing import List
-from fastapi import APIRouter, HTTPException, status, Depends
-from sqlalchemy.orm import Session
+
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.backup import backup_manager
-from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models import User
-from app.schemas import UserResponse
 
 router = APIRouter(prefix="/api/backups", tags=["backups"])
 
@@ -47,7 +44,11 @@ async def create_backup(
             detail="Failed to create backup",
         )
 
-    return {"success": True, "backup_filename": filename, "message": "Backup created successfully"}
+    return {
+        "success": True,
+        "backup_filename": filename,
+        "message": "Backup created successfully",
+    }
 
 
 @router.post("/restore/{backup_filename}")
@@ -72,7 +73,10 @@ async def restore_backup(
             detail="Failed to restore backup",
         )
 
-    return {"success": True, "message": f"Backup '{backup_filename}' restored successfully"}
+    return {
+        "success": True,
+        "message": f"Backup '{backup_filename}' restored successfully",
+    }
 
 
 @router.post("/cleanup")

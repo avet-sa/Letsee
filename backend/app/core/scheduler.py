@@ -1,8 +1,8 @@
 """Background task scheduler for automatic backups."""
+
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from app.core.backup import backup_manager
 
@@ -15,8 +15,8 @@ class BackupScheduler:
     def __init__(self):
         """Initialize scheduler."""
         self.is_running = False
-        self.backup_task: Optional[asyncio.Task] = None
-        self.cleanup_task: Optional[asyncio.Task] = None
+        self.backup_task: asyncio.Task | None = None
+        self.cleanup_task: asyncio.Task | None = None
 
     async def start(self):
         """Start the backup scheduler."""
@@ -59,14 +59,12 @@ class BackupScheduler:
 
         while self.is_running:
             try:
-                timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
                 logger.info(f"Starting scheduled backup at {timestamp}")
 
                 # Run backup in thread pool to avoid blocking
                 loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(
-                    None, backup_manager.create_backup, "auto"
-                )
+                result = await loop.run_in_executor(None, backup_manager.create_backup, "auto")
 
                 if result:
                     logger.info(f"Scheduled backup completed: {result}")
@@ -93,9 +91,7 @@ class BackupScheduler:
 
                 # Run cleanup in thread pool
                 loop = asyncio.get_event_loop()
-                deleted = await loop.run_in_executor(
-                    None, backup_manager.cleanup_old_backups
-                )
+                deleted = await loop.run_in_executor(None, backup_manager.cleanup_old_backups)
 
                 logger.info(f"Cleanup completed: {deleted} backups deleted")
 

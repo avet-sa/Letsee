@@ -1,22 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from app.core.security import get_current_user
-from sqlalchemy.orm import Session
-from typing import List, Optional
-from uuid import UUID
 from datetime import UTC, datetime
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import get_current_user
 from app.models import Handover
-from app.schemas import HandoverCreate, HandoverUpdate, HandoverResponse
+from app.schemas import HandoverCreate, HandoverResponse, HandoverUpdate
 
 router = APIRouter(prefix="/api/handovers", tags=["handovers"])
 
 
-@router.get("", response_model=List[HandoverResponse])
+@router.get("", response_model=list[HandoverResponse])
 async def list_handovers(
-    date: Optional[str] = Query(None),
+    date: str | None = Query(None),
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Get handover notes. Optionally filter by date (YYYY-MM-DD)."""
     query = db.query(Handover)
@@ -29,11 +29,11 @@ async def list_handovers(
 async def create_handover(
     handover_create: HandoverCreate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Create a new handover note."""
     timestamp = handover_create.timestamp or datetime.now(UTC)
-    
+
     new_handover = Handover(
         date=handover_create.date,
         category=handover_create.category,
@@ -61,15 +61,12 @@ async def create_handover(
 async def get_handover(
     handover_id: UUID,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Get a handover note by ID."""
     handover = db.query(Handover).filter(Handover.id == handover_id).first()
     if not handover:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Handover note not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover note not found")
     return handover
 
 
@@ -78,16 +75,13 @@ async def update_handover(
     handover_id: UUID,
     handover_update: HandoverUpdate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Update a handover note."""
     handover = db.query(Handover).filter(Handover.id == handover_id).first()
     if not handover:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Handover note not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover note not found")
+
     if handover_update.category is not None:
         handover.category = handover_update.category
     if handover_update.room is not None:
@@ -110,9 +104,9 @@ async def update_handover(
         handover.due_date = handover_update.due_date
     if handover_update.due_time is not None:
         handover.due_time = handover_update.due_time
-    
+
     handover.edited_at = datetime.now(UTC)
-    
+
     db.commit()
     db.refresh(handover)
     return handover
@@ -122,15 +116,12 @@ async def update_handover(
 async def delete_handover(
     handover_id: UUID,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Delete a handover note."""
     handover = db.query(Handover).filter(Handover.id == handover_id).first()
     if not handover:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Handover note not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover note not found")
+
     db.delete(handover)
     db.commit()

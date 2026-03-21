@@ -1,20 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.security import get_current_user
 from sqlalchemy.orm import Session
-from typing import List
-from uuid import UUID
 
 from app.core.database import get_db
+from app.core.security import get_current_user
 from app.models import Setting
-from app.schemas import SettingCreate, SettingUpdate, SettingResponse
+from app.schemas import SettingCreate, SettingResponse, SettingUpdate
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 
-@router.get("", response_model=List[SettingResponse])
+@router.get("", response_model=list[SettingResponse])
 async def list_settings(
-    db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: str = Depends(get_current_user)
 ):
     """Get all settings."""
     return db.query(Setting).all()
@@ -24,7 +21,7 @@ async def list_settings(
 async def get_setting(
     key: str,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Get a setting by key. Auto-creates with default value if not found."""
     setting = db.query(Setting).filter(Setting.key == key).first()
@@ -42,8 +39,7 @@ async def get_setting(
             db.refresh(setting)
             return setting
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Setting '{key}' not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Setting '{key}' not found"
         )
     return setting
 
@@ -52,7 +48,7 @@ async def get_setting(
 async def create_setting(
     setting_create: SettingCreate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Create a new setting."""
     # Check if setting already exists
@@ -60,9 +56,9 @@ async def create_setting(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Setting '{setting_create.key}' already exists"
+            detail=f"Setting '{setting_create.key}' already exists",
         )
-    
+
     new_setting = Setting(key=setting_create.key, value=setting_create.value)
     db.add(new_setting)
     db.commit()
@@ -75,16 +71,15 @@ async def update_setting(
     key: str,
     setting_update: SettingUpdate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Update a setting by key."""
     setting = db.query(Setting).filter(Setting.key == key).first()
     if not setting:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Setting '{key}' not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Setting '{key}' not found"
         )
-    
+
     setting.value = setting_update.value
     db.commit()
     db.refresh(setting)
@@ -95,15 +90,14 @@ async def update_setting(
 async def delete_setting(
     key: str,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Delete a setting by key."""
     setting = db.query(Setting).filter(Setting.key == key).first()
     if not setting:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Setting '{key}' not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Setting '{key}' not found"
         )
-    
+
     db.delete(setting)
     db.commit()

@@ -1,16 +1,27 @@
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 from sqlalchemy import text
-import os
 
 from app.core.config import settings
 from app.core.database import engine
+from app.core.logging_config import get_logger, setup_logging
 from app.core.rate_limit import api_rate_limiter
-from app.core.scheduler import backup_scheduler
-from app.core.logging_config import setup_logging, get_logger
 from app.core.request_logging import RequestLoggingMiddleware
-from app.routers import auth, people, schedules, handovers, settings as settings_router, files, backups
+from app.core.scheduler import backup_scheduler
+from app.routers import (
+    auth,
+    backups,
+    files,
+    handovers,
+    people,
+    schedules,
+)
+from app.routers import (
+    settings as settings_router,
+)
 
 # Configure structured logging
 log_file = os.getenv("LOG_FILE")  # Optional: /var/log/app.log or similar
@@ -70,18 +81,16 @@ async def rate_limit_middleware(request: Request, call_next):
     # Skip rate limiting for health checks
     if request.url.path in ["/health", "/api/health"]:
         return await call_next(request)
-    
+
     # Apply rate limiting with proper exception handling
     try:
         await api_rate_limiter.check_rate_limit(request)
     except HTTPException as exc:
         # Return proper response for rate limit errors
         from fastapi.responses import JSONResponse
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"detail": exc.detail}
-        )
-    
+
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
     response = await call_next(request)
     return response
 
@@ -105,7 +114,12 @@ async def health_check():
     except Exception as exc:
         logger.error("Database health check failed: %s", exc)
         return {"status": "degraded", "service": "letsee-backend", "db": "unhealthy"}
-    return {"status": "ok", "service": "letsee-backend", "db": "healthy", "backups": "enabled"}
+    return {
+        "status": "ok",
+        "service": "letsee-backend",
+        "db": "healthy",
+        "backups": "enabled",
+    }
 
 
 @app.get("/api/health")
@@ -126,4 +140,5 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

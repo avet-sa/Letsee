@@ -1,11 +1,12 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
 from app.core.config import settings
 
 # Ensure DATABASE_URL uses psycopg driver
 database_url = settings.DATABASE_URL
-if not "+psycopg" in database_url and database_url.startswith("postgresql://"):
+if "+psycopg" not in database_url and database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+psycopg://")
 
 # Database engine
