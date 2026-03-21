@@ -1,5 +1,7 @@
 """Backup management routes."""
 
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.backup import backup_manager
@@ -57,15 +59,24 @@ async def restore_backup(
     current_user: User = Depends(get_current_user),
 ):
     """Restore database from backup (admin only)."""
-    # In production, add role checking and confirmation
-    # Validate backup filename to prevent path traversal
-    if "/" in backup_filename or "\\" in backup_filename or ".." in backup_filename:
+    # Prevent path traversal attacks by using only the basename
+    safe_filename = os.path.basename(backup_filename)
+
+    # Additional validation: ensure filename matches expected pattern
+    if not safe_filename or not safe_filename.startswith("backup_"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid backup filename format",
+        )
+
+    # Double-check: reject if any path separators survived (shouldn't happen)
+    if "/" in safe_filename or "\\" in safe_filename or ".." in safe_filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid backup filename",
         )
 
-    success = backup_manager.restore_backup(backup_filename)
+    success = backup_manager.restore_backup(safe_filename)
 
     if not success:
         raise HTTPException(
@@ -75,7 +86,7 @@ async def restore_backup(
 
     return {
         "success": True,
-        "message": f"Backup '{backup_filename}' restored successfully",
+        "message": f"Backup '{safe_filename}' restored successfully",
     }
 
 
