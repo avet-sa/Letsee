@@ -35,7 +35,7 @@ function initErrorHandler() {
     logError(event.reason);
   });
 
-  console.log('Error handler initialized');
+  console.log('Error handler initialized'); // eslint-disable-line no-console
 }
 
 /**
@@ -107,7 +107,7 @@ function logError(error) {
     // Keep only last 10 errors
     if (errors.length > 10) {errors.shift();}
     localStorage.setItem('letsee_errors', JSON.stringify(errors));
-  } catch (e) {
+  } catch (e) { // eslint-disable-line no-unused-vars
     // Ignore localStorage errors
   }
 }
@@ -118,7 +118,7 @@ function logError(error) {
 function clearErrorLog() {
   try {
     localStorage.removeItem('letsee_errors');
-  } catch (error) {
+  } catch (error) { // eslint-disable-line no-unused-vars
     // Ignore
   }
 }
@@ -130,7 +130,7 @@ function clearErrorLog() {
 function getRecentErrors() {
   try {
     return JSON.parse(localStorage.getItem('letsee_errors') || '[]');
-  } catch (error) {
+  } catch (error) { // eslint-disable-line no-unused-vars
     return [];
   }
 }

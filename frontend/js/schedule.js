@@ -1,19 +1,18 @@
 // Schedule Management Script
 
-// ============================================
-// DEVELOPMENT MODE TOGGLE
-// Set to false when backend is ready
-// ============================================
-const DEV_MODE = false;
-
-// State
+/** @type {number} */
 let currentMonth = new Date().getMonth();
+/** @type {number} */
 let currentYear = new Date().getFullYear();
+/** @type {string|null} */
 let selectedDate = null;
-const selectedShift = 'A'; // Track which shift is currently selected
+/** @type {Object} */
 let scheduleData = {};
+/** @type {Array} */
 let peopleData = [];
+/** @type {Object|null} */
 let currentUser = null;
+/** @type {HTMLElement|null} */
 let openDayCell = null;
 
 // Shift definitions
@@ -67,7 +66,9 @@ function initPersonColorPicker() {
   const picker = document.getElementById('new-person-color-picker');
   const colorInput = document.getElementById('new-person-color');
 
-  if (!picker || !colorInput) {return;}
+  if (!picker || !colorInput) {
+    return;
+  }
 
   const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
   colorInput.value = selectedColor;
@@ -89,7 +90,9 @@ function initPersonColorPicker() {
 
 function selectPersonColor(color) {
   const colorInput = document.getElementById('new-person-color');
-  if (!colorInput) {return;}
+  if (!colorInput) {
+    return;
+  }
 
   colorInput.value = color;
   document.querySelectorAll('#new-person-color-picker .color-swatch').forEach((swatch) => {
@@ -127,7 +130,9 @@ function resetPersonForm() {
 
 function startPersonEdit(id) {
   const person = peopleData.find((candidate) => String(candidate.id) === String(id));
-  if (!person) {return;}
+  if (!person) {
+    return;
+  }
 
   editingPersonId = String(person.id);
   editingPersonOriginalName = person.name;
@@ -163,110 +168,8 @@ async function refreshPeopleViews() {
   await renderPeopleList();
 }
 
-// ============================================
-// MOCK DATA (for development)
-// ============================================
-const MOCK_PEOPLE = [
-  { id: 1, name: 'Alice Johnson', color: '#3498db' },
-  { id: 2, name: 'Bob Smith', color: '#e74c3c' },
-  { id: 3, name: 'Carol Davis', color: '#2ecc71' },
-  { id: 4, name: 'David Wilson', color: '#f39c12' },
-  { id: 5, name: 'Emma Brown', color: '#9b59b6' },
-];
-
-const MOCK_SCHEDULES = {
-  // Example: '2025-03-15': { shifts: { A: ['Alice Johnson'], M: ['Bob Smith'], B: [], C: [] } }
-};
-
-// Mock current user
-const MOCK_USER = { id: 1, name: 'Admin User' };
-
-// ============================================
-// MOCK API (for development)
-// ============================================
-const MockDB = {
-  init: async () => {
-    console.log('[MOCK] DB initialized');
-    return Promise.resolve();
-  },
-  getCurrentUser: async () => {
-    console.log('[MOCK] Getting current user');
-    return Promise.resolve(MOCK_USER);
-  },
-  getPeople: async () => {
-    console.log('[MOCK] Getting people');
-    return Promise.resolve([...MOCK_PEOPLE]);
-  },
-  getSchedule: async () => {
-    console.log('[MOCK] Getting schedules');
-    return Promise.resolve({ ...MOCK_SCHEDULES });
-  },
-  saveSchedule: async (schedule) => {
-    console.log('[MOCK] Saving schedule:', schedule);
-    // Update mock data
-    Object.assign(MOCK_SCHEDULES, schedule);
-    return Promise.resolve(schedule);
-  },
-  logout: () => {
-    console.log('[MOCK] Logging out');
-    window.location.href = '/';
-  },
-};
-
-const MockPeopleAPI = {
-  create: async (name, color) => {
-    console.log('[MOCK] Creating person:', name, color);
-    const newPerson = {
-      id: MOCK_PEOPLE.length + 1,
-      name,
-      color,
-    };
-    MOCK_PEOPLE.push(newPerson);
-    return Promise.resolve(newPerson);
-  },
-  list: async () => {
-    console.log('[MOCK] Listing people');
-    return Promise.resolve([...MOCK_PEOPLE]);
-  },
-  delete: async (id) => {
-    console.log('[MOCK] Deleting person:', id);
-    const index = MOCK_PEOPLE.findIndex((p) => p.id === id);
-    if (index > -1) {
-      MOCK_PEOPLE.splice(index, 1);
-    }
-    return Promise.resolve({ id });
-  },
-};
-
-const MockSchedulesAPI = {
-  list: async (dateStr) => {
-    console.log('[MOCK] Listing schedules for:', dateStr);
-    const schedule = MOCK_SCHEDULES[dateStr];
-    return Promise.resolve(schedule ? [{ id: dateStr, ...schedule }] : []);
-  },
-  delete: async (id) => {
-    console.log('[MOCK] Deleting schedule:', id);
-    delete MOCK_SCHEDULES[id];
-    return Promise.resolve({ id });
-  },
-};
-
-// ============================================
-// API SELECTOR (switches between mock and real)
-// ============================================
-// const DB = DEV_MODE ? MockDB : window.DB;
-// const PeopleAPI = DEV_MODE ? MockPeopleAPI : window.PeopleAPI;
-// const SchedulesAPI = DEV_MODE ? MockSchedulesAPI : window.SchedulesAPI;
-
 // Initialize
 async function init() {
-  if (DEV_MODE) {
-    await MockDB.init();
-  } else {
-    // PRODUCTION: Uncomment when backend is ready
-    // await DB.init();
-  }
-
   await loadCurrentUser();
   await loadPeople();
   await loadSchedules();
@@ -373,9 +276,15 @@ function createDayElement(day, dateStr, isOtherMonth, isToday = false, isSelecte
   const dayEl = document.createElement('div');
   dayEl.className = 'calendar-day';
 
-  if (isOtherMonth) {dayEl.classList.add('other-month');}
-  if (isToday) {dayEl.classList.add('today');}
-  if (isSelected) {dayEl.classList.add('selected');}
+  if (isOtherMonth) {
+    dayEl.classList.add('other-month');
+  }
+  if (isToday) {
+    dayEl.classList.add('today');
+  }
+  if (isSelected) {
+    dayEl.classList.add('selected');
+  }
 
   dayEl.dataset.date = dateStr;
   dayEl.onclick = () => !isOtherMonth && openDayModal(dateStr, dayEl);
@@ -467,8 +376,10 @@ function getInitials(name) {
 }
 
 // Hover preview state
+/** @type {{dateStr: string, page: number}|null} */
 let hoverPreviewState = null;
 const PREVIEW_PAGE_SIZE = 4;
+/** @type {HTMLElement|null} */
 let hoverPreviewCell = null;
 const DAY_CELL_SHIFT_VISIBLE_LIMIT = 4;
 
@@ -557,8 +468,12 @@ function showHoverPreview(dateStr, event) {
     let top = rect.bottom + 25;
 
     // Keep within viewport horizontally
-    if (left + pw > vw - 8) {left = vw - pw - 8;}
-    if (left < 8) {left = 8;}
+    if (left + pw > vw - 8) {
+      left = vw - pw - 8;
+    }
+    if (left < 8) {
+      left = 8;
+    }
 
     // Keep within viewport vertically - position above if needed
     if (top + ph > vh - 8) {
@@ -674,6 +589,7 @@ function openDayModal(dateStr, dayEl) {
 }
 
 // Separate function to render modal content
+/** @type {number} */
 let modalPageState = 0;
 const MODAL_PAGE_SIZE = 4;
 
@@ -779,7 +695,9 @@ function renderDayModalContent(dateStr, day, monthName) {
 
       const currentSchedule = scheduleData[selectedDate];
       for (const s of ['A', 'M', 'B', 'C']) {
-        if (!currentSchedule.shifts[s]) {currentSchedule.shifts[s] = [];}
+        if (!currentSchedule.shifts[s]) {
+          currentSchedule.shifts[s] = [];
+        }
       }
 
       for (const s of ['A', 'M', 'B', 'C']) {
@@ -833,7 +751,9 @@ function toggleShiftSection(header) {
 // Close day modal
 function closeDayModal(event) {
   // Only close if clicking on the overlay itself, not the modal dialog
-  if (event && event.target.id !== 'day-modal') {return;}
+  if (event && event.target.id !== 'day-modal') {
+    return;
+  }
 
   document.getElementById('day-modal').style.display = 'none';
   selectedDate = null;
@@ -880,7 +800,9 @@ function positionDayModal() {
 
 // Save day schedule from modal
 async function saveDaySchedule() {
-  if (!selectedDate) {return;}
+  if (!selectedDate) {
+    return;
+  }
 
   try {
     // Ensure the schedule exists
@@ -904,7 +826,9 @@ async function saveDaySchedule() {
 
 // Clear day schedule
 async function clearDaySchedule() {
-  if (!selectedDate) {return;}
+  if (!selectedDate) {
+    return;
+  }
 
   showConfirm(
     'Clear Schedule',
@@ -965,7 +889,9 @@ function changeMonth(offset) {
 
 function toggleDatePicker() {
   const picker = document.getElementById('custom-date-picker');
-  if (!picker) {return;}
+  if (!picker) {
+    return;
+  }
 
   if (picker.style.display === 'none') {
     syncDatePickerControls();
@@ -1005,7 +931,9 @@ function renderDatePickerCalendar() {
   const daysInPrevMonth = new Date(year, month, 0).getDate();
   const daysContainer = document.getElementById('picker-days');
 
-  if (!daysContainer) {return;}
+  if (!daysContainer) {
+    return;
+  }
 
   daysContainer.innerHTML = '';
 
@@ -1248,7 +1176,9 @@ document.getElementById('preview-page-prev').addEventListener('click', (e) => {
       const people = schedule.shifts[shift] || [];
       people.forEach((personName) => {
         const person = peopleData.find((p) => p.name === personName);
-        if (person) {assignedStaff.push({ person, shift });}
+        if (person) {
+          assignedStaff.push({ person, shift });
+        }
       });
     });
     renderHoverPreviewContent(assignedStaff);
@@ -1266,7 +1196,9 @@ document.getElementById('preview-page-next').addEventListener('click', (e) => {
       const people = schedule.shifts[shift] || [];
       people.forEach((personName) => {
         const person = peopleData.find((p) => p.name === personName);
-        if (person) {assignedStaff.push({ person, shift });}
+        if (person) {
+          assignedStaff.push({ person, shift });
+        }
       });
     });
     const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
