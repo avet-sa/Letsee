@@ -14,38 +14,35 @@ dependencies = [
     "starlette>=0.40.0",
     "uvicorn[standard]>=0.24.0",
     "gunicorn>=21.2.0",
-
     # Database
     "sqlalchemy[mypy]>=2.0.25",
     "alembic>=1.13.1",
     "psycopg[binary]>=3.3.1",
-
     # Validation
     "pydantic>=2.6.0",
     "pydantic-settings>=2.1.0",
     "email-validator>=2.1.0",
-
     # Auth & Security - updated for CVE fixes
     "python-jose[cryptography]>=3.4.0",
     "passlib[bcrypt]>=1.7.4",
     "bcrypt>=4.0.1",
     "cryptography>=46.0.5",
     "pyasn1>=0.6.3",  # Transitive dep fix
-
     # File handling - updated for security
     "python-multipart>=0.0.22",
     "boto3>=1.34.5",
-
+    "python-magic-bin>=0.4.14; sys_platform == 'win32'",  # MIME type validation (Windows)
+    "python-magic>=0.4.27; sys_platform != 'win32'",  # MIME type validation (Linux/Mac)
     # Utilities
     "python-dotenv>=1.0.0",
     "python-json-logger>=2.0.7",
-
     # Explicit transitive dep fixes (for pip-audit)
     "jinja2>=3.1.6",
     "werkzeug>=3.1.6",
     "pillow>=12.1.1",
     "protobuf>=5.29.6",
     "fonttools>=4.60.2",
+    "python-magic-bin>=0.4.14",
 ]
 
 [tool.setuptools]

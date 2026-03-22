@@ -3,6 +3,12 @@ import os
 import uuid
 
 import boto3
+
+try:
+    import magic  # python-magic for Linux/Mac
+except ImportError:
+    import python_magic_bin as magic  # python-magic-bin for Windows
+
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 
@@ -24,13 +30,26 @@ ALLOWED_EXTENSIONS = {
     ".jpeg",
     ".png",
     ".gif",
-    ".bmp",
     ".webp",
     ".svg",
     ".tiff",
     ".ico",
     # PDFs
     ".pdf",
+}
+
+# Allowed MIME types (for content validation)
+ALLOWED_MIME_TYPES = {
+    # Images
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+    "image/tiff",
+    "image/x-icon",
+    # PDFs
+    "application/pdf",
 }
 
 # Max file size configured via settings (default 10MB)
@@ -41,6 +60,33 @@ def validate_file_type(filename: str) -> bool:
     """Validate file extension against allowed types."""
     ext = os.path.splitext(filename.lower())[1]
     return ext in ALLOWED_EXTENSIONS
+
+
+def validate_mime_type(content: bytes, filename: str) -> tuple[bool, str]:
+    """
+    Validate file MIME type using magic byte detection.
+
+    Args:
+        content: File content in bytes
+        filename: Original filename for error messages
+
+    Returns:
+        Tuple of (is_valid, detected_mime_type)
+    """
+    try:
+        # Detect MIME type from file content (magic bytes)
+        mime = magic.Magic(mime=True)
+        detected_mime = mime.from_buffer(content)
+
+        # Check if detected MIME type is allowed
+        if detected_mime not in ALLOWED_MIME_TYPES:
+            return False, detected_mime
+
+        return True, detected_mime
+    except Exception as e:
+        logger.error(f"MIME type detection failed for {filename}: {e}")
+        # If detection fails, reject the file for safety
+        return False, "unknown"
 
 
 def validate_file_path(file_key: str) -> str:
@@ -118,11 +164,12 @@ async def upload_file(
     """
     Upload a file to Minio and return the file key for later access.
     Requires authentication. Only images and PDFs allowed.
+    Validates both file extension and MIME type (magic bytes) for security.
     """
     # Apply upload-specific rate limiting
     await upload_rate_limiter.check_rate_limit(request)
 
-    # Validate file type
+    # Validate file extension
     if not validate_file_type(file.filename):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -153,18 +200,32 @@ async def upload_file(
                 detail=f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024}MB",
             )
 
+        # Validate MIME type using magic byte detection
+        is_valid_mime, detected_mime = validate_mime_type(content, file.filename)
+        if not is_valid_mime:
+            logger.warning(
+                f"MIME type mismatch: {file.filename} claimed {file.content_type}, "
+                f"but detected {detected_mime}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File content does not match file type. Only images and PDFs are accepted.",
+            )
+
         # Generate unique file key with original extension
         file_extension = os.path.splitext(file.filename)[1].lower()
         file_key = f"attachments/{uuid.uuid4()}{file_extension}"
 
-        logger.info(f"Uploading file: {file.filename} ({len(content)} bytes) to key: {file_key}")
+        logger.info(
+            f"Uploading file: {file.filename} ({len(content)} bytes, {detected_mime}) to key: {file_key}"
+        )
 
-        # Upload to Minio
+        # Upload to Minio with detected MIME type
         client.put_object(
             Bucket=bucket_name,
             Key=file_key,
             Body=content,
-            ContentType=file.content_type,
+            ContentType=detected_mime,
             Metadata={"filename": file.filename},
         )
 
@@ -175,7 +236,7 @@ async def upload_file(
             "file_key": file_key,
             "filename": file.filename,
             "size": len(content),
-            "content_type": file.content_type,
+            "content_type": detected_mime,
         }
     except Exception as e:
         logger.error(f"Failed to upload file {file.filename}: {str(e)}")
