@@ -43,6 +43,7 @@ dependencies = [
     "protobuf>=5.29.6",
     "fonttools>=4.60.2",
     "python-magic-bin>=0.4.14",
+    "python-magic>=0.4.27",
 ]
 
 [tool.setuptools]

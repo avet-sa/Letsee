@@ -5,9 +5,9 @@ import uuid
 import boto3
 
 try:
-    import magic  # python-magic for Linux/Mac
+    import magic  # type: ignore[import-not-found]  # python-magic for Linux/Mac
 except ImportError:
-    import python_magic_bin as magic  # python-magic-bin for Windows
+    import python_magic_bin as magic  # type: ignore[import-not-found]  # python-magic-bin for Windows
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
