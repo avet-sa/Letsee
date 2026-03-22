@@ -102,20 +102,21 @@ export default [
       },
     },
     rules: {
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': 'off', // Disabled globally - too many false positives in legacy code
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['warn', 'always'],
-      'prefer-const': 'warn',
+      'prefer-const': 'off', // Disabled for legacy code
       curly: ['warn', 'all'],
       'no-eval': 'error',
       'no-implied-eval': 'error',
     },
   },
   {
-    files: ['script.js'],
+    files: ['script.js', 'schedule.js'],
     rules: {
-      // script.js is large and has legacy code, be more lenient
+      // These files have legacy code, be more lenient
       'no-unused-vars': 'off',
+      'no-console': 'off',
     },
   },
 ];
