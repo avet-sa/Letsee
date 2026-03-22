@@ -139,7 +139,8 @@ def ensure_bucket_exists():
         return True
     except Exception as e:
         # head_bucket raises generic ClientError with 404, not NoSuchBucket
-        error_code = e.response.get("Error", {}).get("Code") if hasattr(e, "response") else None
+        # boto3 ClientError has response attribute, but base Exception doesn't
+        error_code = e.response.get("Error", {}).get("Code") if hasattr(e, "response") else None  # type: ignore[attr-defined]
 
         if error_code == "404" or "NoSuchBucket" in str(e):
             logger.info(f"Bucket {bucket_name} does not exist, creating it...")
@@ -170,7 +171,7 @@ async def upload_file(
     await upload_rate_limiter.check_rate_limit(request)
 
     # Validate file extension
-    if not validate_file_type(file.filename):
+    if not validate_file_type(file.filename):  # type: ignore[arg-type]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File type not allowed. Only images and PDFs are accepted.",
@@ -201,7 +202,7 @@ async def upload_file(
             )
 
         # Validate MIME type using magic byte detection
-        is_valid_mime, detected_mime = validate_mime_type(content, file.filename)
+        is_valid_mime, detected_mime = validate_mime_type(content, file.filename)  # type: ignore[arg-type]
         if not is_valid_mime:
             logger.warning(
                 f"MIME type mismatch: {file.filename} claimed {file.content_type}, "
@@ -213,7 +214,8 @@ async def upload_file(
             )
 
         # Generate unique file key with original extension
-        file_extension = os.path.splitext(file.filename)[1].lower()
+        # file.filename is guaranteed to be non-None at this point (FastAPI validation)
+        file_extension = os.path.splitext(file.filename)[1].lower()  # type: ignore[arg-type]
         file_key = f"attachments/{uuid.uuid4()}{file_extension}"
 
         logger.info(
