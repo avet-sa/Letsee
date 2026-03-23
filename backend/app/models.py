@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Index, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.core.database import Base
@@ -119,3 +119,17 @@ class Setting(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+
+
+class RevokedToken(Base):
+    """Blacklisted JWT tokens for logout/revocation."""
+
+    __tablename__ = "revoked_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    token = Column(String(500), unique=True, nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)  # When token would expire
+
+    __table_args__ = (Index("idx_revoked_token_user", "user_id"),)

@@ -1,8 +1,12 @@
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.rate_limit import auth_rate_limiter
 from app.core.security import (
@@ -10,9 +14,10 @@ from app.core.security import (
     create_refresh_token,
     get_current_user,
     get_password_hash,
+    security,
     verify_password,
 )
-from app.models import User
+from app.models import RevokedToken, User
 from app.schemas import Token, UserCreate, UserLogin, UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -83,6 +88,35 @@ async def get_me(
 
 
 @router.post("/logout")
-async def logout():
-    """Logout (client-side JWT deletion)."""
+async def logout(
+    current_user_id: str = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    """Logout and revoke the JWT token."""
+    token = credentials.credentials
+
+    # Decode token to get expiry time
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        exp_timestamp = payload.get("exp")
+        if not exp_timestamp:
+            # Fallback: use default expiry (30 minutes)
+            expires_at = datetime.now(UTC) + timedelta(minutes=30)
+        else:
+            expires_at = datetime.fromtimestamp(exp_timestamp, tz=UTC)
+    except JWTError:
+        # If token is invalid, still allow logout
+        expires_at = datetime.now(UTC) + timedelta(minutes=30)
+
+    # Add token to blacklist
+    revoked = RevokedToken(
+        token=token,
+        user_id=current_user_id,
+        revoked_at=datetime.now(UTC),
+        expires_at=expires_at,
+    )
+    db.add(revoked)
+    db.commit()
+
     return {"detail": "Logged out successfully"}

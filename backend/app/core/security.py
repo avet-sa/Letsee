@@ -6,6 +6,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+from app.core.database import SessionLocal
+from app.models import RevokedToken
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
@@ -49,6 +51,20 @@ async def get_current_user(
 ) -> str:
     """Get current authenticated user from JWT token."""
     token = credentials.credentials
+
+    # Check if token has been revoked (logout)
+    db = SessionLocal()
+    try:
+        revoked = db.query(RevokedToken).filter(RevokedToken.token == token).first()
+        if revoked:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    finally:
+        db.close()
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id = payload.get("sub")
