@@ -4,9 +4,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.database import SessionLocal
+from app.core.database import get_db
 from app.models import RevokedToken
 
 # Password hashing
@@ -18,12 +19,12 @@ security = HTTPBearer()
 
 def get_password_hash(password: str) -> str:
     """Hash a password."""
-    return pwd_context.hash(password)
+    return pwd_context.hash(password)  # type: ignore[no-any-return]
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(plain_password, hashed_password)  # type: ignore[no-any-return]
 
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
@@ -33,9 +34,9 @@ def create_access_token(subject: str, expires_delta: timedelta | None = None) ->
     else:
         expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode = {"sub": subject, "exp": expire}
+    to_encode = {"sub": subject, "exp": expire, "type": "access"}
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    return encoded_jwt  # type: ignore[no-any-return]
 
 
 def create_refresh_token(subject: str) -> str:
@@ -43,35 +44,33 @@ def create_refresh_token(subject: str) -> str:
     expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode = {"sub": subject, "exp": expire, "type": "refresh"}
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    return encoded_jwt  # type: ignore[no-any-return]
+
+
+def is_token_revoked(db: Session, token: str, user_id: str) -> bool:
+    """Check if a token has been revoked.
+
+    Checks for:
+    1. Specific token revocation (exact token match)
+    2. Wildcard revocation for user (all sessions logged out)
+    """
+    revoked = (
+        db.query(RevokedToken)
+        .filter(
+            (RevokedToken.token == token) |
+            ((RevokedToken.token == "*") & (RevokedToken.user_id == user_id))
+        )
+        .first()
+    )
+    return revoked is not None
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
 ) -> str:
     """Get current authenticated user from JWT token."""
     token = credentials.credentials
-
-    # Check if token has been revoked (logout)
-    db = SessionLocal()
-    try:
-        # Check for specific token revocation OR wildcard "all sessions" revocation
-        revoked = (
-            db.query(RevokedToken)
-            .filter(
-                (RevokedToken.token == token)
-                | ((RevokedToken.token == "*") & (RevokedToken.token_type == "all"))
-            )
-            .first()
-        )
-        if revoked:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-    finally:
-        db.close()
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -88,4 +87,13 @@ async def get_current_user(
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Check if token has been revoked (after decoding to get user_id)
+    if is_token_revoked(db, token, user_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return str(user_id)
