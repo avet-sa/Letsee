@@ -133,4 +133,7 @@ class RevokedToken(Base):
     revoked_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)  # When token would expire
 
-    __table_args__ = (Index("idx_revoked_token_user", "user_id"),)
+    __table_args__ = (
+        Index("idx_revoked_token_user", "user_id", "token_type"),
+        Index("idx_revoked_token", "token"),
+    )

@@ -136,9 +136,9 @@ class BackupScheduler:
             except Exception as e:
                 logger.error(f"Error in token cleanup loop: {e}")
 
-            # Run cleanup every 24 hours
+            # Run cleanup every 6 hours (access tokens expire in 30 min)
             try:
-                await asyncio.sleep(86400)
+                await asyncio.sleep(21600)  # 6 hours
             except asyncio.CancelledError:
                 break
 

@@ -47,18 +47,25 @@ def create_refresh_token(subject: str) -> str:
     return encoded_jwt  # type: ignore[no-any-return]
 
 
-def is_token_revoked(db: Session, token: str, user_id: str) -> bool:
+def is_token_revoked(
+    db: Session, token: str, user_id: str, token_type: str = "access"
+) -> bool:
     """Check if a token has been revoked.
 
     Checks for:
     1. Specific token revocation (exact token match)
-    2. Wildcard revocation for user (all sessions logged out)
+    2. Wildcard revocation for specific token type (e.g., all refresh tokens)
+    3. Wildcard revocation for all token types (logout all)
     """
     revoked = (
         db.query(RevokedToken)
         .filter(
-            (RevokedToken.token == token) |
-            ((RevokedToken.token == "*") & (RevokedToken.user_id == user_id))
+            (RevokedToken.token == token)
+            | (
+                (RevokedToken.token == "*")
+                & (RevokedToken.user_id == user_id)
+                & ((RevokedToken.token_type == token_type) | (RevokedToken.token_type == "all"))
+            )
         )
         .first()
     )
@@ -81,6 +88,7 @@ async def get_current_user(
                 detail="Invalid authentication credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        token_type = payload.get("type", "access")
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -89,7 +97,7 @@ async def get_current_user(
         )
 
     # Check if token has been revoked (after decoding to get user_id)
-    if is_token_revoked(db, token, user_id):
+    if is_token_revoked(db, token, user_id, token_type):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",

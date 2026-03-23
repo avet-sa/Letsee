@@ -68,6 +68,14 @@ async def login(user_login: UserLogin, request: Request, db: Session = Depends(g
 
     # Revoke all existing refresh tokens for this user (single session enforcement)
     # This ensures only one active session per user
+    # First, delete existing wildcard refresh revocations to avoid duplicates
+    db.query(RevokedToken).filter(
+        RevokedToken.user_id == user.id,
+        RevokedToken.token == "*",
+        RevokedToken.token_type == "refresh",
+    ).delete()
+
+    # Now add new wildcard revocation
     revoked_refresh = RevokedToken(
         token="*",
         token_type="refresh",
@@ -208,7 +216,7 @@ async def refresh_token(
         )
 
     # Check if refresh token has been revoked
-    if is_token_revoked(db, refresh_token_str, user_id):
+    if is_token_revoked(db, refresh_token_str, user_id, "refresh"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
