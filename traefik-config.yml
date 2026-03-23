@@ -1,0 +1,64 @@
+# Traefik Dynamic Configuration
+# Merged: TLS certificates + Security middlewares + Rate limiting
+
+# ============================================================================
+# TLS Configuration
+# ============================================================================
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/cert.pem
+        keyFile: /etc/traefik/certs/key.pem
+
+# ============================================================================
+# HTTP Middlewares (Security, Rate Limiting, etc.)
+# ============================================================================
+http:
+  middlewares:
+    # Security Headers (CSP, HSTS, X-Frame-Options, etc.)
+    security-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        sslHost: "${DOMAIN}"
+        sslProxyHeaders:
+          X-Forwarded-Proto: "https"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        permissionsPolicy: "geolocation=(), microphone=(), camera=()"
+        customResponseHeaders:
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;"
+
+    # Rate Limiting - Global protection (per IP)
+    # Configured for small-medium deployments (< 100 users)
+    # Adjust average/burst based on your needs
+    rate-limit:
+      rateLimit:
+        average: 200      # 200 requests per minute (average)
+        burst: 100        # Allow burst up to 300 requests
+        period: 1m        # Time window
+        sourceCriterion:
+          # Use X-Forwarded-For header for real IP (important behind proxy)
+          header: X-Forwarded-For
+
+    # Basic Auth (for admin-only endpoints if needed)
+    auth-basic:
+      basicAuth:
+        users:
+          - "admin:${ADMIN_BASIC_AUTH_HASH}"  # Generate with: htpasswd -nb admin password
+
+    # Compression middleware (gzip)
+    compression:
+      compress: {}
+
+    # Redirect HTTP to HTTPS (for production)
+    redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true

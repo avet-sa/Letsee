@@ -1,18 +1,19 @@
 """Alembic environment configuration."""
-import sys
+
 import os
+import sys
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Add parent directory to path so 'app' can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.core.database import Base
+
 # Import all models so they're registered with Base.metadata
-from app.models import User, Person, Schedule, Handover, Setting
 
 # This is the Alembic Config object, which provides the values of the
 # [alembic] section of the .ini file as Python attributes
@@ -24,7 +25,7 @@ if config.config_file_name is not None:
 
 # Set sqlalchemy.url from settings (ensure psycopg driver)
 database_url = settings.DATABASE_URL
-if not "+psycopg" in database_url and database_url.startswith("postgresql://"):
+if "+psycopg" not in database_url and database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+psycopg://")
 config.set_main_option("sqlalchemy.url", database_url)
 
