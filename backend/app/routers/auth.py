@@ -93,7 +93,7 @@ async def logout(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ):
-    """Logout and revoke the JWT token."""
+    """Logout and revoke the access token."""
     token = credentials.credentials
 
     # Decode token to get expiry time
@@ -112,6 +112,7 @@ async def logout(
     # Add token to blacklist
     revoked = RevokedToken(
         token=token,
+        token_type="access",
         user_id=current_user_id,
         revoked_at=datetime.now(UTC),
         expires_at=expires_at,
@@ -120,3 +121,23 @@ async def logout(
     db.commit()
 
     return {"detail": "Logged out successfully"}
+
+
+@router.post("/logout/all")
+async def logout_all_sessions(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Logout all sessions for current user (revoke all tokens)."""
+    # Revoke all tokens for this user
+    revoked = RevokedToken(
+        token="*",  # Wildcard for all tokens
+        token_type="all",
+        user_id=current_user_id,
+        revoked_at=datetime.now(UTC),
+        expires_at=datetime.now(UTC) + timedelta(days=7),  # Refresh tokens expire in 7 days
+    )
+    db.add(revoked)
+    db.commit()
+
+    return {"detail": "All sessions logged out successfully"}

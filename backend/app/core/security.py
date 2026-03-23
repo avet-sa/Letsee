@@ -55,7 +55,15 @@ async def get_current_user(
     # Check if token has been revoked (logout)
     db = SessionLocal()
     try:
-        revoked = db.query(RevokedToken).filter(RevokedToken.token == token).first()
+        # Check for specific token revocation OR wildcard "all sessions" revocation
+        revoked = (
+            db.query(RevokedToken)
+            .filter(
+                (RevokedToken.token == token)
+                | ((RevokedToken.token == "*") & (RevokedToken.token_type == "all"))
+            )
+            .first()
+        )
         if revoked:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

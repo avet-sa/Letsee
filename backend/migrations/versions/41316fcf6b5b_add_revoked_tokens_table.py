@@ -23,6 +23,7 @@ def upgrade() -> None:
         "revoked_tokens",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("token", sa.String(length=500), nullable=False),
+        sa.Column("token_type", sa.String(length=10), nullable=False),  # 'access' or 'refresh'
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
