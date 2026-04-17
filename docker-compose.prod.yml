@@ -14,10 +14,6 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       - "--providers.file.filename=/etc/traefik/config.yml"
       - "--providers.file.watch=true"
       - "--global.checknewversion=false"
@@ -95,7 +91,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'python -c "import requests; requests.get(''http://localhost:8000/api/health'')" || exit 1',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/health'')" || exit 1',
         ]
       interval: 10s
       timeout: 5s
@@ -107,13 +103,11 @@ services:
       - "traefik.enable=true"
       # Backend API routes
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.priority=100"
-      - "traefik.http.routers.backend.entrypoints=web,websecure"
-      - "traefik.http.routers.backend.tls=true"
-      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.backend.priority=200"
+      - "traefik.http.routers.backend.entrypoints=web"
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
       # Security & Rate Limiting middlewares
-      - "traefik.http.routers.backend.middlewares=security-headers,rate-limit@file"
+      - "traefik.http.routers.backend.middlewares=security-headers@file,rate-limit@file"
 
   # Minio (S3-compatible storage)
   minio:
@@ -238,12 +232,9 @@ services:
       # Frontend routes - catch all
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
       - "traefik.http.routers.frontend.priority=1"
-      - "traefik.http.routers.frontend.entrypoints=web,websecure"
-      - "traefik.http.routers.frontend.tls=true"
-      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.middlewares=security-headers@file,rate-limit@file"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
-      # Security headers and rate limiting
-      - "traefik.http.routers.frontend.middlewares=security-headers,rate-limit@file"
 
 volumes:
   postgres_data:

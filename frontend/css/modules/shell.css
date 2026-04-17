@@ -331,17 +331,17 @@
 } */
 
 .btn-complete:hover {
-  background: rgba(0, 255, 4, 0.09);
+  background: rgba(0, 255, 4, 0.09) !important;
   border-color: var(--border-primary);
 }
 
 .btn-delete:hover {
-  background: rgba(255, 0, 0, 0.1);
+  background: rgba(255, 0, 0, 0.1) !important;
   border-color: var(--border-primary);
 }
 
 .btn-edit:hover {
-  background: rgba(0, 123, 255, 0.1);
+  background: rgba(0, 123, 255, 0.1) !important;
   border-color: var(--border-primary);
 }
 

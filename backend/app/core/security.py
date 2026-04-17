@@ -1,30 +1,29 @@
 from datetime import UTC, datetime, timedelta
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import RevokedToken
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
-
 # JWT
 security = HTTPBearer()
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)  # type: ignore[no-any-return]
+    """Hash a password using bcrypt."""
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)  # type: ignore[no-any-return]
+    """Verify a password against a hash."""
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
@@ -47,9 +46,7 @@ def create_refresh_token(subject: str) -> str:
     return encoded_jwt  # type: ignore[no-any-return]
 
 
-def is_token_revoked(
-    db: Session, token: str, user_id: str, token_type: str = "access"
-) -> bool:
+def is_token_revoked(db: Session, token: str, user_id: str, token_type: str = "access") -> bool:
     """Check if a token has been revoked.
 
     Checks for:

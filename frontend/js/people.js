@@ -1,24 +1,12 @@
 /**
  * People/Staff Management Module for Letsee Frontend
  * Handles staff member CRUD operations and UI
+ * 
+ * NOTE: This file MUST be loaded AFTER script.js
+ * script.js defines: STAFF_COLOR_PRESETS, DEFAULT_PERSON_COLOR, editingPersonId, editingPersonOriginalName
  */
 
-// Color presets for staff members
-const STAFF_COLOR_PRESETS = [
-  '#3498db',
-  '#e74c3c',
-  '#2ecc71',
-  '#f39c12',
-  '#9b59b6',
-  '#1abc9c',
-  '#f1c40f',
-  '#e84393',
-];
-const DEFAULT_PERSON_COLOR = STAFF_COLOR_PRESETS[0];
-
-// State
-let editingPersonId = null;
-let editingPersonOriginalName = '';
+// All variables are defined in script.js - do NOT redeclare them here
 
 /**
  * Initialize person color picker UI

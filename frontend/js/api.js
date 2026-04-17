@@ -54,38 +54,51 @@ async function apiFetch(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  if (response.status === 401) {
-    // Token expired, clear and redirect to login
-    clearTokens();
-    window.location.href = '/login.html';
-    return null;
+    if (response.status === 401) {
+      // Token expired, clear and redirect to login
+      clearTokens();
+      window.location.href = '/login.html';
+      return null;
+    }
+
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch {
+        // Response wasn't JSON, use status text
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    if (response.status === 204 || response.status === 205) {
+      return null;
+    }
+
+    const responseText = await response.text();
+    if (!responseText) {
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return JSON.parse(responseText);
+    }
+
+    return responseText;
+  } catch (error) {
+    console.error('API Fetch Error:', { url, error: error.message });
+    throw error;
   }
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || `API Error: ${response.status}`);
-  }
-
-  if (response.status === 204 || response.status === 205) {
-    return null;
-  }
-
-  const responseText = await response.text();
-  if (!responseText) {
-    return null;
-  }
-
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    return JSON.parse(responseText);
-  }
-
-  return responseText;
 }
 
 // ============ Auth API ============
@@ -250,20 +263,24 @@ const SettingsAPI = {
   },
 
   async set(key, value) {
-    // Try to get existing setting
+    // Try to update existing setting first, create if it doesn't exist
     try {
-      await SettingsAPI.get(key);
+      const existing = await this.get(key);
       // Update existing
-      return apiFetch(`/settings/${key}`, {
+      return await apiFetch(`/settings/${key}`, {
         method: 'PUT',
         body: JSON.stringify({ value }),
       });
-    } catch {
-      // Create new
-      return apiFetch('/settings', {
-        method: 'POST',
-        body: JSON.stringify({ key, value }),
-      });
+    } catch (error) {
+      // If 404, create new
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        return await apiFetch('/settings', {
+          method: 'POST',
+          body: JSON.stringify({ key, value }),
+        });
+      }
+      // Re-throw other errors
+      throw error;
     }
   },
 
@@ -372,6 +389,11 @@ const DB = {
   // People
   async getPeople() {
     const people = await PeopleAPI.list();
+    // Ensure we always return an array
+    if (!Array.isArray(people)) {
+      console.warn('PeopleAPI.list() returned non-array:', people);
+      return [];
+    }
     return people.map((p) => ({ id: p.id, name: p.name, color: p.color }));
   },
 
@@ -383,7 +405,9 @@ const DB = {
       const schedulesToUpdate = {};
 
       Object.entries(existingSchedules).forEach(([date, schedule]) => {
-        if (!schedule?.shifts) {return;}
+        if (!schedule?.shifts) {
+          return;
+        }
 
         let changed = false;
         const updatedShifts = {};
@@ -464,7 +488,9 @@ const DB = {
     const handovers = await HandoversAPI.list();
     const result = {};
     for (const note of handovers) {
-      if (!result[note.date]) {result[note.date] = { notes: [], sortOrder: [] };}
+      if (!result[note.date]) {
+        result[note.date] = { notes: [], sortOrder: [] };
+      }
       result[note.date].notes.push({
         id: note.id,
         category: note.category,
@@ -493,6 +519,11 @@ const DB = {
     for (const [date, dateData] of Object.entries(notes)) {
       const notesList = Array.isArray(dateData) ? dateData : dateData.notes || [];
       for (const note of notesList) {
+        // Validate timestamp before creating Date object
+        const ts = note.timestamp || Date.now();
+        const dateObj = new Date(ts);
+        const timestampStr = isNaN(dateObj.getTime()) ? new Date().toISOString() : dateObj.toISOString();
+  
         const data = {
           date,
           category: note.category,
@@ -503,20 +534,31 @@ const DB = {
           promised: note.promised || false,
           promise_text: note.promiseText || '',
           attachments: note.attachments || [],
-          timestamp: new Date(note.timestamp).toISOString(),
+          timestamp: timestampStr,
           completed: note.completed || false,
           added_by: note.addedBy || '',
           shift: note.shift || 'A',
           due_date: note.dueDate || null,
           due_time: note.dueTime || null,
         };
-
-        try {
-          await HandoversAPI.get(note.id);
-          // Update
-          await HandoversAPI.update(note.id, data);
-        } catch {
-          // Create
+  
+        // Check if note has valid UUID - if not, it's a new note
+        const isValidUUID = note.id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(note.id);
+  
+        if (isValidUUID) {
+          try {
+            // Try to update existing note
+            await HandoversAPI.update(note.id, data);
+          } catch (error) {
+            // If not found (404), create new
+            if (error.message.includes('404') || error.message.includes('not found')) {
+              await HandoversAPI.create(data);
+            } else {
+              throw error;
+            }
+          }
+        } else {
+          // No valid ID, create new
           await HandoversAPI.create(data);
         }
       }

@@ -1,5 +1,5 @@
 # Traefik Dynamic Configuration
-# Merged: TLS certificates + Security middlewares + Rate limiting
+# Merged: TLS certificates + Security middlewares + Rate limiting + Entrypoints
 
 # ============================================================================
 # TLS Configuration
@@ -10,6 +10,15 @@ tls:
       defaultCertificate:
         certFile: /etc/traefik/certs/cert.pem
         keyFile: /etc/traefik/certs/key.pem
+
+# ============================================================================
+# EntryPoints
+# ============================================================================
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
 
 # ============================================================================
 # HTTP Middlewares (Security, Rate Limiting, etc.)
@@ -33,7 +42,7 @@ http:
           X-Content-Type-Options: "nosniff"
           X-Frame-Options: "DENY"
           X-XSS-Protection: "1; mode=block"
-          Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;"
+          Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:;"
 
     # Rate Limiting - Global protection (per IP)
     # Configured for small-medium deployments (< 100 users)
@@ -43,9 +52,6 @@ http:
         average: 200      # 200 requests per minute (average)
         burst: 100        # Allow burst up to 300 requests
         period: 1m        # Time window
-        sourceCriterion:
-          # Use X-Forwarded-For header for real IP (important behind proxy)
-          header: X-Forwarded-For
 
     # Basic Auth (for admin-only endpoints if needed)
     auth-basic:

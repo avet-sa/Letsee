@@ -1,41 +1,24 @@
 /**
  * Global Error Handler for Letsee Frontend
- * Catches unhandled errors and provides user-friendly feedback
+ * Logs errors to console for debugging (non-intrusive)
  */
 
 /**
  * Initialize global error handlers
  */
 function initErrorHandler() {
-  // Handle uncaught errors
+  // Handle uncaught errors - just log to console
   window.addEventListener('error', function handleError(event) {
     const error = event.error || event;
-    console.error('Uncaught error:', error);
-
-    // Don't show alert for network errors (already handled by API layer)
-    if (error.message?.includes('fetch') || error.message?.includes('network')) {
-      return;
-    }
-
-    // Show user-friendly error message
-    showGlobalError('Something went wrong. Please try refreshing the page.');
-
-    // Log error details for debugging (in production, send to error tracking service)
-    logError(error);
+    console.error('❌ Uncaught error:', error);
+    // Don't show modal - let browser handle it naturally
   });
 
-  // Handle unhandled promise rejections
+  // Handle unhandled promise rejections - just log to console
   window.addEventListener('unhandledrejection', function handleRejection(event) {
-    console.error('Unhandled promise rejection:', event.reason);
-
-    // Show user-friendly error message
-    showGlobalError('A request failed. Please try again.');
-
-    // Log error details
-    logError(event.reason);
+    console.error('❌ Unhandled promise rejection:', event.reason);
+    // Don't show modal - let browser handle it naturally
   });
-
-  console.log('Error handler initialized'); // eslint-disable-line no-console
 }
 
 /**

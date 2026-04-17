@@ -89,8 +89,12 @@ async function handleLogin(event) {
   const loading = document.getElementById('login-loading');
   const errorEl = document.getElementById('login-error');
 
-  if (btn) {btn.disabled = true;}
-  if (loading) {loading.classList.add('show');}
+  if (btn) {
+    btn.disabled = true;
+  }
+  if (loading) {
+    loading.classList.add('show');
+  }
 
   try {
     if (!isValidEmail(email)) {
@@ -125,8 +129,12 @@ async function handleLogin(event) {
       errorEl.textContent = error.message;
       errorEl.classList.add('show');
     }
-    if (btn) {btn.disabled = false;}
-    if (loading) {loading.classList.remove('show');}
+    if (btn) {
+      btn.disabled = false;
+    }
+    if (loading) {
+      loading.classList.remove('show');
+    }
   }
 }
 
@@ -189,8 +197,12 @@ async function handleRegister(event) {
     return;
   }
 
-  if (btn) {btn.disabled = true;}
-  if (loading) {loading.classList.add('show');}
+  if (btn) {
+    btn.disabled = true;
+  }
+  if (loading) {
+    loading.classList.add('show');
+  }
 
   try {
     const response = await fetch(`${API_BASE}/auth/register`, {
@@ -199,25 +211,46 @@ async function handleRegister(event) {
       body: JSON.stringify({ email, password, full_name: name }),
     });
 
-    const data = await response.json();
+    // Check content type before parsing
+    const contentType = response.headers.get('content-type');
 
     if (!response.ok) {
-      throw new Error(data.detail || 'Registration failed');
+      let errorMessage = 'Registration failed';
+
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        errorMessage = data.detail || errorMessage;
+      } else {
+        // Server returned HTML error (500)
+        const errorText = await response.text();
+        console.error('Server error:', errorText);
+        errorMessage = `Server error (${response.status}). Please check backend logs.`;
+      }
+
+      throw new Error(errorMessage);
     }
 
-    // Now login with the new account
-    if (successEl) {successEl.classList.add('show');}
+    const data = await response.json();
+
+    // Success - auto login
+    if (successEl) {
+      successEl.classList.add('show');
+    }
     setTimeout(() => {
       performLogin(email, password);
     }, 1500);
   } catch (error) {
     console.error('Registration error:', error);
     if (errorEl) {
-      errorEl.textContent = error.message;
+      errorEl.textContent = error.message || 'Registration failed';
       errorEl.classList.add('show');
     }
-    if (btn) {btn.disabled = false;}
-    if (loading) {loading.classList.remove('show');}
+    if (btn) {
+      btn.disabled = false;
+    }
+    if (loading) {
+      loading.classList.remove('show');
+    }
   }
 }
 
@@ -291,7 +324,9 @@ function toggleTheme() {
  */
 function updateThemeIcon(theme) {
   const themeBtn = document.getElementById('theme-toggle-btn');
-  if (!themeBtn) {return;}
+  if (!themeBtn) {
+    return;
+  }
 
   if (theme === 'dark') {
     themeBtn.innerHTML =

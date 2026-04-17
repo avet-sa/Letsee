@@ -349,13 +349,25 @@
         <form onsubmit="handleLogin(event)">
           <div class="form-group">
             <label for="login-email">Email</label>
-            <input type="email" id="login-email" placeholder="your@email.com" required />
+            <input
+              type="email"
+              id="login-email"
+              placeholder="your@email.com"
+              required
+              autocomplete="email"
+            />
             <div class="error-message" id="login-error"></div>
           </div>
 
           <div class="form-group">
             <label for="login-password">Password</label>
-            <input type="password" id="login-password" placeholder="••••••••" required />
+            <input
+              type="password"
+              id="login-password"
+              placeholder="••••••••"
+              required
+              autocomplete="current-password"
+            />
           </div>
 
           <div class="button-group">
@@ -376,12 +388,24 @@
         <form onsubmit="handleRegister(event)">
           <div class="form-group">
             <label for="register-name">Full Name</label>
-            <input type="text" id="register-name" placeholder="John Doe" required />
+            <input
+              type="text"
+              id="register-name"
+              placeholder="John Doe"
+              required
+              autocomplete="name"
+            />
           </div>
 
           <div class="form-group">
             <label for="register-email">Email</label>
-            <input type="email" id="register-email" placeholder="your@email.com" required />
+            <input
+              type="email"
+              id="register-email"
+              placeholder="your@email.com"
+              required
+              autocomplete="email"
+            />
             <div class="error-message" id="register-email-error"></div>
           </div>
 
@@ -393,6 +417,7 @@
               placeholder="••••••••"
               minlength="8"
               required
+              autocomplete="new-password"
             />
             <div class="error-message" id="register-password-error"></div>
           </div>
@@ -405,6 +430,7 @@
               placeholder="••••••••"
               minlength="8"
               required
+              autocomplete="new-password"
             />
             <div class="error-message" id="register-confirm-error"></div>
           </div>
