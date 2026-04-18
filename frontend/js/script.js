@@ -35,7 +35,9 @@ function initPersonColorPicker() {
   const picker = document.getElementById('new-person-color-picker');
   const colorInput = document.getElementById('new-person-color');
 
-  if (!picker || !colorInput) {return;}
+  if (!picker || !colorInput) {
+    return;
+  }
 
   const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
   colorInput.value = selectedColor;
@@ -57,7 +59,9 @@ function initPersonColorPicker() {
 
 function selectPersonColor(color) {
   const colorInput = document.getElementById('new-person-color');
-  if (!colorInput) {return;}
+  if (!colorInput) {
+    return;
+  }
 
   colorInput.value = color;
   document.querySelectorAll('#new-person-color-picker .color-swatch').forEach((swatch) => {
@@ -96,7 +100,9 @@ function resetPersonForm() {
 async function startPersonEdit(id) {
   const people = await getPeople();
   const person = people.find((candidate) => String(candidate.id) === String(id));
-  if (!person) {return;}
+  if (!person) {
+    return;
+  }
 
   editingPersonId = String(person.id);
   editingPersonOriginalName = person.name;
@@ -132,7 +138,9 @@ async function ensureDB() {
 // Open native date/time picker when clicking custom icon wrapper
 function openPicker(inputId) {
   const el = document.getElementById(inputId);
-  if (!el) {return;}
+  if (!el) {
+    return;
+  }
   if (typeof el.showPicker === 'function') {
     el.showPicker();
   } else {
@@ -196,7 +204,9 @@ function invalidateRenderCache() {
 async function getNotesForDate(dateKey) {
   const allNotes = await getHandoverNotes();
   const dateData = allNotes[dateKey];
-  if (!dateData) {return { notes: [], sortOrder: [] };}
+  if (!dateData) {
+    return { notes: [], sortOrder: [] };
+  }
   if (Array.isArray(dateData)) {
     // Backward compatibility: wrap array
     return { notes: dateData, sortOrder: dateData.map((n) => n.id) };
@@ -284,7 +294,9 @@ function renderHandoverNotesSync(dateData, schedule, shiftPeople) {
   } else if (currentFilter === 'overdue') {
     const now = new Date();
     notes = notes.filter((n) => {
-      if (!n.dueDate) {return false;}
+      if (!n.dueDate) {
+        return false;
+      }
       const dueDt = new Date(`${n.dueDate}T${n.dueTime || '00:00'}`);
       return dueDt < now;
     });
@@ -324,20 +336,32 @@ function renderHandoverNotesSync(dateData, schedule, shiftPeople) {
         if (note.dueDate) {
           const dueDt = new Date(`${note.dueDate}T${note.dueTime || '00:00'}`);
           const diffMs = dueDt - now;
-          if (diffMs < 0) {return 0;} // Overdue
-          if (diffMs < 3600000) {return 1;} // < 1 hour
-          if (diffMs < 86400000) {return 2;} // < 24 hours
+          if (diffMs < 0) {
+            return 0;
+          } // Overdue
+          if (diffMs < 3600000) {
+            return 1;
+          } // < 1 hour
+          if (diffMs < 86400000) {
+            return 2;
+          } // < 24 hours
           return 3; // > 24 hours
         }
-        if (note.promised && note.followup) {return 1.5;}
-        if (note.promised || note.followup) {return 2.5;}
+        if (note.promised && note.followup) {
+          return 1.5;
+        }
+        if (note.promised || note.followup) {
+          return 2.5;
+        }
         return 4;
       };
 
       const urgencyA = getUrgency(a);
       const urgencyB = getUrgency(b);
 
-      if (urgencyA !== urgencyB) {return urgencyA - urgencyB;}
+      if (urgencyA !== urgencyB) {
+        return urgencyA - urgencyB;
+      }
       return b.timestamp - a.timestamp; // Then by newest
     });
   } else if (currentSort === 'custom' && sortOrder.length > 0) {
@@ -366,9 +390,15 @@ function renderHandoverNotesSync(dateData, schedule, shiftPeople) {
   } else if (currentSort === 'dueDate') {
     notes.sort((a, b) => {
       // Items without due dates go to bottom
-      if (!a.dueDate && !b.dueDate) {return a.timestamp - b.timestamp;}
-      if (!a.dueDate) {return 1;}
-      if (!b.dueDate) {return -1;}
+      if (!a.dueDate && !b.dueDate) {
+        return a.timestamp - b.timestamp;
+      }
+      if (!a.dueDate) {
+        return 1;
+      }
+      if (!b.dueDate) {
+        return -1;
+      }
 
       const dueDtA = new Date(`${a.dueDate}T${a.dueTime || '00:00'}`);
       const dueDtB = new Date(`${b.dueDate}T${b.dueTime || '00:00'}`);
@@ -419,23 +449,33 @@ function renderNote(note, shiftPeople = '') {
   });
 
   const classes = ['handover-item'];
-  if (note.completed) {classes.push('completed');}
-  if (note.promised) {classes.push('has-promise');}
-  if (note.followup) {classes.push('has-followup');}
-  if (note.promised && note.followup) {classes.push('has-both-warnings');}
+  if (note.completed) {
+    classes.push('completed');
+  }
+  if (note.promised) {
+    classes.push('has-promise');
+  }
+  if (note.followup) {
+    classes.push('has-followup');
+  }
+  if (note.promised && note.followup) {
+    classes.push('has-both-warnings');
+  }
 
   // Top badges (category, promise, followup)
   const catClass = `category-${(note.category || 'info').toString().toLowerCase().replace(/\s+/g, '-')}`;
   const topBadges = [];
   topBadges.push(`<span class="category-badge ${catClass}">${note.category}</span>`);
-  if (note.promised)
-    {topBadges.push(
+  if (note.promised) {
+    topBadges.push(
       `<span class="warning-badge promise">${'promised To Guest'.toUpperCase()}</span>`
-    );}
-  if (note.followup)
-    {topBadges.push(
+    );
+  }
+  if (note.followup) {
+    topBadges.push(
       `<span class="warning-badge followup">${'follow-up Required'.toUpperCase()}</span>`
-    );}
+    );
+  }
 
   // Add date badge when searching across all dates
   if (note._date) {
@@ -646,7 +686,9 @@ function handleNoteTextareaEnter(e) {
 // Add attachment
 function addAttachment() {
   const url = document.getElementById('attachment-url').value.trim();
-  if (!url) {return;}
+  if (!url) {
+    return;
+  }
 
   const attachmentsList = document.getElementById('attachments-list');
   const name = url.split('/').pop().substring(0, 30);
@@ -788,11 +830,15 @@ function closeAttachmentModal() {
   // Cleanup blob URLs
   const iframes = preview.querySelectorAll('iframe');
   iframes.forEach((iframe) => {
-    if (iframe.src) {URL.revokeObjectURL(iframe.src);}
+    if (iframe.src) {
+      URL.revokeObjectURL(iframe.src);
+    }
   });
   const imgs = preview.querySelectorAll('img');
   imgs.forEach((img) => {
-    if (img.src) {URL.revokeObjectURL(img.src);}
+    if (img.src) {
+      URL.revokeObjectURL(img.src);
+    }
   });
 
   currentAttachmentBlob = null;
@@ -899,7 +945,9 @@ async function saveNote(event) {
   } else {
     dateNotes.push(noteData);
     // Add to sortOrder if not present
-    if (!sortOrder.includes(noteData.id)) {sortOrder.push(noteData.id);}
+    if (!sortOrder.includes(noteData.id)) {
+      sortOrder.push(noteData.id);
+    }
   }
   allNotes[dateKey] = { notes: dateNotes, sortOrder };
 
@@ -1014,7 +1062,9 @@ async function deleteNote(noteId) {
 async function toggleComplete(noteId) {
   // Immediate UI feedback - update DOM directly
   const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
-  if (!noteElement) {return;}
+  if (!noteElement) {
+    return;
+  }
 
   const isCompleted = noteElement.classList.contains('completed');
   noteElement.classList.toggle('completed');
@@ -1172,10 +1222,14 @@ function updateBulkUI() {
 function toggleSelect(id, element) {
   if (selectedNotes.has(id)) {
     selectedNotes.delete(id);
-    if (element) {element.classList.remove('selected');}
+    if (element) {
+      element.classList.remove('selected');
+    }
   } else {
     selectedNotes.add(id);
-    if (element) {element.classList.add('selected');}
+    if (element) {
+      element.classList.add('selected');
+    }
   }
   updateBulkUI();
 }
@@ -1183,14 +1237,18 @@ function toggleSelect(id, element) {
 function clearSelection() {
   selectedNotes.forEach((noteId) => {
     const element = document.querySelector(`[data-note-id="${noteId}"]`);
-    if (element) {element.classList.remove('selected');}
+    if (element) {
+      element.classList.remove('selected');
+    }
   });
   selectedNotes.clear();
   updateBulkUI();
 }
 
 async function bulkDelete() {
-  if (selectedNotes.size === 0) {return;}
+  if (selectedNotes.size === 0) {
+    return;
+  }
 
   showConfirm(
     'Delete Notes',
@@ -1225,7 +1283,9 @@ async function bulkDelete() {
 }
 
 async function bulkToggleComplete() {
-  if (selectedNotes.size === 0) {return;}
+  if (selectedNotes.size === 0) {
+    return;
+  }
 
   const unresolvedList = document.getElementById('unresolved-list');
   const generalList = document.getElementById('general-list');
@@ -1237,7 +1297,9 @@ async function bulkToggleComplete() {
   // Update UI immediately for all selected notes
   noteIds.forEach((noteId) => {
     const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
-    if (!noteElement) {return;}
+    if (!noteElement) {
+      return;
+    }
 
     const isCompleted = noteElement.classList.contains('completed');
     noteElement.classList.toggle('completed');
@@ -1274,7 +1336,9 @@ async function bulkToggleComplete() {
     return getNotesForDate(dateKey).then((dateData) => {
       const notes = dateData.notes || [];
       notes.forEach((n) => {
-        if (noteIds.includes(n.id)) {n.completed = !n.completed;}
+        if (noteIds.includes(n.id)) {
+          n.completed = !n.completed;
+        }
       });
       allNotes[dateKey] = dateData;
       return saveHandoverNotes(allNotes);
@@ -1301,13 +1365,17 @@ function saveDraft() {
 
 let _draftTimeout = null;
 function saveDraftDebounced() {
-  if (_draftTimeout) {clearTimeout(_draftTimeout);}
+  if (_draftTimeout) {
+    clearTimeout(_draftTimeout);
+  }
   _draftTimeout = setTimeout(saveDraft, 500);
 }
 
 function loadDraftIntoForm() {
   const raw = localStorage.getItem(DRAFT_KEY);
-  if (!raw) {return;}
+  if (!raw) {
+    return;
+  }
   try {
     const draft = JSON.parse(raw);
     document.getElementById('note-category').value = draft.category || 'info';
@@ -1319,7 +1387,9 @@ function loadDraftIntoForm() {
     document.getElementById('promise-text').value = draft.promiseText || '';
     document.getElementById('note-due-date').value = draft.dueDate || '';
     document.getElementById('note-due-time').value = draft.dueTime || '';
-    if (draft.promised) {document.getElementById('promise-text-group').style.display = 'block';}
+    if (draft.promised) {
+      document.getElementById('promise-text-group').style.display = 'block';
+    }
   } catch (e) {
     console.warn('Invalid draft', e);
   }
@@ -1339,7 +1409,9 @@ function attachAutosaveListeners() {
     'attachment-url',
   ].forEach((id) => {
     const el = document.getElementById(id);
-    if (!el) {return;}
+    if (!el) {
+      return;
+    }
     el.removeEventListener('input', saveDraftDebounced);
     el.addEventListener('input', saveDraftDebounced);
     el.removeEventListener('change', saveDraftDebounced);
@@ -1451,8 +1523,12 @@ function changeDate(days) {
   // Disable navigation buttons during load
   const leftBtn = document.querySelector('.date-nav .nav-btn:first-child');
   const rightBtn = document.querySelector('.date-nav .nav-btn:last-child');
-  if (leftBtn) {leftBtn.disabled = true;}
-  if (rightBtn) {rightBtn.disabled = true;}
+  if (leftBtn) {
+    leftBtn.disabled = true;
+  }
+  if (rightBtn) {
+    rightBtn.disabled = true;
+  }
 
   try {
     currentDate.setDate(currentDate.getDate() + days);
@@ -1461,8 +1537,12 @@ function changeDate(days) {
   } finally {
     // Re-enable buttons after a brief delay to ensure UI updates
     setTimeout(() => {
-      if (leftBtn) {leftBtn.disabled = false;}
-      if (rightBtn) {rightBtn.disabled = false;}
+      if (leftBtn) {
+        leftBtn.disabled = false;
+      }
+      if (rightBtn) {
+        rightBtn.disabled = false;
+      }
       isLoadingDate = false;
     }, 100);
   }

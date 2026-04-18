@@ -18,10 +18,12 @@ async def list_handovers(
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
-    """Get handover notes. Optionally filter by date (YYYY-MM-DD)."""
-    query = db.query(Handover)
+    """Get handover notes. Optionally filter by date (YYYY-MM-DD). Excludes soft-deleted notes."""
+    query = db.query(Handover).filter(Handover.deleted_at.is_(None))
+
     if date:
         query = query.filter(Handover.date == date)
+
     return query.order_by(Handover.timestamp.desc()).all()
 
 
@@ -118,10 +120,14 @@ async def delete_handover(
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
-    """Delete a handover note."""
+    """Soft delete a handover note."""
     handover = db.query(Handover).filter(Handover.id == handover_id).first()
     if not handover:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover note not found")
 
-    db.delete(handover)
+    if handover.deleted_at is not None:
+        # Already deleted
+        return
+
+    handover.deleted_at = datetime.now(UTC)
     db.commit()

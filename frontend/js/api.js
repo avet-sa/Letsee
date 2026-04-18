@@ -233,15 +233,15 @@ const HandoversAPI = {
       body: JSON.stringify({
         category: data.category,
         room: data.room || '',
-        guest_name: data.guestName || '',
+        guest_name: data.guest_name || data.guestName || '',
         text: data.text,
         followup: data.followup,
         promised: data.promised,
-        promise_text: data.promiseText || '',
+        promise_text: data.promise_text || data.promiseText || '',
         attachments: data.attachments,
         completed: data.completed,
-        due_date: data.due_date || null,
-        due_time: data.due_time || null,
+        due_date: data.due_date || data.dueDate || null,
+        due_time: data.due_time || data.dueTime || null,
       }),
     });
   },
@@ -515,51 +515,86 @@ const DB = {
     return result;
   },
 
+  // ============ Handovers API Wrapper ============
   async saveHandoverNotes(notes) {
     for (const [date, dateData] of Object.entries(notes)) {
       const notesList = Array.isArray(dateData) ? dateData : dateData.notes || [];
+      const currentIds = new Set(notesList.map((n) => String(n.id)).filter(Boolean));
+
+      // 1. Handle soft deletes (notes removed from frontend)
+      let existingNotes = [];
+      try {
+        existingNotes = await HandoversAPI.list(date);
+      } catch (e) {
+        console.warn(`Could not fetch existing notes for ${date}`, e);
+      }
+
+      const existingIds = new Set(existingNotes.map((n) => String(n.id)));
+
+      for (const existingId of existingIds) {
+        if (!currentIds.has(existingId)) {
+          try {
+            await HandoversAPI.delete(existingId);
+            console.log(`Soft-deleted note: ${existingId}`);
+          } catch (err) {
+            console.error(`Failed to soft-delete note ${existingId}`, err);
+          }
+        }
+      }
+
+      // 2. Save / Create notes
       for (const note of notesList) {
-        // Validate timestamp before creating Date object
-        const ts = note.timestamp || Date.now();
-        const dateObj = new Date(ts);
-        const timestampStr = isNaN(dateObj.getTime()) ? new Date().toISOString() : dateObj.toISOString();
-  
-        const data = {
-          date,
-          category: note.category,
+        if (!note.text?.trim()) continue;
+
+        const timestampStr = new Date(note.timestamp || Date.now()).toISOString();
+
+        const payload = {
+          date: date,
+          category: note.category || 'info',
           room: note.room || '',
-          guestName: note.guestName || '',
+          guest_name: note.guestName || '',
           text: note.text,
-          followup: note.followup || false,
-          promised: note.promised || false,
+          followup: Boolean(note.followup),
+          promised: Boolean(note.promised),
           promise_text: note.promiseText || '',
           attachments: note.attachments || [],
           timestamp: timestampStr,
-          completed: note.completed || false,
+          completed: Boolean(note.completed),
           added_by: note.addedBy || '',
           shift: note.shift || 'A',
           due_date: note.dueDate || null,
           due_time: note.dueTime || null,
         };
-  
-        // Check if note has valid UUID - if not, it's a new note
-        const isValidUUID = note.id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(note.id);
-  
-        if (isValidUUID) {
-          try {
-            // Try to update existing note
-            await HandoversAPI.update(note.id, data);
-          } catch (error) {
-            // If not found (404), create new
-            if (error.message.includes('404') || error.message.includes('not found')) {
-              await HandoversAPI.create(data);
-            } else {
-              throw error;
+
+        // Decide if it's a new note or existing
+        const isNewNote =
+          !note.id ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            String(note.id)
+          );
+
+        try {
+          if (isNewNote) {
+            // NEW NOTE → always use CREATE
+            const created = await HandoversAPI.create(payload);
+            console.log(`✅ Created new note on ${date}`);
+          } else {
+            // EXISTING NOTE → use UPDATE
+            await HandoversAPI.update(note.id, payload);
+            console.log(`✅ Updated note ${note.id}`);
+          }
+        } catch (error) {
+          console.error(`Failed to save note ${note.id || 'new'}`, error);
+
+          // Last resort fallback
+          if (isNewNote || String(error.message).toLowerCase().includes('not found')) {
+            try {
+              await HandoversAPI.create(payload);
+              console.log(`✅ Fallback create succeeded for note on ${date}`);
+            } catch (fallbackErr) {
+              console.error(`Complete failure saving note on ${date}`, fallbackErr);
             }
           }
-        } else {
-          // No valid ID, create new
-          await HandoversAPI.create(data);
         }
       }
     }

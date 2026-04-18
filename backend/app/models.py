@@ -97,10 +97,12 @@ class Handover(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     __table_args__ = (
         Index("idx_handover_date", "date"),
         Index("idx_handover_date_created", "date", "created_at"),
+        Index("idx_handover_deleted", "deleted_at"),
     )
 
 
