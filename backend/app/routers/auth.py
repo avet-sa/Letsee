@@ -10,25 +10,97 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.rate_limit import auth_rate_limiter
 from app.core.security import (
+    build_wildcard_token,
     create_access_token,
     create_refresh_token,
     get_current_user,
+    get_current_user_record,
+    get_optional_current_user_record,
     get_password_hash,
     is_token_revoked,
     security,
     verify_password,
 )
-from app.models import RevokedToken, User
+from app.models import Person, RevokedToken, User
 from app.schemas import RefreshToken, Token, TokenPair, UserCreate, UserLogin, UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+DEFAULT_PERSON_COLOR = "#3498db"
+
+
+def _resolve_user_display_name(user_create: UserCreate) -> str:
+    """Choose a display name for a user and linked staff record."""
+    if user_create.full_name and user_create.full_name.strip():
+        return user_create.full_name.strip()
+    return user_create.email.split("@", 1)[0].replace(".", " ").replace("_", " ").strip()
+
+
+def _get_or_create_linked_person(
+    db: Session,
+    *,
+    requested_person_id,
+    display_name: str,
+    person_color: str | None,
+) -> Person:
+    """Link a user to an existing staff record or create one when needed."""
+    person: Person | None = None
+
+    if requested_person_id is not None:
+        person = db.query(Person).filter(Person.id == requested_person_id).first()
+        if not person:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Requested staff record was not found",
+            )
+    else:
+        person = db.query(Person).filter(Person.name == display_name).first()
+
+    if person:
+        linked_user = db.query(User).filter(User.person_id == person.id).first()
+        if linked_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This staff record is already linked to another user",
+            )
+        return person
+
+    new_person = Person(name=display_name, color=person_color or DEFAULT_PERSON_COLOR)
+    db.add(new_person)
+    db.flush()
+    return new_person
 
 
 @router.post("/register", response_model=UserResponse)
-async def register(user_create: UserCreate, request: Request, db: Session = Depends(get_db)):
-    """Register a new user."""
+async def register(
+    user_create: UserCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user_record),
+):
+    """Create a user account.
+
+    Bootstrap behavior:
+    - The first account can be created anonymously and becomes an admin.
+    - After that, only authenticated admins can create new users.
+    """
     # Apply per-route rate limiting to prevent mass signups
     await auth_rate_limiter.check_rate_limit(request)
+
+    user_count = db.query(User).count()
+    bootstrap_admin = user_count == 0
+
+    if not bootstrap_admin:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Registration is disabled. Ask an administrator to create your account.",
+            )
+        if not current_user.is_admin:  # type: ignore[truthy-bool]
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only admins can create new user accounts",
+            )
+
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == user_create.email).first()
     if existing_user:
@@ -36,12 +108,22 @@ async def register(user_create: UserCreate, request: Request, db: Session = Depe
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
+    display_name = _resolve_user_display_name(user_create)
+    linked_person = _get_or_create_linked_person(
+        db,
+        requested_person_id=user_create.person_id,
+        display_name=display_name,
+        person_color=user_create.person_color,
+    )
+
     # Create user
     new_user = User(
         email=user_create.email,
         hashed_password=get_password_hash(user_create.password),
-        full_name=user_create.full_name,
+        full_name=display_name,
+        person_id=linked_person.id,
         is_active=True,
+        is_admin=bootstrap_admin or user_create.is_admin,
     )
     db.add(new_user)
     db.commit()
@@ -71,13 +153,18 @@ async def login(user_login: UserLogin, request: Request, db: Session = Depends(g
     # First, delete existing wildcard refresh revocations to avoid duplicates
     db.query(RevokedToken).filter(
         RevokedToken.user_id == user.id,
-        RevokedToken.token == "*",
+        RevokedToken.token.in_(
+            [
+                "*",
+                build_wildcard_token(user.id, "refresh"),
+            ]
+        ),
         RevokedToken.token_type == "refresh",
     ).delete()
 
     # Now add new wildcard revocation
     revoked_refresh = RevokedToken(
-        token="*",
+        token=build_wildcard_token(user.id, "refresh"),
         token_type="refresh",
         user_id=user.id,
         revoked_at=datetime.now(UTC),
@@ -98,14 +185,10 @@ async def login(user_login: UserLogin, request: Request, db: Session = Depends(g
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(
-    current_user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_record),
 ):
     """Get current user info."""
-    user = db.query(User).filter(User.id == UUID(current_user_id)).first()  # type: ignore[arg-type]
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+    return current_user
 
 
 @router.post("/logout")
@@ -137,7 +220,7 @@ async def logout(
     revoked_access = RevokedToken(
         token=access_token,
         token_type="access",
-        user_id=current_user_id,  # type: ignore[arg-type]
+        user_id=UUID(current_user_id),
         revoked_at=datetime.now(UTC),
         expires_at=access_expires_at,
     )
@@ -146,9 +229,9 @@ async def logout(
     # Also revoke any refresh tokens for this user (single session logout)
     # This prevents using refresh token to get new access token after logout
     revoked_refresh = RevokedToken(
-        token="*",  # Wildcard for all refresh tokens of this user
+        token=build_wildcard_token(current_user_id, "refresh"),
         token_type="refresh",
-        user_id=current_user_id,  # type: ignore[arg-type]
+        user_id=UUID(current_user_id),
         revoked_at=datetime.now(UTC),
         expires_at=datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
@@ -167,9 +250,9 @@ async def logout_all_sessions(
     """Logout all sessions for current user (revoke all tokens)."""
     # Revoke all tokens for this user using wildcard
     revoked = RevokedToken(
-        token="*",  # Wildcard for all tokens
+        token=build_wildcard_token(current_user_id, "all"),
         token_type="all",
-        user_id=current_user_id,  # type: ignore[arg-type]
+        user_id=UUID(current_user_id),
         revoked_at=datetime.now(UTC),
         expires_at=datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )

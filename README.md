@@ -463,6 +463,9 @@ docker-compose -f docker-compose.prod.yml ps
 
 ```bash
 # Create the first user account via API
+# The first registered account becomes an admin automatically.
+# After bootstrap, only authenticated admins can create additional accounts.
+# Admins can also create staff accounts from the Staff modal in the frontend.
 curl -X POST "https://your-domain.com/api/auth/register" \
   -H "Content-Type: application/json" \
   -d '{
@@ -545,7 +548,7 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/register` | Bootstrap first admin or create a linked staff account as an authenticated admin |
 | POST | `/api/auth/login` | Login and get tokens |
 | POST | `/api/auth/refresh` | Refresh access token |
 | GET | `/api/auth/me` | Get current user info |
@@ -567,19 +570,25 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/people` | Add staff member |
-| GET | `/api/people` | List all staff |
-| PUT | `/api/people/{id}` | Update staff member |
-| DELETE | `/api/people/{id}` | Remove staff member |
+| GET | `/api/people` | List all staff (authenticated users) |
+| POST | `/api/people` | Add staff member (admin only) |
+| PUT | `/api/people/{id}` | Update staff member (admin only) |
+| DELETE | `/api/people/{id}` | Remove staff member (admin only) |
+
+The frontend staff modal can create either:
+
+- A staff record only
+- A linked login account plus staff record when email and password are provided
 
 ### Schedule Management
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/schedules` | Create/update schedule |
-| GET | `/api/schedules` | List schedules (date range) |
-| GET | `/api/schedules/{date}` | Get schedule for date |
-| PUT | `/api/schedules/{date}` | Update schedule |
+| GET | `/api/schedules` | List schedules (authenticated users) |
+| GET | `/api/schedules/{date}` | Get schedule for date (authenticated users) |
+| POST | `/api/schedules` | Create schedule (admin only) |
+| PUT | `/api/schedules/{date}` | Upsert schedule by date (admin only) |
+| DELETE | `/api/schedules/{date}` | Delete schedule (admin only) |
 
 ### File Management
 
@@ -593,13 +602,16 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/backups/create` | Trigger manual backup |
-| GET | `/api/backups/list` | List available backups |
-| POST | `/api/backups/restore` | Restore from backup |
+| GET | `/api/backups/list` | List available backups (admin only) |
+| POST | `/api/backups/create` | Trigger manual backup (admin only) |
+| POST | `/api/backups/restore/{backup_filename}` | Restore from backup (admin only) |
+| POST | `/api/backups/cleanup` | Delete old backups (admin only) |
 
 ### Request/Response Examples
 
 #### Register User
+
+The first registration bootstraps the system and creates an admin account. After that, this endpoint requires an authenticated admin bearer token. Admin-created staff accounts can also set the linked staff color and admin role.
 
 **Request:**
 ```bash
@@ -609,7 +621,9 @@ Content-Type: application/json
 {
   "email": "user@example.com",
   "password": "SecurePassword123!",
-  "full_name": "John Doe"
+  "full_name": "John Doe",
+  "person_color": "#3498db",
+  "is_admin": false
 }
 ```
 
@@ -619,7 +633,9 @@ Content-Type: application/json
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "email": "user@example.com",
   "full_name": "John Doe",
+  "person_id": "123e4567-e89b-12d3-a456-426614174001",
   "is_active": true,
+  "is_admin": false,
   "is_verified": false,
   "created_at": "2024-04-18T10:30:00Z"
 }
@@ -1008,12 +1024,14 @@ pytest
 # Run with coverage
 pytest --cov=app tests/
 
-# Run specific test file
-pytest tests/test_auth.py
+# Run the auth/RBAC regression suite
+pytest tests/test_auth_rbac.py
 
 # Run with verbose output
 pytest -v
 ```
+
+Current backend pytest coverage includes bootstrap auth, admin-only account creation, linked staff creation, schedule permissions, backup permissions, and handover access.
 
 ### Adding New Dependencies
 

@@ -104,10 +104,10 @@ async function apiFetch(endpoint, options = {}) {
 // ============ Auth API ============
 
 const AuthAPI = {
-  async register(email, password, fullName) {
+  async register(payload) {
     return apiFetch('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, full_name: fullName }),
+      body: JSON.stringify(payload),
     });
   },
 
@@ -473,13 +473,7 @@ const DB = {
       const payload = {
         shifts: data.shifts || { A: [], M: [], B: [], C: [] },
       };
-
-      const existing = await SchedulesAPI.list(date);
-      if (existing.length > 0) {
-        await SchedulesAPI.update(date, payload);
-      } else {
-        await SchedulesAPI.create(date, payload);
-      }
+      await SchedulesAPI.update(date, payload);
     }
   },
 

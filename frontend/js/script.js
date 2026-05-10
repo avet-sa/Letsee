@@ -24,6 +24,7 @@ const STAFF_COLOR_PRESETS = [
 const DEFAULT_PERSON_COLOR = STAFF_COLOR_PRESETS[0];
 let editingPersonId = null;
 let editingPersonOriginalName = '';
+let currentUser = null;
 
 // Cache for render performance
 let cachedDateData = null;
@@ -135,6 +136,29 @@ async function ensureDB() {
   }
 }
 
+async function loadCurrentUser() {
+  try {
+    currentUser = await DB.getCurrentUser();
+  } catch (error) {
+    console.error('Error loading current user:', error);
+    currentUser = null;
+  }
+}
+
+function applyRoleUI() {
+  const manageStaffBtn = document.getElementById('manage-staff-btn');
+  const manageScheduleLink = document.getElementById('manage-schedule-link');
+  const isAdmin = Boolean(currentUser?.is_admin);
+
+  if (manageStaffBtn) {
+    manageStaffBtn.style.display = isAdmin ? '' : 'none';
+  }
+
+  if (manageScheduleLink) {
+    manageScheduleLink.style.display = isAdmin ? '' : 'none';
+  }
+}
+
 // Open native date/time picker when clicking custom icon wrapper
 function openPicker(inputId) {
   const el = document.getElementById(inputId);
@@ -165,8 +189,46 @@ const SHIFT_COLORS = {
   B: 'rgba(255, 150, 150, 0.5)', // Afternoon - soft red
   C: 'rgba(150, 150, 200, 0.5)', // Night - dark blue
 };
+const SHIFT_ORDER = ['A', 'M', 'B', 'C'];
 
 let currentEditingNoteId = null;
+
+function getShiftEntries(daySchedule) {
+  return daySchedule?.shifts || { A: [], M: [], B: [], C: [] };
+}
+
+function getCurrentShiftCode(date = currentDate, daySchedule = null) {
+  const targetDate = date instanceof Date ? date : new Date(date);
+  const targetDateKey = targetDate.toISOString().split('T')[0];
+  const todayDateKey = new Date().toISOString().split('T')[0];
+
+  if (targetDateKey !== todayDateKey) {
+    const shifts = getShiftEntries(daySchedule);
+    return SHIFT_ORDER.find((shift) => (shifts[shift] || []).length > 0) || 'A';
+  }
+
+  const minutes = targetDate.getHours() * 60 + targetDate.getMinutes();
+  if (minutes < 8 * 60) {
+    return 'C';
+  }
+  if (minutes < 11 * 60) {
+    return 'A';
+  }
+  if (minutes < 15 * 60) {
+    return 'M';
+  }
+  return 'B';
+}
+
+function getAssignedPeopleForShift(daySchedule, shiftCode) {
+  const shifts = getShiftEntries(daySchedule);
+  const assignedPeople = shifts[shiftCode];
+  if (!Array.isArray(assignedPeople)) {
+    return [];
+  }
+
+  return [...new Set(assignedPeople.filter((personName) => typeof personName === 'string' && personName.trim()))];
+}
 
 // Get people from database
 async function getPeople() {
@@ -310,7 +372,7 @@ function renderHandoverNotesSync(dateData, schedule, shiftPeople) {
   // Apply quick filters
   // Need schedule/currentShift for 'myShift'
   const daySchedule = schedule[dateKey] || {};
-  const currentShift = daySchedule.shift || 'A';
+  const currentShift = getCurrentShiftCode(currentDate, daySchedule);
   if (currentQuickFilter === 'myShift') {
     notes = notes.filter((n) => (n.shift || currentShift) === currentShift);
   } else if (currentQuickFilter === 'todaysUrgent') {
@@ -447,6 +509,12 @@ function renderNote(note, shiftPeople = '') {
     hour: '2-digit',
     minute: '2-digit',
   });
+  const safeCategory = escapeHtml(note.category || 'Info');
+  const safeText = escapeHtml(note.text || '');
+  const safePromiseText = escapeHtml(note.promiseText || '');
+  const safeEditedBy = escapeHtml(note.editedBy || 'Staff');
+  const safePeopleDisplay = escapeHtml(note.addedBy || shiftPeople || 'Staff');
+  const safeShiftInfo = escapeHtml(note.shift || 'A');
 
   const classes = ['handover-item'];
   if (note.completed) {
@@ -463,9 +531,13 @@ function renderNote(note, shiftPeople = '') {
   }
 
   // Top badges (category, promise, followup)
-  const catClass = `category-${(note.category || 'info').toString().toLowerCase().replace(/\s+/g, '-')}`;
+  const catClass = `category-${(note.category || 'info')
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]/g, '')}`;
   const topBadges = [];
-  topBadges.push(`<span class="category-badge ${catClass}">${note.category}</span>`);
+  topBadges.push(`<span class="category-badge ${catClass}">${safeCategory}</span>`);
   if (note.promised) {
     topBadges.push(
       `<span class="warning-badge promise">${'promised To Guest'.toUpperCase()}</span>`
@@ -485,7 +557,7 @@ function renderNote(note, shiftPeople = '') {
       day: 'numeric',
       year: 'numeric',
     });
-    topBadges.push(`<span class="date-badge">${dateStr}</span>`);
+    topBadges.push(`<span class="date-badge">${escapeHtml(dateStr)}</span>`);
   }
 
   // Inline badges (room, guest) - will appear near the text
@@ -497,7 +569,7 @@ function renderNote(note, shiftPeople = '') {
       .map((r) => r.trim())
       .filter((r) => r);
     rooms.forEach((room) => {
-      inlineBadges.push(`<span class="room-badge-inline">${room}</span>`);
+      inlineBadges.push(`<span class="room-badge-inline">${escapeHtml(room)}</span>`);
     });
   }
   if (note.guestName) {
@@ -507,15 +579,12 @@ function renderNote(note, shiftPeople = '') {
       .map((g) => g.trim())
       .filter((g) => g);
     guests.forEach((guest) => {
-      inlineBadges.push(`<span class="guest-badge-inline">${guest}</span>`);
+      inlineBadges.push(`<span class="guest-badge-inline">${escapeHtml(guest)}</span>`);
     });
   }
 
-  const shiftInfo = note.shift || 'A';
-  // Use note's addedBy if shiftPeople is empty
-  const peopleDisplay = shiftPeople || note.addedBy || 'Staff';
   const editInfo = note.editedAt
-    ? `<div class="edit-info">Edited: ${new Date(note.editedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} by ${note.editedBy || 'Staff'}</div>`
+    ? `<div class="edit-info">Edited: ${escapeHtml(new Date(note.editedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }))} by ${safeEditedBy}</div>`
     : '';
   const attachments =
     note.attachments && note.attachments.length > 0
@@ -539,18 +608,20 @@ function renderNote(note, shiftPeople = '') {
             }
 
             const filename = att.filename || att.name || 'attachment';
+            const safeFilename = escapeHtml(filename);
             const isImage = filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
 
             if (att.file_key) {
               // New Minio format - open in browser with auth header
-              const safeName = filename.replace(/'/g, "\\'");
-              return `<a href="#" onclick="openAttachment('${att.file_key}','${safeName}','${isImage ? 'image' : 'pdf'}'); return false;" class="attachment-link" title="${safeName}">${isImage ? '🖼️' : '📄'} ${safeName}</a>`;
+              const safeNameForJs = escapeJsString(filename);
+              const safeFileKeyForJs = escapeJsString(att.file_key);
+              return `<a href="#" onclick="openAttachment('${safeFileKeyForJs}','${safeNameForJs}','${isImage ? 'image' : 'pdf'}'); return false;" class="attachment-link" title="${safeFilename}">${isImage ? '🖼️' : '📄'} ${safeFilename}</a>`;
             } else if (att.url && att.url.startsWith('data:image')) {
               // Old base64 format (image)
-              return `<a href="${att.url}" target="_blank" class="attachment-link" title="${filename}">🖼️ ${filename}</a>`;
+              return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">🖼️ ${safeFilename}</a>`;
             } else if (att.url && att.url.includes('data:application/pdf')) {
               // Old base64 format (PDF)
-              return `<a href="${att.url}" target="_blank" class="attachment-link" title="${filename}">📄 ${filename}</a>`;
+              return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">📄 ${safeFilename}</a>`;
             }
             return ''; // Skip other file types
           })
@@ -633,13 +704,13 @@ function renderNote(note, shiftPeople = '') {
                     </button>
                 </div>
             </div>
-            <div class="handover-text">${note.text}</div>
+            <div class="handover-text">${safeText}</div>
             ${inlineBadges.length > 0 ? `<div class="inline-badges">${inlineBadges.join('')}</div>` : ''}
-            ${note.promiseText ? `<div class="promise-text">→ ${note.promiseText}</div>` : ''}
+            ${note.promiseText ? `<div class="promise-text">→ ${safePromiseText}</div>` : ''}
             ${attachments}
             ${editInfo}
             <div class="handover-footer">
-                <span>${timeStr} | ${shiftInfo} ${'shift'} | ${peopleDisplay}</span>
+                <span>${escapeHtml(timeStr)} | ${safeShiftInfo} ${'shift'} | ${safePeopleDisplay}</span>
                 <span>${dueLabel}</span>
             </div>
         </div>
@@ -695,7 +766,7 @@ function addAttachment() {
   const attachmentDiv = document.createElement('div');
   attachmentDiv.className = 'attachment-item';
   attachmentDiv.innerHTML = `
-        <span>📎 ${name}</span>
+        <span>📎 ${escapeHtml(name)}</span>
         <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
     `;
   attachmentDiv.dataset.url = url;
@@ -737,7 +808,7 @@ async function handleFileSelect(event) {
     const attachmentDiv = document.createElement('div');
     attachmentDiv.className = 'attachment-item';
     attachmentDiv.innerHTML = `
-            <span>📎 ${file.name}</span>
+            <span>📎 ${escapeHtml(file.name)}</span>
             <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
         `;
     attachmentDiv.dataset.fileKey = uploadResponse.file_key;
@@ -882,7 +953,8 @@ async function saveNote(event) {
   const sortOrder = dateData.sortOrder;
   const schedule = await getSchedule();
   const daySchedule = schedule[dateKey] || {};
-  const currentShift = daySchedule.shift || 'A';
+  const currentShift = getCurrentShiftCode(currentDate, daySchedule);
+  const assignedPeople = getAssignedPeopleForShift(daySchedule, currentShift);
   const people = await getPeople();
   // Collect attachments with file keys
   const attachmentItems = document.querySelectorAll('#attachments-list .attachment-item');
@@ -900,7 +972,6 @@ async function saveNote(event) {
       name: item.dataset.url?.split('/').pop() || 'attachment',
     };
   });
-  const assignedPeople = daySchedule.people || [];
   const noteData = {
     id: currentEditingNoteId || generateUUID(),
     category: document.getElementById('note-category').value,
@@ -917,7 +988,10 @@ async function saveNote(event) {
       ? dateNotes.find((n) => n.id === currentEditingNoteId)?.timestamp || Date.now()
       : Date.now(),
     completed: false,
-    addedBy: assignedPeople.length > 0 ? assignedPeople.join(' & ') : people[0]?.name || 'Staff',
+    addedBy:
+      assignedPeople.length > 0
+        ? assignedPeople.join(' & ')
+        : currentUser?.full_name || currentUser?.email || people[0]?.name || 'Staff',
     dueDate: document.getElementById('note-due-date').value || '',
     dueTime: document.getElementById('note-due-time').value || '',
     shift: currentEditingNoteId
@@ -929,9 +1003,10 @@ async function saveNote(event) {
     if (index !== -1) {
       noteData.editedAt = Date.now();
       // Get current shift people for editedBy
-      const assignedPeople = daySchedule.people || [];
       if (assignedPeople.length > 0) {
         noteData.editedBy = assignedPeople.join(' & ');
+      } else if (currentUser?.full_name || currentUser?.email) {
+        noteData.editedBy = currentUser.full_name || currentUser.email;
       } else if (people.length >= 2) {
         noteData.editedBy = people
           .slice(0, 2)
@@ -1001,7 +1076,7 @@ async function editNote(noteId) {
       attachmentDiv.className = 'attachment-item';
       const displayName = att.filename || att.name || att.url?.split('/').pop() || 'attachment';
       attachmentDiv.innerHTML = `
-                <span>📎 ${displayName}</span>
+                <span>📎 ${escapeHtml(displayName)}</span>
                 <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
             `;
       if (att.file_key) {
@@ -1114,19 +1189,14 @@ async function toggleComplete(noteId) {
 
 // Update people block with gradient
 async function getCurrentShiftPeople() {
-  const people = await getPeople();
   const dateKey = currentDate.toISOString().split('T')[0];
   const schedule = await getSchedule();
   const daySchedule = schedule[dateKey] || {};
-  const assignedPeople = daySchedule.people || [];
+  const currentShift = getCurrentShiftCode(currentDate, daySchedule);
+  const assignedPeople = getAssignedPeopleForShift(daySchedule, currentShift);
 
   if (assignedPeople.length > 0) {
     return assignedPeople.join(' & ');
-  } else if (people.length >= 2) {
-    return people
-      .slice(0, 2)
-      .map((p) => p.name)
-      .join(' & ');
   }
   return '';
 }
@@ -1137,9 +1207,8 @@ async function updatePeopleBlock() {
   const schedule = await getSchedule();
   const daySchedule = schedule[dateKey] || {};
 
-  // Get current shift (default to 'A')
-  const currentShift = daySchedule.shift || 'A';
-  const assignedPeople = daySchedule.people || [];
+  const currentShift = getCurrentShiftCode(currentDate, daySchedule);
+  const assignedPeople = getAssignedPeopleForShift(daySchedule, currentShift);
 
   const peopleNames = document.getElementById('people-names');
   const shiftName = document.getElementById('shift-name');
@@ -1155,13 +1224,14 @@ async function updatePeopleBlock() {
     } else if (selectedPeople.length >= 2) {
       peopleNames.textContent = selectedPeople.map((p) => p.name.toUpperCase()).join(' & ');
     }
-  } else if (people.length >= 2) {
-    // Default: show first two people
-    peopleNames.textContent = `${people[0].name.toUpperCase()} & ${people[1].name.toUpperCase()}`;
+  } else if (peopleNames) {
+    peopleNames.textContent = 'NO STAFF ASSIGNED';
   }
 
   // Update shift name
-  shiftName.textContent = currentShift.toUpperCase() + ' SHIFT';
+  if (shiftName) {
+    shiftName.textContent = currentShift.toUpperCase() + ' SHIFT';
+  }
 }
 
 // Update active states for sort and filter controls
@@ -1716,7 +1786,9 @@ window.downloadAttachment = downloadAttachment;
 // Close modal on outside click
 document.addEventListener('DOMContentLoaded', async () => {
   await ensureDB();
+  await loadCurrentUser();
   await loadTheme();
+  applyRoleUI();
   resetPersonForm();
 
   // Initial render
@@ -1772,6 +1844,11 @@ updateDateDisplay();
 // ============ People Management ============
 
 async function openPeopleModal() {
+  if (!currentUser?.is_admin) {
+    showAlert('Access Denied', 'Only admins can manage staff.');
+    return;
+  }
+
   document.getElementById('people-modal').style.display = 'flex';
   resetPersonForm();
   await renderPeopleList();

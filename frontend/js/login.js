@@ -5,15 +5,6 @@
 const STORAGE_KEY_THEME = 'letsee_theme';
 
 /**
- * Toggle between login and register forms
- */
-function toggleMode() {
-  document.getElementById('login-form')?.classList.toggle('active');
-  document.getElementById('register-form')?.classList.toggle('active');
-  clearErrors();
-}
-
-/**
  * Clear all error and success messages
  */
 function clearErrors() {
@@ -34,16 +25,6 @@ function clearErrors() {
 function sanitizeEmail(value) {
   const v = (value || '').trim();
   return v.replace(/[\s<>"'`]/g, '');
-}
-
-/**
- * Sanitize name input
- * @param {string} value - Name to sanitize
- * @returns {string} - Sanitized name
- */
-function sanitizeName(value) {
-  const v = (value || '').trim();
-  return v.replace(/[<>"'`]/g, '').slice(0, 100);
 }
 
 /**
@@ -139,160 +120,6 @@ async function handleLogin(event) {
 }
 
 /**
- * Handle registration form submission
- * @param {Event} event - Form submit event
- */
-async function handleRegister(event) {
-  event.preventDefault();
-  clearErrors();
-
-  const nameRaw = document.getElementById('register-name')?.value || '';
-  const emailRaw = document.getElementById('register-email')?.value || '';
-  const passwordRaw = document.getElementById('register-password')?.value || '';
-  const confirmRaw = document.getElementById('register-confirm')?.value || '';
-
-  const name = sanitizeName(nameRaw);
-  const email = sanitizeEmail(emailRaw);
-  const password = sanitizePassword(passwordRaw);
-  const confirm = sanitizePassword(confirmRaw);
-
-  const btn = document.getElementById('register-btn');
-  const loading = document.getElementById('register-loading');
-  const successEl = document.getElementById('register-success');
-  const errorEl = document.getElementById('register-error');
-
-  // Validate passwords match
-  if (password !== confirm) {
-    const confirmErrorEl = document.getElementById('register-confirm-error');
-    if (confirmErrorEl) {
-      confirmErrorEl.textContent = 'Passwords do not match';
-      confirmErrorEl.classList.add('show');
-    }
-    return;
-  }
-
-  // Basic input validation
-  if (!name) {
-    const nameErrorEl = document.getElementById('register-name-error');
-    if (nameErrorEl) {
-      nameErrorEl.textContent = 'Name is required';
-      nameErrorEl.classList.add('show');
-    }
-    return;
-  }
-  if (!isValidEmail(email)) {
-    const emailErrorEl = document.getElementById('register-email-error');
-    if (emailErrorEl) {
-      emailErrorEl.textContent = 'Please enter a valid email address';
-      emailErrorEl.classList.add('show');
-    }
-    return;
-  }
-  if (!isStrongEnoughPassword(password)) {
-    const passwordErrorEl = document.getElementById('register-password-error');
-    if (passwordErrorEl) {
-      passwordErrorEl.textContent = 'Password must be at least 8 characters';
-      passwordErrorEl.classList.add('show');
-    }
-    return;
-  }
-
-  if (btn) {
-    btn.disabled = true;
-  }
-  if (loading) {
-    loading.classList.add('show');
-  }
-
-  try {
-    const response = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, full_name: name }),
-    });
-
-    // Check content type before parsing
-    const contentType = response.headers.get('content-type');
-
-    if (!response.ok) {
-      let errorMessage = 'Registration failed';
-
-      if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        errorMessage = data.detail || errorMessage;
-      } else {
-        // Server returned HTML error (500)
-        const errorText = await response.text();
-        console.error('Server error:', errorText);
-        errorMessage = `Server error (${response.status}). Please check backend logs.`;
-      }
-
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-
-    // Success - auto login
-    if (successEl) {
-      successEl.classList.add('show');
-    }
-    setTimeout(() => {
-      performLogin(email, password);
-    }, 1500);
-  } catch (error) {
-    console.error('Registration error:', error);
-    if (errorEl) {
-      errorEl.textContent = error.message || 'Registration failed';
-      errorEl.classList.add('show');
-    }
-    if (btn) {
-      btn.disabled = false;
-    }
-    if (loading) {
-      loading.classList.remove('show');
-    }
-  }
-}
-
-/**
- * Perform login with credentials (used after registration)
- * @param {string} email - User email
- * @param {string} password - User password
- */
-async function performLogin(email, password) {
-  try {
-    const safeEmail = sanitizeEmail(email);
-    const safePassword = sanitizePassword(password);
-
-    const response = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: safeEmail, password: safePassword }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.detail || 'Login failed');
-    }
-
-    // Save tokens
-    localStorage.setItem('letsee_access_token', data.access_token);
-    localStorage.setItem('letsee_refresh_token', data.refresh_token);
-
-    // Redirect to main app
-    window.location.href = '/index.html';
-  } catch (error) {
-    console.error('Auto-login after registration failed:', error);
-    // Fall back to manual login
-    setTimeout(() => {
-      showAlert('Account Created', 'Account created! Please log in with your credentials.');
-      location.reload();
-    }, 1000);
-  }
-}
-
-/**
  * Initialize login page on DOM ready
  */
 window.addEventListener('DOMContentLoaded', () => {
@@ -356,16 +183,12 @@ function loadTheme() {
 // Export for module usage
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    toggleMode,
     clearErrors,
     sanitizeEmail,
-    sanitizeName,
     sanitizePassword,
     isValidEmail,
     isStrongEnoughPassword,
     handleLogin,
-    handleRegister,
-    performLogin,
     toggleTheme,
     updateThemeIcon,
     loadTheme,

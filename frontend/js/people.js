@@ -8,6 +8,42 @@
 
 // All variables are defined in script.js - do NOT redeclare them here
 
+function setPersonAccountFormState(isEditing) {
+  const emailInput = document.getElementById('new-person-email');
+  const passwordInput = document.getElementById('new-person-password');
+  const adminCheckbox = document.getElementById('new-person-is-admin');
+  const adminGroup = document.getElementById('new-person-admin-group');
+  const hint = document.getElementById('person-account-hint');
+
+  [emailInput, passwordInput, adminCheckbox].forEach((field) => {
+    if (field) {
+      field.disabled = isEditing;
+    }
+  });
+
+  if (isEditing) {
+    if (adminGroup) {
+      adminGroup.style.opacity = '0.7';
+    }
+    if (hint) {
+      hint.textContent =
+        'Linked account details are only set when creating a staff member. Edit login state separately.';
+    }
+    return;
+  }
+
+  if (emailInput) {emailInput.value = '';}
+  if (passwordInput) {passwordInput.value = '';}
+  if (adminCheckbox) {adminCheckbox.checked = false;}
+  if (adminGroup) {
+    adminGroup.style.opacity = '';
+  }
+  if (hint) {
+    hint.textContent =
+      'Leave email and password blank to create a staff record without a login account.';
+  }
+}
+
 /**
  * Initialize person color picker UI
  */
@@ -69,6 +105,7 @@ function resetPersonForm() {
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
+  setPersonAccountFormState(false);
 }
 
 /**
@@ -89,6 +126,7 @@ async function startPersonEdit(id) {
   document.getElementById('new-person-name').value = person.name;
   initPersonColorPicker();
   selectPersonColor(person.color);
+  setPersonAccountFormState(true);
   document.getElementById('new-person-name').focus();
 }
 
@@ -105,9 +143,15 @@ function cancelPersonEdit() {
 async function savePerson() {
   const nameInput = document.getElementById('new-person-name');
   const colorInput = document.getElementById('new-person-color');
+  const emailInput = document.getElementById('new-person-email');
+  const passwordInput = document.getElementById('new-person-password');
+  const adminCheckbox = document.getElementById('new-person-is-admin');
 
   const name = nameInput?.value?.trim();
   const color = colorInput?.value || DEFAULT_PERSON_COLOR;
+  const email = emailInput?.value?.trim() || '';
+  const password = passwordInput?.value || '';
+  const isAdmin = Boolean(adminCheckbox?.checked);
 
   if (!name) {
     showAlert('Validation Error', 'Please enter a name');
@@ -116,46 +160,35 @@ async function savePerson() {
 
   try {
     if (editingPersonId) {
-      await PeopleAPI.update(editingPersonId, name, color);
-      // Update staff name in existing schedules
-      const existingSchedules = await SchedulesAPI.list();
-      const schedulesToUpdate = {};
-
-      existingSchedules.forEach((schedule) => {
-        if (!schedule?.shifts) {return;}
-
-        let changed = false;
-        const updatedShifts = {};
-
-        ['A', 'M', 'B', 'C'].forEach((shift) => {
-          const originalPeople = schedule.shifts[shift] || [];
-          const renamedPeople = [
-            ...new Set(
-              originalPeople.map((personName) => {
-                if (personName === editingPersonOriginalName) {
-                  changed = true;
-                  return name;
-                }
-                return personName;
-              })
-            ),
-          ];
-          updatedShifts[shift] = renamedPeople;
-        });
-
-        if (changed) {
-          schedulesToUpdate[schedule.date] = { shifts: updatedShifts };
-        }
-      });
-
-      if (Object.keys(schedulesToUpdate).length > 0) {
-        await SchedulesAPI.update(
-          Object.keys(schedulesToUpdate)[0],
-          schedulesToUpdate[Object.keys(schedulesToUpdate)[0]]
-        );
-      }
+      await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
     } else {
-      await PeopleAPI.create(name, color);
+      if (email || password) {
+        if (!email || !password) {
+          showAlert(
+            'Validation Error',
+            'Provide both email and password to create a login account, or leave both blank.'
+          );
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showAlert('Validation Error', 'Please enter a valid email address.');
+          return;
+        }
+        if (password.length < 8) {
+          showAlert('Validation Error', 'Password must be at least 8 characters long.');
+          return;
+        }
+
+        await AuthAPI.register({
+          email,
+          password,
+          full_name: name,
+          person_color: color,
+          is_admin: isAdmin,
+        });
+      } else {
+        await PeopleAPI.create(name, color);
+      }
     }
 
     resetPersonForm();
@@ -214,21 +247,25 @@ async function renderPeopleList() {
 
     peopleList.innerHTML = people
       .map(
-        (person) => `
+        (person) => {
+          const safeName = escapeHtml(person.name);
+          const safeColor = escapeHtml(person.color);
+          const safeNameForJs = escapeJsString(person.name);
+          return `
           <div class="person-item" data-id="${person.id}">
-            <div class="person-color" style="background-color: ${person.color}"></div>
+            <div class="person-color" style="background-color: ${safeColor}"></div>
             <div class="person-info">
-              <div class="person-name">${escapeHtml(person.name)}</div>
-              <div class="person-color-code">${escapeHtml(person.color)}</div>
+              <div class="person-name">${safeName}</div>
+              <div class="person-color-code">${safeColor}</div>
             </div>
             <div class="person-actions">
-              <button class="btn-icon" onclick="startPersonEdit('${person.id}')" aria-label="Edit ${person.name}">
+              <button class="btn-icon" onclick="startPersonEdit('${person.id}')" aria-label="Edit ${safeName}">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
               </button>
-              <button class="btn-icon btn-delete" onclick="deletePerson('${person.id}', '${escapeHtml(person.name)}')" aria-label="Delete ${person.name}">
+              <button class="btn-icon btn-delete" onclick="deletePerson('${person.id}', '${safeNameForJs}')" aria-label="Delete ${safeName}">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"></polyline>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -236,7 +273,8 @@ async function renderPeopleList() {
               </button>
             </div>
           </div>
-        `
+        `;
+        }
       )
       .join('');
   } catch (error) {
@@ -267,6 +305,11 @@ async function refreshPeopleViews() {
  * Open the people management modal
  */
 async function openPeopleModal() {
+  if (!currentUser?.is_admin) {
+    showAlert('Access Denied', 'Only admins can manage staff.');
+    return;
+  }
+
   const modal = document.getElementById('people-modal');
   if (modal) {
     modal.style.display = 'flex';

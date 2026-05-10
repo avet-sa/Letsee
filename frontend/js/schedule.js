@@ -62,6 +62,48 @@ const MONTH_NAMES = [
 let editingPersonId = null;
 let editingPersonOriginalName = '';
 
+function setPersonAccountFormState(isEditing) {
+  const emailInput = document.getElementById('new-person-email');
+  const passwordInput = document.getElementById('new-person-password');
+  const adminCheckbox = document.getElementById('new-person-is-admin');
+  const adminGroup = document.getElementById('new-person-admin-group');
+  const hint = document.getElementById('person-account-hint');
+
+  [emailInput, passwordInput, adminCheckbox].forEach((field) => {
+    if (field) {
+      field.disabled = isEditing;
+    }
+  });
+
+  if (isEditing) {
+    if (adminGroup) {
+      adminGroup.style.opacity = '0.7';
+    }
+    if (hint) {
+      hint.textContent =
+        'Linked account details are only set when creating a staff member. Edit login state separately.';
+    }
+    return;
+  }
+
+  if (emailInput) {
+    emailInput.value = '';
+  }
+  if (passwordInput) {
+    passwordInput.value = '';
+  }
+  if (adminCheckbox) {
+    adminCheckbox.checked = false;
+  }
+  if (adminGroup) {
+    adminGroup.style.opacity = '';
+  }
+  if (hint) {
+    hint.textContent =
+      'Leave email and password blank to create a staff record without a login account.';
+  }
+}
+
 function initPersonColorPicker() {
   const picker = document.getElementById('new-person-color-picker');
   const colorInput = document.getElementById('new-person-color');
@@ -126,6 +168,7 @@ function resetPersonForm() {
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
+  setPersonAccountFormState(false);
 }
 
 function startPersonEdit(id) {
@@ -143,6 +186,7 @@ function startPersonEdit(id) {
   document.getElementById('new-person-name').value = person.name;
   initPersonColorPicker();
   selectPersonColor(person.color);
+  setPersonAccountFormState(true);
   document.getElementById('new-person-name').focus();
 }
 
@@ -171,6 +215,7 @@ async function refreshPeopleViews() {
 // Initialize
 async function init() {
   await loadCurrentUser();
+  applyAdminUI();
   await loadPeople();
   await loadSchedules();
   renderCalendar();
@@ -186,6 +231,15 @@ async function loadCurrentUser() {
     currentUser = await DB.getCurrentUser();
   } catch (error) {
     console.error('Error loading user:', error);
+  }
+}
+
+function applyAdminUI() {
+  const manageStaffBtn = document.getElementById('manage-staff-btn');
+  const isAdmin = Boolean(currentUser?.is_admin);
+
+  if (manageStaffBtn) {
+    manageStaffBtn.style.display = isAdmin ? '' : 'none';
   }
 }
 
@@ -287,7 +341,7 @@ function createDayElement(day, dateStr, isOtherMonth, isToday = false, isSelecte
   }
 
   dayEl.dataset.date = dateStr;
-  dayEl.onclick = () => !isOtherMonth && openDayModal(dateStr, dayEl);
+  dayEl.onclick = () => !isOtherMonth && currentUser?.is_admin && openDayModal(dateStr, dayEl);
   dayEl.onmouseenter = (e) => !isOtherMonth && showHoverPreview(dateStr, e);
   dayEl.onmouseleave = () => hideHoverPreview();
 
@@ -561,6 +615,10 @@ function hideHoverPreview() {
 
 // Open day modal
 function openDayModal(dateStr, dayEl) {
+  if (!currentUser?.is_admin) {
+    return;
+  }
+
   if (selectedDate === dateStr) {
     closeDayModal();
     return;
@@ -1045,6 +1103,11 @@ function handleLogout() {
 // ============ People Management ============
 
 async function openPeopleModal() {
+  if (!currentUser?.is_admin) {
+    showAlert('Access Denied', 'Only admins can manage staff or edit schedules.');
+    return;
+  }
+
   document.getElementById('people-modal').style.display = 'flex';
   resetPersonForm();
   await renderPeopleList();
@@ -1097,16 +1160,19 @@ async function renderPeopleList() {
   peopleData.forEach((person) => {
     const personEl = document.createElement('div');
     personEl.className = 'person-item';
+    const safeName = escapeHtml(person.name);
+    const safeColor = escapeHtml(person.color);
+    const safeNameForJs = escapeJsString(person.name);
 
     personEl.innerHTML = `
-            <div class="person-color" style="background-color: ${person.color}"></div>
+            <div class="person-color" style="background-color: ${safeColor}"></div>
             <div class="person-info">
-                <div class="person-name">${person.name}</div>
-                <div class="person-color-code">${person.color}</div>
+                <div class="person-name">${safeName}</div>
+                <div class="person-color-code">${safeColor}</div>
             </div>
             <div class="person-actions">
                 <button class="btn-icon" onclick='startPersonEdit(${JSON.stringify(String(person.id))})'>Edit</button>
-                <button class="btn-icon btn-danger" onclick='deletePerson(${JSON.stringify(String(person.id))}, ${JSON.stringify(person.name)})'>Delete</button>
+                <button class="btn-icon btn-danger" onclick="deletePerson('${person.id}', '${safeNameForJs}')">Delete</button>
             </div>
         `;
 
@@ -1117,9 +1183,15 @@ async function renderPeopleList() {
 async function savePerson() {
   const nameInput = document.getElementById('new-person-name');
   const colorInput = document.getElementById('new-person-color');
+  const emailInput = document.getElementById('new-person-email');
+  const passwordInput = document.getElementById('new-person-password');
+  const adminCheckbox = document.getElementById('new-person-is-admin');
 
   const name = nameInput.value.trim();
   const color = colorInput.value || DEFAULT_PERSON_COLOR;
+  const email = emailInput?.value?.trim() || '';
+  const password = passwordInput?.value || '';
+  const isAdmin = Boolean(adminCheckbox?.checked);
 
   if (!name) {
     showAlert('Validation Error', 'Please enter a name');
@@ -1130,7 +1202,33 @@ async function savePerson() {
     if (editingPersonId) {
       await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
     } else {
-      await PeopleAPI.create(name, color);
+      if (email || password) {
+        if (!email || !password) {
+          showAlert(
+            'Validation Error',
+            'Provide both email and password to create a login account, or leave both blank.'
+          );
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showAlert('Validation Error', 'Please enter a valid email address.');
+          return;
+        }
+        if (password.length < 8) {
+          showAlert('Validation Error', 'Password must be at least 8 characters long.');
+          return;
+        }
+
+        await AuthAPI.register({
+          email,
+          password,
+          full_name: name,
+          person_color: color,
+          is_admin: isAdmin,
+        });
+      } else {
+        await PeopleAPI.create(name, color);
+      }
     }
 
     resetPersonForm();

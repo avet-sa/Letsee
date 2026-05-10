@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_admin
 from app.models import Person
 from app.schemas import PersonCreate, PersonResponse, PersonUpdate
 
@@ -22,7 +22,7 @@ async def list_people(db: Session = Depends(get_db), current_user: str = Depends
 async def create_person(
     person_create: PersonCreate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user=Depends(require_admin),
 ):
     """Create a new person."""
     new_person = Person(name=person_create.name, color=person_create.color)
@@ -50,7 +50,7 @@ async def update_person(
     person_id: UUID,
     person_update: PersonUpdate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user=Depends(require_admin),
 ):
     """Update a person."""
     person = db.query(Person).filter(Person.id == person_id).first()
@@ -71,7 +71,7 @@ async def update_person(
 async def delete_person(
     person_id: UUID,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user=Depends(require_admin),
 ):
     """Delete a person."""
     person = db.query(Person).filter(Person.id == person_id).first()

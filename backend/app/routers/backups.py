@@ -5,8 +5,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.backup import backup_manager
-from app.core.security import get_current_user
-from app.models import User
+from app.core.security import require_admin
 
 router = APIRouter(prefix="/api/backups", tags=["backups"])
 
@@ -23,10 +22,9 @@ class BackupListResponse:
 @router.get("/list")
 async def list_backups(
     limit: int = 50,
-    current_user: User = Depends(get_current_user),
+    current_user=Depends(require_admin),
 ):
     """List available backups (admin only)."""
-    # In production, add role checking to ensure only admins can access
     backups = backup_manager.list_backups(limit=limit)
     return {"backups": backups, "total": len(backups)}
 
@@ -34,10 +32,9 @@ async def list_backups(
 @router.post("/create")
 async def create_backup(
     backup_type: str = "manual",
-    current_user: User = Depends(get_current_user),
+    current_user=Depends(require_admin),
 ):
     """Create a manual backup (admin only)."""
-    # In production, add role checking
     filename = backup_manager.create_backup(backup_type=backup_type)
 
     if not filename:
@@ -56,7 +53,7 @@ async def create_backup(
 @router.post("/restore/{backup_filename}")
 async def restore_backup(
     backup_filename: str,
-    current_user: User = Depends(get_current_user),
+    current_user=Depends(require_admin),
 ):
     """Restore database from backup (admin only)."""
     # Prevent path traversal attacks by using only the basename
@@ -94,10 +91,9 @@ async def restore_backup(
 async def cleanup_backups(
     keep_daily: int = 7,
     keep_hourly: int = 24,
-    current_user: User = Depends(get_current_user),
+    current_user=Depends(require_admin),
 ):
     """Delete old backups to save storage (admin only)."""
-    # In production, add role checking
     deleted_count = backup_manager.cleanup_old_backups(
         keep_daily=keep_daily, keep_hourly=keep_hourly
     )

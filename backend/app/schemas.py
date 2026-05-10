@@ -10,6 +10,9 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     full_name: str | None = None
+    person_id: UUID | None = None
+    person_color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    is_admin: bool = False
 
 
 class UserLogin(BaseModel):
@@ -37,7 +40,9 @@ class UserResponse(BaseModel):
     id: UUID
     email: str
     full_name: str | None
+    person_id: UUID | None
     is_active: bool
+    is_admin: bool
     is_verified: bool
     created_at: datetime
 

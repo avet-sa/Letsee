@@ -108,8 +108,22 @@
         <button class="help-btn" onclick="openShortcutsModal()" title="Show keyboard shortcuts (?)">
           Alt +
         </button>
-        <button class="btn-primary" onclick="openPeopleModal()" title="Manage Staff">Staff</button>
-        <a href="/schedule.html" class="btn-primary" title="Manage Schedule"> Schedule </a>
+        <button
+          class="btn-primary"
+          id="manage-staff-btn"
+          onclick="openPeopleModal()"
+          title="Manage Staff"
+        >
+          Staff
+        </button>
+        <a
+          href="/schedule.html"
+          class="btn-primary"
+          id="manage-schedule-link"
+          title="Manage Schedule"
+        >
+          Schedule
+        </a>
         <button class="btn-primary logout-btn" onclick="handleLogout()" title="Sign out">
           Sign Out
         </button>
@@ -533,6 +547,32 @@
               </button>
               <button class="btn-primary" id="save-person-btn" onclick="savePerson()">+ Add</button>
             </div>
+            <div class="form-row">
+              <input
+                type="email"
+                id="new-person-email"
+                placeholder="Email (optional login account)"
+                class="form-input"
+              />
+              <input
+                type="password"
+                id="new-person-password"
+                placeholder="Password (min 8 characters)"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group" id="new-person-admin-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="new-person-is-admin" />
+                Grant admin access
+              </label>
+            </div>
+            <p
+              id="person-account-hint"
+              style="margin-top: 8px; color: var(--text-secondary); font-size: 12px"
+            >
+              Leave email and password blank to create a staff record without a login account.
+            </p>
             <input type="hidden" id="new-person-color" value="#3498db" />
             <div
               class="preset-color-picker"

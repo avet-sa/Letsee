@@ -15,6 +15,20 @@ function escapeHtml(text) {
 }
 
 /**
+ * Escape a string for safe embedding inside single-quoted inline JS handlers.
+ * @param {string} text - Text to escape
+ * @returns {string} - Escaped JS string content
+ */
+function escapeJsString(text) {
+  return String(text ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/<\/script/gi, '<\\/script');
+}
+
+/**
  * Sanitize user input by removing potentially dangerous characters
  * @param {string} input - User input to sanitize
  * @returns {string} - Sanitized input
@@ -182,6 +196,7 @@ function isInViewport(element) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     escapeHtml,
+    escapeJsString,
     sanitizeInput,
     showAlert,
     closeAlertModal,
