@@ -8,21 +8,19 @@ from app.core.database import Base
 
 
 class User(Base):
-    """User model for authentication."""
+    """User model for authentication and staff management.
+    
+    Merged from original User and Person models. Each user represents
+    a staff member who can log into the system and be assigned to schedules.
+    """
 
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-    full_name = Column(String(255), nullable=True)
-    person_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("people.id", ondelete="SET NULL"),
-        unique=True,
-        nullable=True,
-        index=True,
-    )
+    full_name = Column(String(255), nullable=False)  # Display name for schedules
+    color = Column(String(7), nullable=False, default="#3498db")  # Hex color for schedule visualization
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
@@ -33,23 +31,9 @@ class User(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)  # Soft delete
 
-
-class Person(Base):
-    """Staff member."""
-
-    __tablename__ = "people"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), nullable=False, index=True)
-    color = Column(String(7), nullable=False)  # Hex color
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False,
-    )
+    __table_args__ = (Index("idx_user_deleted", "deleted_at"),)
 
 
 class Schedule(Base):
@@ -61,7 +45,7 @@ class Schedule(Base):
     date = Column(String(10), unique=True, nullable=False, index=True)  # YYYY-MM-DD
     shifts = Column(
         JSON, nullable=False, default=dict
-    )  # {A: [people], M: [people], B: [people], C: [people]}
+    )  # {A: [user_ids], M: [user_ids], B: [user_ids], C: [user_ids]}
     edited_by = Column(String(255), nullable=True)  # Who last edited this schedule
     edited_at = Column(DateTime(timezone=True), nullable=True)  # When last edited
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)

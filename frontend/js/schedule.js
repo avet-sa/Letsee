@@ -243,12 +243,12 @@ function applyAdminUI() {
   }
 }
 
-// Load people
+// Load users (staff members)
 async function loadPeople() {
   try {
-    peopleData = await DB.getPeople();
+    peopleData = await DB.getUsers();
   } catch (error) {
-    console.error('Error loading people:', error);
+    console.error('Error loading users:', error);
     peopleData = [];
   }
 }
@@ -365,8 +365,12 @@ function createDayElement(day, dateStr, isOtherMonth, isToday = false, isSelecte
 
     ['A', 'M', 'B', 'C'].forEach((shift) => {
       const shiftInfo = SHIFTS[shift];
+      // Support both UUIDs (new) and names (legacy) in schedule data
       const people = (schedule.shifts[shift] || [])
-        .map((personName) => peopleData.find((p) => p.name === personName))
+        .map((identifier) => {
+          // Try to find by ID first (UUID), then by name (legacy)
+          return peopleData.find((p) => String(p.id) === String(identifier) || p.name === identifier);
+        })
         .filter(Boolean);
 
       const shiftLane = document.createElement('div');
@@ -1200,7 +1204,7 @@ async function savePerson() {
 
   try {
     if (editingPersonId) {
-      await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
+      await DB.updateUser(editingPersonId, { full_name: name, color });
     } else {
       if (email || password) {
         if (!email || !password) {
@@ -1223,11 +1227,17 @@ async function savePerson() {
           email,
           password,
           full_name: name,
-          person_color: color,
+          color,
           is_admin: isAdmin,
         });
       } else {
-        await PeopleAPI.create(name, color);
+        await UsersAPI.create({
+          email: `${name.toLowerCase().replace(/\s+/g, '.')}@letsee.local`,
+          password: 'temppass123', // Admin will need to reset
+          full_name: name,
+          color,
+          is_admin: false,
+        });
       }
     }
 
@@ -1242,10 +1252,10 @@ async function savePerson() {
 async function deletePerson(id, name) {
   showConfirm(
     'Delete Staff Member',
-    `Are you sure you want to delete ${name}? This action cannot be undone.`,
+    `Are you sure you want to delete ${name}? This will soft-delete the user and they will remain in historical records.`,
     async () => {
       try {
-        await PeopleAPI.delete(id);
+        await UsersAPI.delete(id);
         if (String(editingPersonId) === String(id)) {
           resetPersonForm();
         }

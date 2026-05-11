@@ -16,8 +16,8 @@ from app.routers import (
     backups,
     files,
     handovers,
-    people,
     schedules,
+    users,
 )
 from app.routers import (
     settings as settings_router,
@@ -97,7 +97,7 @@ async def rate_limit_middleware(request: Request, call_next):
 
 # Include routers
 app.include_router(auth.router)
-app.include_router(people.router)
+app.include_router(users.router)
 app.include_router(schedules.router)
 app.include_router(handovers.router)
 app.include_router(settings_router.router)

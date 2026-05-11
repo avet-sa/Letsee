@@ -131,33 +131,33 @@ const AuthAPI = {
   },
 };
 
-// ============ People API ============
+// ============ Users API (Staff Management) ============
 
-const PeopleAPI = {
+const UsersAPI = {
   async list() {
-    return apiFetch('/people');
+    return apiFetch('/users');
   },
 
   async get(id) {
-    return apiFetch(`/people/${id}`);
+    return apiFetch(`/users/${id}`);
   },
 
-  async create(name, color) {
-    return apiFetch('/people', {
+  async create(userData) {
+    return apiFetch('/users', {
       method: 'POST',
-      body: JSON.stringify({ name, color }),
+      body: JSON.stringify(userData),
     });
   },
 
-  async update(id, name, color) {
-    return apiFetch(`/people/${id}`, {
+  async update(id, userData) {
+    return apiFetch(`/users/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ name, color }),
+      body: JSON.stringify(userData),
     });
   },
 
   async delete(id) {
-    return apiFetch(`/people/${id}`, { method: 'DELETE' });
+    return apiFetch(`/users/${id}`, { method: 'DELETE' });
   },
 };
 
@@ -386,72 +386,37 @@ const DB = {
     return AuthAPI.getCurrentUser();
   },
 
-  // People
-  async getPeople() {
-    const people = await PeopleAPI.list();
+  // Users (Staff Management)
+  async getUsers() {
+    const users = await UsersAPI.list();
     // Ensure we always return an array
-    if (!Array.isArray(people)) {
-      console.warn('PeopleAPI.list() returned non-array:', people);
+    if (!Array.isArray(users)) {
+      console.warn('UsersAPI.list() returned non-array:', users);
       return [];
     }
-    return people.map((p) => ({ id: p.id, name: p.name, color: p.color }));
+    // Map to consistent format: id, name (full_name), color
+    return users.map((u) => ({
+      id: u.id,
+      name: u.full_name || u.email.split('@')[0],
+      color: u.color,
+      email: u.email,
+      isActive: u.is_active,
+      isAdmin: u.is_admin,
+    }));
   },
 
-  async updatePerson(id, name, color, previousName = null) {
-    const updatedPerson = await PeopleAPI.update(id, name, color);
-
-    if (previousName && previousName !== name) {
-      const existingSchedules = await DB.getSchedule();
-      const schedulesToUpdate = {};
-
-      Object.entries(existingSchedules).forEach(([date, schedule]) => {
-        if (!schedule?.shifts) {
-          return;
-        }
-
-        let changed = false;
-        const updatedShifts = {};
-
-        ['A', 'M', 'B', 'C'].forEach((shift) => {
-          const originalPeople = schedule.shifts[shift] || [];
-          const renamedPeople = [
-            ...new Set(
-              originalPeople.map((personName) => {
-                if (personName === previousName) {
-                  changed = true;
-                  return name;
-                }
-
-                return personName;
-              })
-            ),
-          ];
-
-          updatedShifts[shift] = renamedPeople;
-        });
-
-        if (changed) {
-          schedulesToUpdate[date] = { shifts: updatedShifts };
-        }
-      });
-
-      if (Object.keys(schedulesToUpdate).length > 0) {
-        await DB.saveSchedule(schedulesToUpdate);
-      }
-    }
-
-    return updatedPerson;
+  async updateUser(id, userData) {
+    // userData: { full_name, color, is_active }
+    return UsersAPI.update(id, userData);
   },
 
-  async savePeople(people) {
-    // Delete all and recreate (simple approach)
-    const existing = await PeopleAPI.list();
-    for (const person of existing) {
-      await PeopleAPI.delete(person.id);
-    }
-    for (const person of people) {
-      await PeopleAPI.create(person.name, person.color);
-    }
+  async createUser(userData) {
+    // userData: { email, password, full_name, color, is_admin }
+    return UsersAPI.create(userData);
+  },
+
+  async deleteUser(id) {
+    return UsersAPI.delete(id);
   },
 
   // Schedule

@@ -99,7 +99,7 @@ function resetPersonForm() {
 }
 
 async function startPersonEdit(id) {
-  const people = await getPeople();
+  const people = await getUsers();
   const person = people.find((candidate) => String(candidate.id) === String(id));
   if (!person) {
     return;
@@ -231,9 +231,9 @@ function getAssignedPeopleForShift(daySchedule, shiftCode) {
 }
 
 // Get people from database
-async function getPeople() {
+async function getUsers() {
   await ensureDB();
-  return await DB.getPeople();
+  return await DB.getUsers();
 }
 
 // Get schedule from database
@@ -955,7 +955,7 @@ async function saveNote(event) {
   const daySchedule = schedule[dateKey] || {};
   const currentShift = getCurrentShiftCode(currentDate, daySchedule);
   const assignedPeople = getAssignedPeopleForShift(daySchedule, currentShift);
-  const people = await getPeople();
+  const people = await getUsers();
   // Collect attachments with file keys
   const attachmentItems = document.querySelectorAll('#attachments-list .attachment-item');
   const attachments = Array.from(attachmentItems).map((item) => {
@@ -1202,7 +1202,7 @@ async function getCurrentShiftPeople() {
 }
 
 async function updatePeopleBlock() {
-  const people = await getPeople();
+  const people = await getUsers();
   const dateKey = currentDate.toISOString().split('T')[0];
   const schedule = await getSchedule();
   const daySchedule = schedule[dateKey] || {};
@@ -1858,11 +1858,11 @@ function closePeopleModal() {
   document.getElementById('people-modal').style.display = 'none';
   resetPersonForm();
   // Reload people data
-  getPeople();
+  getUsers();
 }
 
 async function renderPeopleList() {
-  const people = await getPeople();
+  const people = await getUsers();
   const peopleList = document.getElementById('people-list');
 
   if (people.length === 0) {

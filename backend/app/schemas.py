@@ -3,16 +3,17 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-# ============ Auth Schemas ============
+# ============ Auth/User Schemas ============
 
 
 class UserCreate(BaseModel):
+    """Schema for creating a new user (admin only after bootstrap)."""
+
     email: EmailStr
     password: str = Field(min_length=8)
-    full_name: str | None = None
-    person_id: UUID | None = None
-    person_color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
-    is_admin: bool = False
+    full_name: str = Field(min_length=1)  # Required - display name for schedules
+    color: str = Field(default="#3498db", pattern=r"^#[0-9A-Fa-f]{6}$")  # Staff color
+    is_admin: bool = False  # Admin flag (only used during bootstrap)
 
 
 class UserLogin(BaseModel):
@@ -37,10 +38,12 @@ class TokenPair(BaseModel):
 
 
 class UserResponse(BaseModel):
+    """Full user response including staff details."""
+
     id: UUID
     email: str
-    full_name: str | None
-    person_id: UUID | None
+    full_name: str
+    color: str  # Staff color for schedule visualization
     is_active: bool
     is_admin: bool
     is_verified: bool
@@ -50,37 +53,28 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# ============ Person Schemas ============
+class UserUpdate(BaseModel):
+    """Schema for updating user details (admin only)."""
 
-
-class PersonCreate(BaseModel):
-    name: str
-    color: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
-
-
-class PersonUpdate(BaseModel):
-    name: str | None = None
+    full_name: str | None = None
     color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    is_active: bool | None = None
 
 
-class PersonResponse(BaseModel):
-    id: UUID
-    name: str
-    color: str
-    created_at: datetime
-    updated_at: datetime
+class UserPasswordUpdate(BaseModel):
+    """Schema for updating own password."""
 
-    class Config:
-        from_attributes = True
+    current_password: str
+    new_password: str = Field(min_length=8)
 
 
 # ============ Schedule Schemas ============
 
 
 class ShiftAssignment(BaseModel):
-    """People assigned to each shift."""
+    """Users assigned to each shift. Now uses user IDs (not names)."""
 
-    A: list[str] = Field(default_factory=list)
+    A: list[str] = Field(default_factory=list)  # List of user UUIDs
     M: list[str] = Field(default_factory=list)
     B: list[str] = Field(default_factory=list)
     C: list[str] = Field(default_factory=list)
@@ -98,7 +92,7 @@ class ScheduleUpdate(BaseModel):
 class ScheduleResponse(BaseModel):
     id: UUID
     date: str
-    shifts: dict  # {A: [people], M: [people], B: [people], C: [people]}
+    shifts: dict  # {A: [user_ids], M: [user_ids], B: [user_ids], C: [user_ids]}
     edited_by: str | None = None
     edited_at: datetime | None = None
     created_at: datetime

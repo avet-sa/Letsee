@@ -21,53 +21,11 @@ from app.core.security import (
     security,
     verify_password,
 )
-from app.models import Person, RevokedToken, User
+from app.models import RevokedToken, User
 from app.schemas import RefreshToken, Token, TokenPair, UserCreate, UserLogin, UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-DEFAULT_PERSON_COLOR = "#3498db"
-
-
-def _resolve_user_display_name(user_create: UserCreate) -> str:
-    """Choose a display name for a user and linked staff record."""
-    if user_create.full_name and user_create.full_name.strip():
-        return user_create.full_name.strip()
-    return user_create.email.split("@", 1)[0].replace(".", " ").replace("_", " ").strip()
-
-
-def _get_or_create_linked_person(
-    db: Session,
-    *,
-    requested_person_id,
-    display_name: str,
-    person_color: str | None,
-) -> Person:
-    """Link a user to an existing staff record or create one when needed."""
-    person: Person | None = None
-
-    if requested_person_id is not None:
-        person = db.query(Person).filter(Person.id == requested_person_id).first()
-        if not person:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Requested staff record was not found",
-            )
-    else:
-        person = db.query(Person).filter(Person.name == display_name).first()
-
-    if person:
-        linked_user = db.query(User).filter(User.person_id == person.id).first()
-        if linked_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This staff record is already linked to another user",
-            )
-        return person
-
-    new_person = Person(name=display_name, color=person_color or DEFAULT_PERSON_COLOR)
-    db.add(new_person)
-    db.flush()
-    return new_person
+DEFAULT_USER_COLOR = "#3498db"
 
 
 @router.post("/register", response_model=UserResponse)
@@ -108,20 +66,15 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
-    display_name = _resolve_user_display_name(user_create)
-    linked_person = _get_or_create_linked_person(
-        db,
-        requested_person_id=user_create.person_id,
-        display_name=display_name,
-        person_color=user_create.person_color,
-    )
+    # Resolve display name from full_name or email
+    display_name = user_create.full_name.strip() if user_create.full_name and user_create.full_name.strip() else user_create.email.split("@", 1)[0].replace(".", " ").replace("_", " ").strip()
 
-    # Create user
+    # Create user (merged User/Person model)
     new_user = User(
         email=user_create.email,
         hashed_password=get_password_hash(user_create.password),
         full_name=display_name,
-        person_id=linked_person.id,
+        color=user_create.color or DEFAULT_USER_COLOR,
         is_active=True,
         is_admin=bootstrap_admin or user_create.is_admin,
     )
