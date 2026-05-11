@@ -220,14 +220,47 @@ function getCurrentShiftCode(date = currentDate, daySchedule = null) {
   return 'B';
 }
 
+
 function getAssignedPeopleForShift(daySchedule, shiftCode) {
   const shifts = getShiftEntries(daySchedule);
-  const assignedPeople = shifts[shiftCode];
-  if (!Array.isArray(assignedPeople)) {
+  const entries = shifts[shiftCode];
+  if (!Array.isArray(entries)) {
     return [];
   }
+  // Entries may be UUIDs (new) or names (legacy).
+  // Return display *names* so all callers can do .join(' & ') unchanged.
+  // Deduplication is by resolved name.
+  const seen = new Set();
+  const names = [];
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'string' || !entry.trim()) continue;
+    const name = resolvePersonName(entry);
+    if (!seen.has(name)) {
+      seen.add(name);
+      names.push(name);
+    }
+  }
+  return names;
+}
 
-  return [...new Set(assignedPeople.filter((personName) => typeof personName === 'string' && personName.trim()))];
+let _peopleCache = [];   // populated by _refreshPeopleCache below
+ 
+async function _refreshPeopleCache() {
+  try {
+    _peopleCache = await DB.getUsers();
+  } catch {
+    // keep existing cache on error
+  }
+}
+
+function resolvePersonName(entry) {
+  if (!entry) return '';
+  const s = String(entry).trim();
+  // Try by id first
+  const byId = _peopleCache.find((p) => String(p.id) === s);
+  if (byId) return byId.name;
+  // Legacy: already a name
+  return s;
 }
 
 // Get people from database
@@ -589,44 +622,44 @@ function renderNote(note, shiftPeople = '') {
   const attachments =
     note.attachments && note.attachments.length > 0
       ? `<div class="attachments">${note.attachments
-          .map((att) => {
-            // Support both old format (url) and new format (file_key)
-            // Allowed types: images (jpg, jpeg, png, gif, webp, svg) and PDF
-            const isAllowedType = (att) => {
-              const filename = (att.filename || att.name || '').toLowerCase();
-              const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-              const isPdfExtension = filename.endsWith('.pdf');
-              const isImageExtension = imageExtensions.some((ext) => filename.endsWith(ext));
-              const mimeType = att.mime_type || '';
-              const isImageMime = mimeType.startsWith('image/');
-              const isPdfMime = mimeType === 'application/pdf';
-              return isImageExtension || isPdfExtension || isImageMime || isPdfMime;
-            };
+        .map((att) => {
+          // Support both old format (url) and new format (file_key)
+          // Allowed types: images (jpg, jpeg, png, gif, webp, svg) and PDF
+          const isAllowedType = (att) => {
+            const filename = (att.filename || att.name || '').toLowerCase();
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+            const isPdfExtension = filename.endsWith('.pdf');
+            const isImageExtension = imageExtensions.some((ext) => filename.endsWith(ext));
+            const mimeType = att.mime_type || '';
+            const isImageMime = mimeType.startsWith('image/');
+            const isPdfMime = mimeType === 'application/pdf';
+            return isImageExtension || isPdfExtension || isImageMime || isPdfMime;
+          };
 
-            if (!isAllowedType(att)) {
-              return ''; // Skip non-allowed file types
-            }
+          if (!isAllowedType(att)) {
+            return ''; // Skip non-allowed file types
+          }
 
-            const filename = att.filename || att.name || 'attachment';
-            const safeFilename = escapeHtml(filename);
-            const isImage = filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+          const filename = att.filename || att.name || 'attachment';
+          const safeFilename = escapeHtml(filename);
+          const isImage = filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
 
-            if (att.file_key) {
-              // New Minio format - open in browser with auth header
-              const safeNameForJs = escapeJsString(filename);
-              const safeFileKeyForJs = escapeJsString(att.file_key);
-              return `<a href="#" onclick="openAttachment('${safeFileKeyForJs}','${safeNameForJs}','${isImage ? 'image' : 'pdf'}'); return false;" class="attachment-link" title="${safeFilename}">${isImage ? '🖼️' : '📄'} ${safeFilename}</a>`;
-            } else if (att.url && att.url.startsWith('data:image')) {
-              // Old base64 format (image)
-              return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">🖼️ ${safeFilename}</a>`;
-            } else if (att.url && att.url.includes('data:application/pdf')) {
-              // Old base64 format (PDF)
-              return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">📄 ${safeFilename}</a>`;
-            }
-            return ''; // Skip other file types
-          })
-          .filter(Boolean)
-          .join('')}</div>`
+          if (att.file_key) {
+            // New Minio format - open in browser with auth header
+            const safeNameForJs = escapeJsString(filename);
+            const safeFileKeyForJs = escapeJsString(att.file_key);
+            return `<a href="#" onclick="openAttachment('${safeFileKeyForJs}','${safeNameForJs}','${isImage ? 'image' : 'pdf'}'); return false;" class="attachment-link" title="${safeFilename}">${isImage ? '🖼️' : '📄'} ${safeFilename}</a>`;
+          } else if (att.url && att.url.startsWith('data:image')) {
+            // Old base64 format (image)
+            return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">🖼️ ${safeFilename}</a>`;
+          } else if (att.url && att.url.includes('data:application/pdf')) {
+            // Old base64 format (PDF)
+            return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">📄 ${safeFilename}</a>`;
+          }
+          return ''; // Skip other file types
+        })
+        .filter(Boolean)
+        .join('')}</div>`
       : '';
 
   // Due label
@@ -1787,6 +1820,7 @@ window.downloadAttachment = downloadAttachment;
 document.addEventListener('DOMContentLoaded', async () => {
   await ensureDB();
   await loadCurrentUser();
+  await _refreshPeopleCache();
   await loadTheme();
   applyRoleUI();
   resetPersonForm();
@@ -1906,9 +1940,15 @@ async function savePerson() {
 
   try {
     if (editingPersonId) {
-      await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
+      await DB.updateUser(editingPersonId, { full_name: name, color });
     } else {
-      await PeopleAPI.create(name, color);
+      await UsersAPI.create({
+        email: `${name.toLowerCase().replace(/\s+/g, '.')}@letsee.local`,
+        password: 'temppass123',
+        full_name: name,
+        color,
+        is_admin: false,
+      });
     }
 
     resetPersonForm();
@@ -1925,7 +1965,7 @@ async function deletePerson(id, name) {
     `Are you sure you want to delete ${name}? This action cannot be undone.`,
     async () => {
       try {
-        await PeopleAPI.delete(id);
+        await UsersAPI.delete(id);
         if (String(editingPersonId) === String(id)) {
           resetPersonForm();
         }
