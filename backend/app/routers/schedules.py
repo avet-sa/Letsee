@@ -7,11 +7,119 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user, get_current_user_record, require_admin
 from app.models import Schedule, User
-from app.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate, ShiftAssignment
+from app.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate
 
 router = APIRouter(prefix="/api/schedules", tags=["schedules"])
 
 VALID_SHIFTS = {"A", "M", "B", "C"}
+SHIFT_ORDER = ("A", "M", "B", "C")
+
+
+def _normalize_person_name(value: str | None) -> str:
+    return " ".join((value or "").split()).casefold()
+
+
+def _build_schedule_user_maps(db: Session) -> tuple[dict[str, str], dict[str, str]]:
+    users = (
+        db.query(User)
+        .order_by(User.deleted_at.is_not(None), User.created_at, User.id)
+        .all()
+    )
+
+    exact_name_map: dict[str, str] = {}
+    normalized_name_map: dict[str, str] = {}
+    for user in users:
+        name = (user.full_name or "").strip()
+        if not name:
+            continue
+        user_id = str(user.id)
+        exact_name_map.setdefault(name, user_id)
+        normalized_name_map.setdefault(_normalize_person_name(name), user_id)
+
+    return exact_name_map, normalized_name_map
+
+
+def _resolve_schedule_entry(
+    entry: str,
+    exact_name_map: dict[str, str],
+    normalized_name_map: dict[str, str],
+) -> str | None:
+    try:
+        return str(UUID(entry))
+    except (ValueError, TypeError):
+        pass
+
+    return exact_name_map.get(entry) or normalized_name_map.get(_normalize_person_name(entry))
+
+
+def _normalize_schedule_shifts(
+    shifts: dict | None,
+    exact_name_map: dict[str, str],
+    normalized_name_map: dict[str, str],
+) -> tuple[dict[str, list[str]], bool, list[str]]:
+    raw_shifts = shifts if isinstance(shifts, dict) else {}
+    normalized_shifts: dict[str, list[str]] = {}
+    changed = not isinstance(shifts, dict)
+    unresolved_entries: list[str] = []
+
+    if set(raw_shifts.keys()) != VALID_SHIFTS:
+        changed = True
+
+    for shift in SHIFT_ORDER:
+        raw_entries = raw_shifts.get(shift, [])
+        if not isinstance(raw_entries, list):
+            raw_entries = []
+            changed = True
+
+        normalized_entries: list[str] = []
+        seen_entries: set[str] = set()
+
+        for raw_entry in raw_entries:
+            value = str(raw_entry or "").strip()
+            if not value:
+                changed = True
+                continue
+
+            resolved_value = _resolve_schedule_entry(value, exact_name_map, normalized_name_map)
+            if resolved_value is None:
+                unresolved_entries.append(value)
+                resolved_value = value
+            elif resolved_value != value:
+                changed = True
+
+            if resolved_value in seen_entries:
+                changed = True
+                continue
+
+            seen_entries.add(resolved_value)
+            normalized_entries.append(resolved_value)
+
+        normalized_shifts[shift] = normalized_entries
+
+    return normalized_shifts, changed, unresolved_entries
+
+
+def _auto_migrate_schedule_rows(schedules: list[Schedule], db: Session) -> None:
+    if not schedules:
+        return
+
+    exact_name_map, normalized_name_map = _build_schedule_user_maps(db)
+    updated = False
+
+    for schedule in schedules:
+        normalized_shifts, changed, unresolved_entries = _normalize_schedule_shifts(
+            schedule.shifts,
+            exact_name_map,
+            normalized_name_map,
+        )
+        if changed and not unresolved_entries:
+            schedule.shifts = normalized_shifts
+            updated = True
+
+    if updated:
+        db.commit()
+        for schedule in schedules:
+            db.refresh(schedule)
 
 
 @router.get("", response_model=list[ScheduleResponse])
@@ -24,7 +132,9 @@ async def list_schedules(
     query = db.query(Schedule)
     if date:
         query = query.filter(Schedule.date == date)
-    return query.order_by(Schedule.date.desc()).all()
+    schedules = query.order_by(Schedule.date.desc()).all()
+    _auto_migrate_schedule_rows(schedules, db)
+    return schedules
 
 
 def _validate_shifts(shifts: dict, db: Session) -> None:
@@ -78,20 +188,28 @@ def _validate_shifts(shifts: dict, db: Session) -> None:
                 detail=f"Invalid user ID format: {e}",
             )
 
-        existing_users = db.query(User).filter(
-            User.id.in_(uuid_ids),
-            User.deleted_at.is_(None),
-            User.is_active == True,
-        ).all()
+        existing_users = (
+            db.query(User)
+            .filter(
+                User.id.in_(uuid_ids),
+                User.deleted_at.is_(None),
+                User.is_active.is_(True),
+            )
+            .all()
+        )
 
         existing_ids = {str(u.id) for u in existing_users}
         for uid in all_user_ids:
             if uid not in existing_ids:
                 # Check if user exists but is deleted
-                deleted_user = db.query(User).filter(
-                    User.id == UUID(uid),
-                    User.deleted_at.is_(None) == False,
-                ).first()
+                deleted_user = (
+                    db.query(User)
+                    .filter(
+                        User.id == UUID(uid),
+                        User.deleted_at.is_not(None),
+                    )
+                    .first()
+                )
                 if deleted_user:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -193,6 +311,8 @@ async def get_schedule(
 
     if not schedule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
+
+    _auto_migrate_schedule_rows([schedule], db)
     return schedule
 
 

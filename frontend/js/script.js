@@ -122,6 +122,7 @@ function cancelPersonEdit() {
 }
 
 async function refreshPeopleViews() {
+  await _refreshPeopleCache();
   await updatePeopleBlock();
   await renderHandoverNotes(true);
   await renderPeopleList();
@@ -266,7 +267,9 @@ function resolvePersonName(entry) {
 // Get people from database
 async function getUsers() {
   await ensureDB();
-  return await DB.getUsers();
+  const users = await DB.getUsers();
+  _peopleCache = users;
+  return users;
 }
 
 // Get schedule from database

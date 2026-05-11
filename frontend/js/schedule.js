@@ -62,6 +62,36 @@ const MONTH_NAMES = [
 let editingPersonId = null;
 let editingPersonOriginalName = '';
 
+function findPersonByScheduleEntry(entry) {
+  const value = String(entry ?? '').trim();
+  if (!value) {
+    return null;
+  }
+
+  return peopleData.find((person) => String(person.id) === value || person.name === value) || null;
+}
+
+function personMatchesScheduleEntry(person, entry) {
+  const value = String(entry ?? '').trim();
+  return value === String(person.id) || value === person.name;
+}
+
+function getAssignedStaff(schedule) {
+  const assignedStaff = [];
+
+  ['A', 'M', 'B', 'C'].forEach((shift) => {
+    const entries = schedule.shifts[shift] || [];
+    entries.forEach((entry) => {
+      const person = findPersonByScheduleEntry(entry);
+      if (person) {
+        assignedStaff.push({ person, shift });
+      }
+    });
+  });
+
+  return assignedStaff;
+}
+
 function setPersonAccountFormState(isEditing) {
   const emailInput = document.getElementById('new-person-email');
   const passwordInput = document.getElementById('new-person-password');
@@ -365,13 +395,7 @@ function createDayElement(day, dateStr, isOtherMonth, isToday = false, isSelecte
 
     ['A', 'M', 'B', 'C'].forEach((shift) => {
       const shiftInfo = SHIFTS[shift];
-      // Support both UUIDs (new) and names (legacy) in schedule data
-      const people = (schedule.shifts[shift] || [])
-        .map((identifier) => {
-          // Try to find by ID first (UUID), then by name (legacy)
-          return peopleData.find((p) => String(p.id) === String(identifier) || p.name === identifier);
-        })
-        .filter(Boolean);
+      const people = (schedule.shifts[shift] || []).map(findPersonByScheduleEntry).filter(Boolean);
 
       const shiftLane = document.createElement('div');
       shiftLane.className = 'day-shift-quadrant';
@@ -481,18 +505,7 @@ function showHoverPreview(dateStr, event) {
   document.getElementById('hover-preview-month').textContent = monthNames[monthIndex].toUpperCase();
 
   // Build staff rows sorted by shift (A, M, B, C)
-  const assignedStaff = [];
-
-  // Sort by shift order
-  ['A', 'M', 'B', 'C'].forEach((shift) => {
-    const people = schedule.shifts[shift] || [];
-    people.forEach((personName) => {
-      const person = peopleData.find((p) => p.name === personName);
-      if (person) {
-        assignedStaff.push({ person, shift });
-      }
-    });
-  });
+  const assignedStaff = getAssignedStaff(schedule);
 
   // Render with pagination
   renderHoverPreviewContent(assignedStaff);
@@ -680,11 +693,12 @@ function renderDayModalContent(dateStr, day, monthName) {
 
   pageStaff.forEach((person, idx) => {
     const initials = getInitials(person.name);
+    const personId = String(person.id);
 
     // Find current shift for this person
     let currentShift = 'off';
     for (const [shift, people] of Object.entries(schedule.shifts)) {
-      if (people && people.includes(person.name)) {
+      if (people && people.some((entry) => personMatchesScheduleEntry(person, entry))) {
         currentShift = shift;
         break;
       }
@@ -705,7 +719,7 @@ function renderDayModalContent(dateStr, day, monthName) {
                     style="background:${isActive ? shiftData.color.replace('0.7', '0.2') : 'var(--bg-primary)'};
                            border-color:${isActive ? shiftData.color.replace('0.7', '0.5') : 'var(--border-secondary)'};
                            color:${isActive ? shiftData.color.replace('0.7', '1') : 'var(--text-tertiary)'}"
-                    data-person="${person.name}" data-shift="${shift}">
+                    data-person-id="${personId}" data-shift="${shift}">
                     ${shift}
                 </button>`;
       })
@@ -748,8 +762,12 @@ function renderDayModalContent(dateStr, day, monthName) {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
 
-      const personName = btn.dataset.person;
+      const personId = btn.dataset.personId;
       const shift = btn.dataset.shift;
+      const person = peopleData.find((candidate) => String(candidate.id) === String(personId));
+      if (!person) {
+        return;
+      }
 
       if (!scheduleData[selectedDate]) {
         scheduleData[selectedDate] = { shifts: { A: [], M: [], B: [], C: [] } };
@@ -763,12 +781,14 @@ function renderDayModalContent(dateStr, day, monthName) {
       }
 
       for (const s of ['A', 'M', 'B', 'C']) {
-        currentSchedule.shifts[s] = currentSchedule.shifts[s].filter((name) => name !== personName);
+        currentSchedule.shifts[s] = currentSchedule.shifts[s].filter(
+          (entry) => !personMatchesScheduleEntry(person, entry)
+        );
       }
 
       const isCurrentlyActive = btn.classList.contains('active');
       if (!isCurrentlyActive) {
-        currentSchedule.shifts[shift].push(personName);
+        currentSchedule.shifts[shift].push(String(person.id));
       }
 
       await saveDaySchedule();
@@ -1290,16 +1310,7 @@ document.getElementById('preview-page-prev').addEventListener('click', (e) => {
     const schedule = scheduleData[hoverPreviewState.dateStr] || {
       shifts: { A: [], M: [], B: [], C: [] },
     };
-    const assignedStaff = [];
-    ['A', 'M', 'B', 'C'].forEach((shift) => {
-      const people = schedule.shifts[shift] || [];
-      people.forEach((personName) => {
-        const person = peopleData.find((p) => p.name === personName);
-        if (person) {
-          assignedStaff.push({ person, shift });
-        }
-      });
-    });
+    const assignedStaff = getAssignedStaff(schedule);
     renderHoverPreviewContent(assignedStaff);
   }
 });
@@ -1310,16 +1321,7 @@ document.getElementById('preview-page-next').addEventListener('click', (e) => {
     const schedule = scheduleData[hoverPreviewState.dateStr] || {
       shifts: { A: [], M: [], B: [], C: [] },
     };
-    const assignedStaff = [];
-    ['A', 'M', 'B', 'C'].forEach((shift) => {
-      const people = schedule.shifts[shift] || [];
-      people.forEach((personName) => {
-        const person = peopleData.find((p) => p.name === personName);
-        if (person) {
-          assignedStaff.push({ person, shift });
-        }
-      });
-    });
+    const assignedStaff = getAssignedStaff(schedule);
     const totalPages = Math.ceil(assignedStaff.length / PREVIEW_PAGE_SIZE);
     if (hoverPreviewState.page < totalPages - 1) {
       hoverPreviewState.page++;
