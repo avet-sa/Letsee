@@ -1,0 +1,92 @@
+services:
+  db:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command: >
+      postgres
+      -c log_statement=all
+      -c archive_mode=on
+      -c archive_command='mkdir -p /archive && cp %p /archive/%f'
+      -c archive_timeout=300
+      -c wal_level=replica
+      -c max_wal_senders=3
+      -c wal_keep_size=1GB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_archive:/archive
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - letsee_network
+    restart: unless-stopped
+    expose:
+      - "5432"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY}
+      LOG_LEVEL: INFO
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - letsee_network
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    depends_on:
+      - backend
+    networks:
+      - letsee_network
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  minio:
+    image: minio/minio:latest
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: minio server /data --console-address ":9001"
+    networks:
+      - letsee_network
+    restart: unless-stopped
+    expose:
+      - "9000"
+      - "9001"
+
+networks:
+  letsee_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  postgres_archive:
+  minio_data:

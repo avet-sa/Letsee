@@ -1,0 +1,33 @@
+services:
+  backend:
+    environment:
+      DEBUG: "true"
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:8000"]'
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: "no"
+
+  frontend:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    command: python -m http.server 3000
+    restart: "no"
+    depends_on:
+      - backend
+
+  db:
+    ports:
+      - "5432:5432"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"

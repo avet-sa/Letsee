@@ -1,175 +1,68 @@
-version: "3.8"
-
 services:
-  # Traefik Reverse Proxy with automatic HTTPS
   traefik:
     image: traefik:3.6.2
-    container_name: letsee-traefik
-    env_file:
-      - .env.prod
     command:
-      - "--api.dashboard=false"
-      - "--api.debug=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--providers.file.filename=/etc/traefik/config.yml"
-      - "--providers.file.watch=true"
-      - "--global.checknewversion=false"
-      - "--global.sendanonymoususage=false"
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_certs:/letsencrypt
-      - ./certs:/etc/traefik/certs:ro
       - ./traefik-config.yml:/etc/traefik/config.yml:ro
     networks:
       - letsee_network
     restart: unless-stopped
 
-  # PostgreSQL Database with WAL-G Archiving
-
-  db:
-    image: postgres:15-alpine
-    container_name: letsee-db
-    env_file:
-      - .env.prod
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    command: >
-      postgres
-      -c log_statement=all
-      -c archive_mode=on
-      -c archive_command='mkdir -p /archive && cp %p /archive/%f'
-      -c archive_timeout=300
-      -c wal_level=replica
-      -c max_wal_senders=3
-      -c wal_keep_size=1GB
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - postgres_archive:/archive
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - letsee_network
-    restart: unless-stopped
-    expose:
-      - "5432"
-
-  # FastAPI Backend
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: letsee-backend
-    env_file:
-      - .env.prod
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      SECRET_KEY: ${SECRET_KEY}
       DEBUG: "false"
-      LOG_LEVEL: INFO
-      CORS_ORIGINS: '["https://${DOMAIN}","https://localhost","http://localhost"]'
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET: ${MINIO_BUCKET}
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - letsee_network
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/api/health'')" || exit 1',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 120s
-    command: sh -c "alembic upgrade head && gunicorn -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:8000 app.main:app"
-    restart: unless-stopped
+    command: >
+      sh -c "alembic upgrade head &&
+      gunicorn -k uvicorn.workers.UvicornWorker
+      -w ${WEB_CONCURRENCY:-2}
+      -b 0.0.0.0:8000 app.main:app"
     labels:
       - "traefik.enable=true"
-      # Backend API routes
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.priority=200"
-      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls=true"
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
-      # Security & Rate Limiting middlewares
       - "traefik.http.routers.backend.middlewares=security-headers@file,rate-limit@file"
 
-  # Minio (S3-compatible storage)
-  minio:
-    image: minio/minio:latest
-    container_name: letsee-minio
-    env_file:
-      - .env.prod
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    volumes:
-      - minio_data:/data
-    networks:
-      - letsee_network
-    command: minio server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    restart: unless-stopped
+  frontend:
     labels:
       - "traefik.enable=true"
-      # MinIO API routes (S3 bucket access)
-      - "traefik.http.routers.minio-api.rule=PathPrefix(`/letsee-attachments`)"
-      - "traefik.http.routers.minio-api.priority=100"
-      - "traefik.http.routers.minio-api.entrypoints=websecure"
-      - "traefik.http.routers.minio-api.tls=true"
-      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`) && !PathPrefix(`/api`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
 
-  # Loki Log Aggregation
+  minio:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.rule=Host(`s3.${DOMAIN}`)"
+      - "traefik.http.routers.minio.entrypoints=websecure"
+      - "traefik.http.routers.minio.tls=true"
+      - "traefik.http.services.minio.loadbalancer.server.port=9000"
+
   loki:
     image: grafana/loki:2.9.3
-    container_name: letsee-loki
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
-    expose:
-      - "3100"
     networks:
       - letsee_network
     restart: unless-stopped
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:3100/ready",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    entrypoint: /bin/sh -c 'mkdir -p /loki/boltdb-shipper-active /loki/boltdb-shipper-cache /loki/chunks && /usr/bin/loki -config.file=/etc/loki/local-config.yaml'
+    expose:
+      - "3100"
 
-  # Promtail Log Shipper (sends logs to Loki)
   promtail:
     image: grafana/promtail:2.9.3
-    container_name: letsee-promtail
     volumes:
       - ./promtail-config.yaml:/etc/promtail/config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -180,70 +73,31 @@ services:
     restart: unless-stopped
     depends_on:
       - loki
-
-  # Grafana Dashboards & Visualization
   grafana:
     image: grafana/grafana:10.2.0
-    container_name: letsee-grafana
+    env_file:
+      - .env
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
-      GF_SERVER_ROOT_URL: https://${DOMAIN}/grafana
-      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
-      GF_INSTALL_PLUGINS: grafana-piechart-panel
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-    ports:
-      - "127.0.0.1:3000:3000"
     networks:
       - letsee_network
     restart: unless-stopped
-    depends_on:
-      - loki
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:3000/api/health",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Nginx Frontend Server
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: letsee-frontend
-    depends_on:
-      - backend
-    networks:
-      - letsee_network
-    restart: unless-stopped
+    expose:
+      - "3000"
     labels:
       - "traefik.enable=true"
-      # Frontend routes - catch all
-      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.frontend.priority=1"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.routers.frontend.middlewares=security-headers@file,rate-limit@file"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
 volumes:
-  postgres_data:
-  postgres_archive:
-  minio_data:
-  traefik_certs:
   loki_data:
   grafana_data:
 
 networks:
   letsee_network:
-    driver: bridge
+    external: false
