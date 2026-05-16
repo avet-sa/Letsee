@@ -887,10 +887,24 @@ async function saveDaySchedule() {
       shifts: { A: [], M: [], B: [], C: [] },
     };
 
-    const scheduleToSave = {};
-    scheduleToSave[selectedDate] = { shifts: currentSchedule.shifts };
+    // Check if at least one shift has a person assigned
+    const hasAssignedShifts = ['A', 'M', 'B', 'C'].some(
+      (shift) => currentSchedule.shifts[shift] && currentSchedule.shifts[shift].length > 0
+    );
 
-    await DB.saveSchedule(scheduleToSave);
+    if (!hasAssignedShifts) {
+      // Delete the schedule if no one is assigned
+      const existing = await SchedulesAPI.list(selectedDate);
+      if (existing && existing.length > 0) {
+        await SchedulesAPI.delete(existing[0].id);
+      }
+      delete scheduleData[selectedDate];
+    } else {
+      const scheduleToSave = {};
+      scheduleToSave[selectedDate] = { shifts: currentSchedule.shifts };
+
+      await DB.saveSchedule(scheduleToSave);
+    }
 
     // Reload schedules and update calendar (keep modal open)
     await loadSchedules();
