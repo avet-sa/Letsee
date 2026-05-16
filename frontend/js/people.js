@@ -1,7 +1,7 @@
 /**
  * People/Staff Management Module for Letsee Frontend
  * Handles staff member CRUD operations and UI
- * 
+ *
  * NOTE: This file MUST be loaded AFTER script.js
  * script.js defines: STAFF_COLOR_PRESETS, DEFAULT_PERSON_COLOR, editingPersonId, editingPersonOriginalName
  */
@@ -32,9 +32,15 @@ function setPersonAccountFormState(isEditing) {
     return;
   }
 
-  if (emailInput) {emailInput.value = '';}
-  if (passwordInput) {passwordInput.value = '';}
-  if (adminCheckbox) {adminCheckbox.checked = false;}
+  if (emailInput) {
+    emailInput.value = '';
+  }
+  if (passwordInput) {
+    passwordInput.value = '';
+  }
+  if (adminCheckbox) {
+    adminCheckbox.checked = false;
+  }
   if (adminGroup) {
     adminGroup.style.opacity = '';
   }
@@ -50,7 +56,9 @@ function setPersonAccountFormState(isEditing) {
 function initPersonColorPicker() {
   const picker = document.getElementById('new-person-color-picker');
   const colorInput = document.getElementById('new-person-color');
-  if (!picker || !colorInput) {return;}
+  if (!picker || !colorInput) {
+    return;
+  }
 
   const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
   colorInput.value = selectedColor;
@@ -76,7 +84,9 @@ function initPersonColorPicker() {
  */
 function selectPersonColor(color) {
   const colorInput = document.getElementById('new-person-color');
-  if (!colorInput) {return;}
+  if (!colorInput) {
+    return;
+  }
 
   colorInput.value = color;
   document.querySelectorAll('#new-person-color-picker .color-swatch').forEach((swatch) => {
@@ -98,10 +108,18 @@ function resetPersonForm() {
   const saveBtn = document.getElementById('save-person-btn');
   const cancelBtn = document.getElementById('cancel-person-edit');
 
-  if (nameInput) {nameInput.value = '';}
-  if (titleEl) {titleEl.textContent = 'Add New Staff Member';}
-  if (saveBtn) {saveBtn.textContent = '+ Add';}
-  if (cancelBtn) {cancelBtn.style.display = 'none';}
+  if (nameInput) {
+    nameInput.value = '';
+  }
+  if (titleEl) {
+    titleEl.textContent = 'Add New Staff Member';
+  }
+  if (saveBtn) {
+    saveBtn.textContent = '+ Add';
+  }
+  if (cancelBtn) {
+    cancelBtn.style.display = 'none';
+  }
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
@@ -113,9 +131,11 @@ function resetPersonForm() {
  * @param {string} id - Person ID
  */
 async function startPersonEdit(id) {
-  const people = await PeopleAPI.list();
+  const people = await DB.getUsers();
   const person = people.find((p) => String(p.id) === String(id));
-  if (!person) {return;}
+  if (!person) {
+    return;
+  }
 
   editingPersonId = String(person.id);
   editingPersonOriginalName = person.name;
@@ -160,7 +180,7 @@ async function savePerson() {
 
   try {
     if (editingPersonId) {
-      await DB.updatePerson(editingPersonId, name, color, editingPersonOriginalName);
+      await DB.updateUser(editingPersonId, { full_name: name, color });
     } else {
       if (email || password) {
         if (!email || !password) {
@@ -183,11 +203,17 @@ async function savePerson() {
           email,
           password,
           full_name: name,
-          person_color: color,
+          color,
           is_admin: isAdmin,
         });
       } else {
-        await PeopleAPI.create(name, color);
+        await UsersAPI.create({
+          email: `${name.toLowerCase().replace(/\s+/g, '.')}@letsee.local`,
+          password: 'temppass123',
+          full_name: name,
+          color,
+          is_admin: false,
+        });
       }
     }
 
@@ -211,7 +237,7 @@ function deletePerson(id, name) {
     `Are you sure you want to delete "${name}"? This action cannot be undone.`,
     async () => {
       try {
-        await PeopleAPI.delete(id);
+        await UsersAPI.delete(id);
         if (String(editingPersonId) === String(id)) {
           resetPersonForm();
         }
@@ -230,10 +256,12 @@ function deletePerson(id, name) {
  */
 async function renderPeopleList() {
   const peopleList = document.getElementById('people-list');
-  if (!peopleList) {return;}
+  if (!peopleList) {
+    return;
+  }
 
   try {
-    const people = await PeopleAPI.list();
+    const people = await DB.getUsers();
 
     if (people.length === 0) {
       peopleList.innerHTML = `
@@ -246,12 +274,11 @@ async function renderPeopleList() {
     }
 
     peopleList.innerHTML = people
-      .map(
-        (person) => {
-          const safeName = escapeHtml(person.name);
-          const safeColor = escapeHtml(person.color);
-          const safeNameForJs = escapeJsString(person.name);
-          return `
+      .map((person) => {
+        const safeName = escapeHtml(person.name);
+        const safeColor = escapeHtml(person.color);
+        const safeNameForJs = escapeJsString(person.name);
+        return `
           <div class="person-item" data-id="${person.id}">
             <div class="person-color" style="background-color: ${safeColor}"></div>
             <div class="person-info">
@@ -274,8 +301,7 @@ async function renderPeopleList() {
             </div>
           </div>
         `;
-        }
-      )
+      })
       .join('');
   } catch (error) {
     console.error('Error rendering people list:', error);

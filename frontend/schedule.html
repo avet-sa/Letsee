@@ -203,11 +203,19 @@
           <div class="people-list" id="people-list">
             <!-- People will be rendered here -->
           </div>
-          <div class="add-person-form">
+          <form
+            class="add-person-form"
+            id="person-form"
+            onsubmit="
+              event.preventDefault();
+              savePerson();
+            "
+          >
             <h3 id="person-form-title">Add New Staff Member</h3>
             <div class="form-row">
               <input type="text" id="new-person-name" placeholder="Full Name" class="form-input" />
               <button
+                type="button"
                 class="btn-secondary"
                 id="cancel-person-edit"
                 onclick="cancelPersonEdit()"
@@ -215,7 +223,7 @@
               >
                 Cancel
               </button>
-              <button class="btn-primary" id="save-person-btn" onclick="savePerson()">+ Add</button>
+              <button type="submit" class="btn-primary" id="save-person-btn">+ Add</button>
             </div>
             <div class="form-row">
               <input
@@ -249,7 +257,7 @@
               id="new-person-color-picker"
               aria-label="Choose a staff color"
             ></div>
-          </div>
+          </form>
         </div>
         <div class="modal-footer">
           <button class="btn-primary" onclick="closePeopleModal()">Done</button>
