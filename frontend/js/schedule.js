@@ -599,9 +599,9 @@ function renderHoverPreviewContent(assignedStaff) {
             </div>
         `;
 
-    // Add divider if not last item on this page
-    if (idx < pageStaff.length - 1) {
-      html += '<div class="preview-staff-divider"></div>';
+    // Add divider if not last item on this page and next person has different shift
+    if (idx < pageStaff.length - 1 && pageStaff[idx + 1]?.shift !== shift) {
+      html += '<div class="staff-divider"></div>';
     }
   });
 
@@ -725,8 +725,6 @@ function renderDayModalContent(dateStr, day, monthName) {
       })
       .join('');
 
-    const divider = idx < pageStaff.length - 1 ? `<div class="staff-divider"></div>` : '';
-
     html += `
             <div class="staff-row">
                 <div class="staff-name-row">
@@ -738,8 +736,12 @@ function renderDayModalContent(dateStr, day, monthName) {
                     ${badgeHtml}
                 </div>
                 <div class="shift-opts">${optsHtml}</div>
-                ${divider}
             </div>`;
+
+    // Add divider if not last item on this page and next person has different shift
+    if (idx < pageStaff.length - 1 && pageStaff[idx + 1]?.shift !== currentShift) {
+      html += '<div class="staff-divider"></div>';
+    }
   });
 
   html += '</div>';

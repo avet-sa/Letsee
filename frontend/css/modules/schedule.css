@@ -357,7 +357,7 @@
 }
 
 .hover-preview-content {
-    padding: 12px 14px;
+    padding: 12px 0;
 }
 
 .preview-no-data {
@@ -399,6 +399,16 @@
 
 .preview-staff div {
     padding: 2px 0;
+}
+
+.preview-staff-avatar {
+    display: inline-flex;
+    border-radius: 50%;
+    padding: 5px;
+    height: 30px;
+    aspect-ratio: 1;
+    align-items: center;
+    justify-content: center;
 }
 
 .schedule-panel {
