@@ -126,8 +126,14 @@ const AuthAPI = {
     return apiFetch('/auth/me');
   },
 
-  logout() {
-    clearTokens();
+  async logout() {
+    try {
+      if (getToken()) {
+        await apiFetch('/auth/logout', { method: 'POST' });
+      }
+    } finally {
+      clearTokens();
+    }
   },
 };
 
@@ -379,7 +385,7 @@ const DB = {
   },
 
   async logout() {
-    AuthAPI.logout();
+    return AuthAPI.logout();
   },
 
   async getCurrentUser() {

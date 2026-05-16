@@ -36,20 +36,13 @@
   opacity: 0.7;
 }
 
-.help-btn {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-primary);
-  color: var(--text-primary);
-  cursor: pointer;
-  padding: 8px 12px;
-  font-family: var(--primary-font);
-  font-size: 18px;
-  transition: opacity 0.2s;
-  line-height: 1;
-}
-
-.help-btn:hover {
-  opacity: 0.7;
+.shortcut-hint {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .logout-btn {
@@ -448,6 +441,10 @@
   color: var(--text-primary);
 }
 
+.header-info.hidden {
+  display: none;
+}
+
 .separator {
   color: var(--text-secondary);
 }
@@ -543,10 +540,13 @@
     font-size: 14px;
   }
 
-  .theme-toggle,
-  .help-btn {
+  .theme-toggle {
     padding: 6px 10px;
     font-size: 16px;
+  }
+
+  .shortcut-hint {
+    font-size: 10px;
   }
 
   .btn-primary {
@@ -616,7 +616,7 @@
 @media print {
   .header,
   .theme-toggle,
-  .help-btn,
+  .shortcut-hint,
   .btn-primary,
   .nav-btn,
   .controls-bar,

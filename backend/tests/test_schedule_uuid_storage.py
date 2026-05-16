@@ -92,3 +92,51 @@ def test_schedule_get_migrates_legacy_name_entries_to_user_ids(client, db_sessio
         "B": [],
         "C": [],
     }
+
+
+def test_schedule_endpoints_reject_invalid_calendar_dates(client, db_session):
+    create_user(
+        db_session,
+        email="admin-invalid-date@example.com",
+        full_name="Admin Invalid Date",
+        is_admin=True,
+    )
+    headers = login_headers(client, "admin-invalid-date@example.com", "SecurePass123!")
+
+    list_response = client.get("/api/schedules?date=2026-99-99", headers=headers)
+    assert list_response.status_code == 400, list_response.text
+
+    upsert_response = client.put(
+        "/api/schedules/2026-02-31",
+        json={"shifts": {"A": [], "M": [], "B": [], "C": []}},
+        headers=headers,
+    )
+    assert upsert_response.status_code == 400, upsert_response.text
+
+
+def test_admin_cannot_delete_staff_member_assigned_to_schedule(client, db_session):
+    create_user(
+        db_session,
+        email="admin-delete@example.com",
+        full_name="Admin Delete",
+        is_admin=True,
+    )
+    staff = create_user(
+        db_session,
+        email="scheduled-staff@example.com",
+        full_name="Scheduled Staff",
+    )
+    db_session.add(
+        Schedule(
+            date="2026-05-10",
+            shifts={"A": [str(staff.id)], "M": [], "B": [], "C": []},
+            edited_by="Admin Delete",
+        )
+    )
+    db_session.commit()
+
+    headers = login_headers(client, "admin-delete@example.com", "SecurePass123!")
+    response = client.delete(f"/api/users/{staff.id}", headers=headers)
+
+    assert response.status_code == 400, response.text
+    assert "Cannot delete staff member" in response.json()["detail"]

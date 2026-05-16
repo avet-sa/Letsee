@@ -1130,8 +1130,14 @@ function applyTheme() {
 
 // Logout
 function handleLogout() {
-  showConfirm('Sign Out', 'Are you sure you want to sign out?', () => {
-    DB.logout();
+  showConfirm('Sign Out', 'Are you sure you want to sign out?', async () => {
+    try {
+      await DB.logout();
+    } catch (error) {
+      console.warn('Server logout failed; clearing local session anyway.', error);
+    } finally {
+      window.location.href = '/login.html';
+    }
   });
 }
 

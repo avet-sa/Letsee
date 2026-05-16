@@ -24,6 +24,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    cpus: "1.0"
+    mem_limit: 1g
     networks:
       - letsee_network
     restart: unless-stopped
@@ -50,6 +52,17 @@ services:
     networks:
       - letsee_network
     restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c 'import urllib.request; urllib.request.urlopen("http://localhost:8000/health", timeout=5)'
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    cpus: "1.0"
+    mem_limit: 512m
     expose:
       - "8000"
 
@@ -62,6 +75,14 @@ services:
     networks:
       - letsee_network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    cpus: "0.5"
+    mem_limit: 128m
     expose:
       - "80"
 
@@ -75,6 +96,14 @@ services:
     volumes:
       - minio_data:/data
     command: minio server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    cpus: "0.5"
+    mem_limit: 512m
     networks:
       - letsee_network
     restart: unless-stopped

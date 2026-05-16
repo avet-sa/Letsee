@@ -176,10 +176,14 @@ function openPicker(inputId) {
 
 // Logout function
 function handleLogout() {
-  showConfirm('Sign Out', 'Are you sure you want to sign out?', () => {
-    localStorage.removeItem('letsee_access_token');
-    localStorage.removeItem('letsee_refresh_token');
-    window.location.href = '/login.html';
+  showConfirm('Sign Out', 'Are you sure you want to sign out?', async () => {
+    try {
+      await DB.logout();
+    } catch (error) {
+      console.warn('Server logout failed; clearing local session anyway.', error);
+    } finally {
+      window.location.href = '/login.html';
+    }
   });
 }
 
@@ -221,7 +225,6 @@ function getCurrentShiftCode(date = currentDate, daySchedule = null) {
   return 'B';
 }
 
-
 function getAssignedPeopleForShift(daySchedule, shiftCode) {
   const shifts = getShiftEntries(daySchedule);
   const entries = shifts[shiftCode];
@@ -244,8 +247,8 @@ function getAssignedPeopleForShift(daySchedule, shiftCode) {
   return names;
 }
 
-let _peopleCache = [];   // populated by _refreshPeopleCache below
- 
+let _peopleCache = []; // populated by _refreshPeopleCache below
+
 async function _refreshPeopleCache() {
   try {
     _peopleCache = await DB.getUsers();
@@ -625,44 +628,44 @@ function renderNote(note, shiftPeople = '') {
   const attachments =
     note.attachments && note.attachments.length > 0
       ? `<div class="attachments">${note.attachments
-        .map((att) => {
-          // Support both old format (url) and new format (file_key)
-          // Allowed types: images (jpg, jpeg, png, gif, webp, svg) and PDF
-          const isAllowedType = (att) => {
-            const filename = (att.filename || att.name || '').toLowerCase();
-            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-            const isPdfExtension = filename.endsWith('.pdf');
-            const isImageExtension = imageExtensions.some((ext) => filename.endsWith(ext));
-            const mimeType = att.mime_type || '';
-            const isImageMime = mimeType.startsWith('image/');
-            const isPdfMime = mimeType === 'application/pdf';
-            return isImageExtension || isPdfExtension || isImageMime || isPdfMime;
-          };
+          .map((att) => {
+            // Support both old format (url) and new format (file_key)
+            // Allowed types: images (jpg, jpeg, png, gif, webp, svg) and PDF
+            const isAllowedType = (att) => {
+              const filename = (att.filename || att.name || '').toLowerCase();
+              const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+              const isPdfExtension = filename.endsWith('.pdf');
+              const isImageExtension = imageExtensions.some((ext) => filename.endsWith(ext));
+              const mimeType = att.mime_type || '';
+              const isImageMime = mimeType.startsWith('image/');
+              const isPdfMime = mimeType === 'application/pdf';
+              return isImageExtension || isPdfExtension || isImageMime || isPdfMime;
+            };
 
-          if (!isAllowedType(att)) {
-            return ''; // Skip non-allowed file types
-          }
+            if (!isAllowedType(att)) {
+              return ''; // Skip non-allowed file types
+            }
 
-          const filename = att.filename || att.name || 'attachment';
-          const safeFilename = escapeHtml(filename);
-          const isImage = filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+            const filename = att.filename || att.name || 'attachment';
+            const safeFilename = escapeHtml(filename);
+            const isImage = filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
 
-          if (att.file_key) {
-            // New Minio format - open in browser with auth header
-            const safeNameForJs = escapeJsString(filename);
-            const safeFileKeyForJs = escapeJsString(att.file_key);
-            return `<a href="#" onclick="openAttachment('${safeFileKeyForJs}','${safeNameForJs}','${isImage ? 'image' : 'pdf'}'); return false;" class="attachment-link" title="${safeFilename}">${isImage ? '🖼️' : '📄'} ${safeFilename}</a>`;
-          } else if (att.url && att.url.startsWith('data:image')) {
-            // Old base64 format (image)
-            return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">🖼️ ${safeFilename}</a>`;
-          } else if (att.url && att.url.includes('data:application/pdf')) {
-            // Old base64 format (PDF)
-            return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">📄 ${safeFilename}</a>`;
-          }
-          return ''; // Skip other file types
-        })
-        .filter(Boolean)
-        .join('')}</div>`
+            if (att.file_key) {
+              // New Minio format - open in browser with auth header
+              const safeNameForJs = escapeJsString(filename);
+              const safeFileKeyForJs = escapeJsString(att.file_key);
+              return `<a href="#" onclick="openAttachment('${safeFileKeyForJs}','${safeNameForJs}','${isImage ? 'image' : 'pdf'}'); return false;" class="attachment-link" title="${safeFilename}">${isImage ? '🖼️' : '📄'} ${safeFilename}</a>`;
+            } else if (att.url && att.url.startsWith('data:image')) {
+              // Old base64 format (image)
+              return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">🖼️ ${safeFilename}</a>`;
+            } else if (att.url && att.url.includes('data:application/pdf')) {
+              // Old base64 format (PDF)
+              return `<a href="${escapeHtml(att.url)}" target="_blank" class="attachment-link" title="${safeFilename}">📄 ${safeFilename}</a>`;
+            }
+            return ''; // Skip other file types
+          })
+          .filter(Boolean)
+          .join('')}</div>`
       : '';
 
   // Due label
@@ -1248,6 +1251,11 @@ async function updatePeopleBlock() {
 
   const peopleNames = document.getElementById('people-names');
   const shiftName = document.getElementById('shift-name');
+  const headerInfo = document.querySelector('.header-info');
+
+  if (headerInfo) {
+    headerInfo.classList.toggle('hidden', assignedPeople.length === 0);
+  }
 
   if (assignedPeople.length > 0) {
     // Find people objects
@@ -1261,12 +1269,12 @@ async function updatePeopleBlock() {
       peopleNames.textContent = selectedPeople.map((p) => p.name.toUpperCase()).join(' & ');
     }
   } else if (peopleNames) {
-    peopleNames.textContent = 'NO STAFF ASSIGNED';
+    peopleNames.textContent = '';
   }
 
   // Update shift name
   if (shiftName) {
-    shiftName.textContent = currentShift.toUpperCase() + ' SHIFT';
+    shiftName.textContent = assignedPeople.length > 0 ? currentShift.toUpperCase() + ' SHIFT' : '';
   }
 }
 
@@ -1574,7 +1582,7 @@ document.addEventListener('keydown', (e) => {
   }
 
   // ?: Show shortcuts help
-  if ((e.shiftKey && e.key === '?') || (e.key === '?' && !isInputFocused)) {
+  if (e.key === '?' && !isInputFocused) {
     e.preventDefault();
     openShortcutsModal();
   }

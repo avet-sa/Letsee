@@ -15,6 +15,28 @@ VALID_SHIFTS = {"A", "M", "B", "C"}
 SHIFT_ORDER = ("A", "M", "B", "C")
 
 
+def _validate_schedule_date(date_value: str | None) -> str | None:
+    """Validate schedule date strings as real YYYY-MM-DD calendar dates."""
+    if date_value is None:
+        return None
+
+    try:
+        parsed = datetime.strptime(date_value, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Date must be a valid YYYY-MM-DD calendar date",
+        )
+
+    if parsed.isoformat() != date_value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Date must be a valid YYYY-MM-DD calendar date",
+        )
+
+    return date_value
+
+
 def _normalize_person_name(value: str | None) -> str:
     return " ".join((value or "").split()).casefold()
 
@@ -129,6 +151,8 @@ async def list_schedules(
     current_user: str = Depends(get_current_user),
 ):
     """Get schedules. Optionally filter by date (YYYY-MM-DD)."""
+    date = _validate_schedule_date(date)
+
     query = db.query(Schedule)
     if date:
         query = query.filter(Schedule.date == date)
@@ -228,6 +252,8 @@ async def create_schedule(
     current_user: User = Depends(require_admin),
 ):
     """Create a new schedule for a date."""
+    _validate_schedule_date(schedule_create.date)
+
     # Check if schedule already exists for this date
     existing = db.query(Schedule).filter(Schedule.date == schedule_create.date).first()
     if existing:
@@ -260,6 +286,7 @@ async def upsert_schedule(
     current_user: User = Depends(require_admin),
 ):
     """Create or update a schedule by date (YYYY-MM-DD)."""
+    date = _validate_schedule_date(date)
     schedule = db.query(Schedule).filter(Schedule.date == date).first()
 
     if schedule_update.shifts is not None:
@@ -307,7 +334,8 @@ async def get_schedule(
         schedule = db.query(Schedule).filter(Schedule.id == uuid_id).first()
     except ValueError:
         # Fallback to date string
-        schedule = db.query(Schedule).filter(Schedule.date == schedule_id).first()
+        schedule_date = _validate_schedule_date(schedule_id)
+        schedule = db.query(Schedule).filter(Schedule.date == schedule_date).first()
 
     if not schedule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
@@ -329,7 +357,8 @@ async def delete_schedule(
         schedule = db.query(Schedule).filter(Schedule.id == uuid_id).first()
     except ValueError:
         # Fallback to date string
-        schedule = db.query(Schedule).filter(Schedule.date == schedule_id).first()
+        schedule_date = _validate_schedule_date(schedule_id)
+        schedule = db.query(Schedule).filter(Schedule.date == schedule_date).first()
 
     if not schedule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")

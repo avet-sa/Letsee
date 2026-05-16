@@ -5,12 +5,21 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_password_hash, require_admin, verify_password
-from app.models import User
+from app.core.security import get_current_user, get_password_hash, require_admin
+from app.models import Schedule, User
 from app.schemas import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 DEFAULT_USER_COLOR = "#3498db"
+
+
+def _schedule_contains_user(schedule: Schedule, user_id: str) -> bool:
+    """Return true when a schedule JSON payload references a user ID."""
+    shifts = schedule.shifts if isinstance(schedule.shifts, dict) else {}
+    for entries in shifts.values():
+        if isinstance(entries, list) and user_id in {str(entry) for entry in entries}:
+            return True
+    return False
 
 
 @router.get("", response_model=list[UserResponse])
@@ -99,12 +108,29 @@ async def delete_user(
     current_user: User = Depends(require_admin),
 ):
     """Soft delete a user (staff member) - admin only.
-    
+
     The user is marked as deleted but remains in the database for historical records.
     """
     user = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    assigned_dates = [
+        schedule.date
+        for schedule in db.query(Schedule).all()
+        if _schedule_contains_user(schedule, str(user_id))
+    ]
+    if assigned_dates:
+        preview_dates = ", ".join(sorted(assigned_dates)[:5])
+        more_count = len(assigned_dates) - 5
+        suffix = f" and {more_count} more" if more_count > 0 else ""
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot delete staff member while assigned to schedules. "
+                f"Remove them from {preview_dates}{suffix} first."
+            ),
+        )
 
     # Soft delete - mark as deleted
     user.deleted_at = db.query(func.now()).scalar()

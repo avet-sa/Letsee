@@ -105,9 +105,12 @@
             <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
           </svg>
         </button>
-        <button class="help-btn" onclick="openShortcutsModal()" title="Show keyboard shortcuts (?)">
-          Alt +
-        </button>
+        <span
+          class="shortcut-hint"
+          title="Keyboard shortcuts are available when you are not typing"
+        >
+          Press ? for shortcuts
+        </span>
         <button
           class="btn-primary"
           id="manage-staff-btn"
@@ -429,40 +432,46 @@
 
     <!-- Keyboard Shortcuts Reference -->
     <div id="shortcuts-modal" class="modal hidden">
-      <div class="modal-content shortcuts-content">
+      <div class="modal-dialog modal-large shortcuts-dialog">
         <div class="modal-header">
-          <h3>Keyboard Shortcuts</h3>
+          <h2>Keyboard Shortcuts</h2>
           <button class="close-btn" onclick="closeShortcutsModal()">×</button>
         </div>
-        <div class="shortcuts-grid">
-          <div class="shortcut-item">
-            <div class="shortcut-key">Alt+N</div>
-            <div class="shortcut-desc">Add new note</div>
+        <div class="modal-body shortcuts-body">
+          <p class="shortcuts-intro">Shortcuts work when you are not typing in a field.</p>
+          <div class="shortcuts-list">
+            <div class="shortcut-item">
+              <kbd class="shortcut-key">Alt+N</kbd>
+              <span class="shortcut-desc">Add new note</span>
+            </div>
+            <div class="shortcut-item">
+              <kbd class="shortcut-key">Alt+F</kbd>
+              <span class="shortcut-desc">Focus search</span>
+            </div>
+            <div class="shortcut-item">
+              <kbd class="shortcut-key">Alt+S</kbd>
+              <span class="shortcut-desc">Save note while the note modal is open</span>
+            </div>
+            <div class="shortcut-item">
+              <kbd class="shortcut-key">Alt+D</kbd>
+              <span class="shortcut-desc">Toggle date picker</span>
+            </div>
+            <div class="shortcut-item">
+              <kbd class="shortcut-key">Alt+K</kbd>
+              <span class="shortcut-desc">Toggle theme</span>
+            </div>
+            <div class="shortcut-item">
+              <kbd class="shortcut-key">Esc</kbd>
+              <span class="shortcut-desc">Close open modals</span>
+            </div>
+            <div class="shortcut-item">
+              <kbd class="shortcut-key">?</kbd>
+              <span class="shortcut-desc">Show this help</span>
+            </div>
           </div>
-          <div class="shortcut-item">
-            <div class="shortcut-key">Alt+F</div>
-            <div class="shortcut-desc">Focus search</div>
-          </div>
-          <div class="shortcut-item">
-            <div class="shortcut-key">Alt+S</div>
-            <div class="shortcut-desc">Save note (in modal)</div>
-          </div>
-          <div class="shortcut-item">
-            <div class="shortcut-key">Alt+D</div>
-            <div class="shortcut-desc">Toggle date picker</div>
-          </div>
-          <div class="shortcut-item">
-            <div class="shortcut-key">Alt+K</div>
-            <div class="shortcut-desc">Toggle theme</div>
-          </div>
-          <div class="shortcut-item">
-            <div class="shortcut-key">Esc</div>
-            <div class="shortcut-desc">Close modal</div>
-          </div>
-          <div class="shortcut-item">
-            <div class="shortcut-key">?</div>
-            <div class="shortcut-desc">Show this help</div>
-          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-primary" onclick="closeShortcutsModal()">Close</button>
         </div>
       </div>
     </div>
