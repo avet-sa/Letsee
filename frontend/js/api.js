@@ -509,7 +509,9 @@ const DB = {
 
       // 2. Save / Create notes
       for (const note of notesList) {
-        if (!note.text?.trim()) continue;
+        if (!note.text?.trim()) {
+          continue;
+        }
 
         const timestampStr = new Date(note.timestamp || Date.now()).toISOString();
 

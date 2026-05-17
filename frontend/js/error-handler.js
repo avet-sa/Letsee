@@ -88,7 +88,9 @@ function logError(error) {
     const errors = JSON.parse(localStorage.getItem('letsee_errors') || '[]');
     errors.push(errorData);
     // Keep only last 10 errors
-    if (errors.length > 10) {errors.shift();}
+    if (errors.length > 10) {
+      errors.shift();
+    }
     localStorage.setItem('letsee_errors', JSON.stringify(errors));
   } catch (e) {
     // Ignore localStorage errors

@@ -237,7 +237,9 @@ function getAssignedPeopleForShift(daySchedule, shiftCode) {
   const seen = new Set();
   const names = [];
   for (const entry of entries) {
-    if (!entry || typeof entry !== 'string' || !entry.trim()) continue;
+    if (!entry || typeof entry !== 'string' || !entry.trim()) {
+      continue;
+    }
     const name = resolvePersonName(entry);
     if (!seen.has(name)) {
       seen.add(name);
@@ -258,11 +260,15 @@ async function _refreshPeopleCache() {
 }
 
 function resolvePersonName(entry) {
-  if (!entry) return '';
+  if (!entry) {
+    return '';
+  }
   const s = String(entry).trim();
   // Try by id first
   const byId = _peopleCache.find((p) => String(p.id) === s);
-  if (byId) return byId.name;
+  if (byId) {
+    return byId.name;
+  }
   // Legacy: already a name
   return s;
 }
