@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from uuid import UUID
-
-from app.models import Person, User
+from app.models import User
 
 
 def register_user(client, payload, headers=None):
@@ -26,7 +24,7 @@ def bootstrap_admin(client, email="admin@example.com", password="SecurePass123!"
             "email": email,
             "password": password,
             "full_name": "Admin User",
-            "person_color": "#3498db",
+            "color": "#3498db",
         },
     )
     assert response.status_code == 200, response.text
@@ -49,7 +47,7 @@ def create_staff_account(
             "email": email,
             "password": password,
             "full_name": name,
-            "person_color": color,
+            "color": color,
             "is_admin": is_admin,
         },
         headers=admin_headers,
@@ -65,24 +63,19 @@ def test_first_registration_bootstraps_admin_and_links_staff_record(client, db_s
             "email": "admin@example.com",
             "password": "SecurePass123!",
             "full_name": "Admin User",
-            "person_color": "#1abc9c",
+            "color": "#1abc9c",
         },
     )
 
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["is_admin"] is True
-    assert payload["person_id"]
 
     user = db_session.query(User).filter(User.email == "admin@example.com").first()
     assert user is not None
     assert user.is_admin is True
-    assert user.person_id == UUID(payload["person_id"])
-
-    person = db_session.query(Person).filter(Person.id == user.person_id).first()
-    assert person is not None
-    assert person.name == "Admin User"
-    assert person.color == "#1abc9c"
+    assert user.full_name == "Admin User"
+    assert user.color == "#1abc9c"
 
 
 def test_admin_can_create_linked_staff_account_with_custom_color(client, db_session):
@@ -94,7 +87,7 @@ def test_admin_can_create_linked_staff_account_with_custom_color(client, db_sess
             "email": "manager@example.com",
             "password": "SecurePass123!",
             "full_name": "Night Manager",
-            "person_color": "#f39c12",
+            "color": "#f39c12",
             "is_admin": True,
         },
         headers=admin_headers,
@@ -107,11 +100,8 @@ def test_admin_can_create_linked_staff_account_with_custom_color(client, db_sess
     user = db_session.query(User).filter(User.email == "manager@example.com").first()
     assert user is not None
     assert user.is_admin is True
-
-    person = db_session.query(Person).filter(Person.id == user.person_id).first()
-    assert person is not None
-    assert person.name == "Night Manager"
-    assert person.color == "#f39c12"
+    assert user.full_name == "Night Manager"
+    assert user.color == "#f39c12"
 
 
 def test_non_admin_cannot_register_new_users(client):
@@ -133,25 +123,33 @@ def test_non_admin_cannot_register_new_users(client):
     assert response.json()["detail"] == "Only admins can create new user accounts"
 
 
-def test_staff_cannot_modify_people_schedules_or_backups(client):
-    _, admin_headers = bootstrap_admin(client)
+def test_staff_cannot_modify_people_schedules_or_backups(client, db_session):
+    admin_resp, admin_headers = bootstrap_admin(client)
+    admin_id = admin_resp["id"]
+    
     create_staff_account(client, admin_headers)
     staff_headers = login_headers(client, "staff@example.com", "SecurePass123!")
 
     schedule_response = client.put(
         "/api/schedules/2026-05-09",
-        json={"shifts": {"A": ["Admin User"], "M": [], "B": [], "C": []}},
+        json={"shifts": {"A": [admin_id], "M": [], "B": [], "C": []}},
         headers=admin_headers,
     )
     assert schedule_response.status_code == 200, schedule_response.text
     assert schedule_response.json()["edited_by"] == "Admin User"
 
-    create_person_response = client.post(
-        "/api/people",
-        json={"name": "Another Staff", "color": "#2ecc71"},
+    # Staff cannot create new users (formerly "people")
+    create_user_response = client.post(
+        "/api/auth/register",
+        json={
+            "email": "another@example.com",
+            "password": "SecurePass123!",
+            "full_name": "Another Staff",
+            "color": "#2ecc71"
+        },
         headers=staff_headers,
     )
-    assert create_person_response.status_code == 403, create_person_response.text
+    assert create_user_response.status_code == 403, create_user_response.text
 
     update_schedule_response = client.put(
         "/api/schedules/2026-05-10",

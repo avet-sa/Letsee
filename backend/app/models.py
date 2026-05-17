@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -24,11 +24,11 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=datetime.now(UTC),
+        onupdate=datetime.now(UTC),
         nullable=False,
     )
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)  # Soft delete
@@ -48,11 +48,11 @@ class Schedule(Base):
     )  # {A: [user_ids], M: [user_ids], B: [user_ids], C: [user_ids]}
     edited_by = Column(String(255), nullable=True)  # Who last edited this schedule
     edited_at = Column(DateTime(timezone=True), nullable=True)  # When last edited
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=datetime.now(UTC),
+        onupdate=datetime.now(UTC),
         nullable=False,
     )
 
@@ -82,11 +82,11 @@ class Handover(Base):
     due_time = Column(String(5), nullable=True)  # HH:MM
     edited_at = Column(DateTime(timezone=True), nullable=True)
     edited_by = Column(String(255), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=datetime.now(UTC),
+        onupdate=datetime.now(UTC),
         nullable=False,
     )
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
@@ -106,11 +106,11 @@ class Setting(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     key = Column(String(255), unique=True, nullable=False, index=True)
     value = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=datetime.now(UTC),
+        onupdate=datetime.now(UTC),
         nullable=False,
     )
 
@@ -124,7 +124,7 @@ class RevokedToken(Base):
     token = Column(String(500), unique=True, nullable=False, index=True)
     token_type = Column(String(10), nullable=False)  # 'access' or 'refresh'
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    revoked_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    revoked_at = Column(DateTime(timezone=True), default=datetime.now(UTC), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)  # When token would expire
 
     __table_args__ = (

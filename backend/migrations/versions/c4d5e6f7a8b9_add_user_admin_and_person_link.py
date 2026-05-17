@@ -68,7 +68,7 @@ def upgrade() -> None:
     )
 
     bind = op.get_bind()
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     existing_people = bind.execute(sa.select(people_table.c.id, people_table.c.name)).fetchall()
     person_ids_by_name: dict[str, list[uuid.UUID]] = {}

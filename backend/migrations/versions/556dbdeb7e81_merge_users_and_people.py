@@ -64,7 +64,7 @@ def upgrade() -> None:
     orphan_people = all_person_ids - existing_user_person_ids
     
     # Step 8: Create user records for orphan people
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     for person_id_str in orphan_people:
         # Use explicit CAST for UUID
         result = bind.execute(
@@ -130,7 +130,7 @@ def downgrade() -> None:
     )
     users = list(result)
     
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     for user in users:
         # Only create person if user is not deleted
         if user.deleted_at is None:

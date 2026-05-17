@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 # ============ Auth/User Schemas ============
 
@@ -48,9 +48,7 @@ class UserResponse(BaseModel):
     is_admin: bool
     is_verified: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdate(BaseModel):
@@ -97,9 +95,7 @@ class ScheduleResponse(BaseModel):
     edited_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ Attachment Schemas ============
@@ -159,26 +155,24 @@ class HandoverResponse(BaseModel):
     id: UUID
     date: str
     category: str
-    room: str | None
-    guest_name: str | None
+    room: str | None = None
+    guest_name: str | None = None
     text: str
     followup: bool
     promised: bool
-    promise_text: str | None
+    promise_text: str | None = None
     attachments: list[AttachmentInfo]
     timestamp: datetime
     completed: bool
-    added_by: str | None
-    shift: str | None
-    due_date: str | None
-    due_time: str | None
-    edited_at: datetime | None
-    edited_by: str | None
+    added_by: str | None = None
+    shift: str | None = None
+    due_date: str | None = None
+    due_time: str | None = None
+    edited_at: datetime | None = None
+    edited_by: str | None = None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ Setting Schemas ============
@@ -199,9 +193,7 @@ class SettingResponse(BaseModel):
     value: str
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ File Upload Schemas ============
