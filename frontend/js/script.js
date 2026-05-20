@@ -11,6 +11,8 @@ let currentFilter = 'all';
 let currentQuickFilter = '';
 const selectedNotes = new Set();
 const DRAFT_KEY = 'letsee_note_draft';
+const DRAFT_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const DRAFT_SCHEMA_VERSION = 1;
 const STAFF_COLOR_PRESETS = [
   '#3498db',
   '#e74c3c',
@@ -378,7 +380,7 @@ function renderHandoverNotesSync(dateData, schedule, shiftPeople) {
   updateSortFilterActiveStates();
   const actionsList = document.getElementById('actions-list');
   const emptyState = document.getElementById('empty-state');
-
+  
   // Apply search filter (includes staff name)
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
@@ -518,6 +520,7 @@ function renderHandoverNotesSync(dateData, schedule, shiftPeople) {
     generalList.innerHTML = '';
     actionsList.innerHTML = '';
     emptyState.classList.remove('hidden');
+    
     updateBulkUI();
     return;
   }
@@ -769,12 +772,10 @@ function openAddNote() {
   document.getElementById('note-form').reset();
   document.getElementById('promise-text-group').style.display = 'none';
   document.getElementById('attachments-list').innerHTML = '';
+  document.getElementById('draft-indicator').classList.add('hidden');
   // Load draft if present
   loadDraftIntoForm();
   attachAutosaveListeners();
-  document
-    .getElementById('draft-indicator')
-    .classList.toggle('hidden', !localStorage.getItem(DRAFT_KEY));
   document.getElementById('note-modal').classList.remove('hidden');
   // Focus note field and add Enter key handler
   const noteTextarea = document.getElementById('note-text');
@@ -1072,8 +1073,7 @@ async function saveNote(event) {
   allNotes[dateKey] = { notes: dateNotes, sortOrder };
 
   // Clear draft and close modal immediately
-  localStorage.removeItem(DRAFT_KEY);
-  document.getElementById('draft-indicator').classList.add('hidden');
+  clearDraftForCurrentContext();
   closeNoteModal();
 
   // Save to database and re-render in background
@@ -1479,11 +1479,102 @@ function saveDraft() {
     dueDate: document.getElementById('note-due-date').value,
     dueTime: document.getElementById('note-due-time').value,
   };
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  document.getElementById('draft-indicator').classList.remove('hidden');
+  if (!isMeaningfulDraft(draft)) {
+    clearDraftForCurrentContext();
+    return;
+  }
+
+  localStorage.setItem(
+    getCurrentDraftKey(),
+    JSON.stringify({
+      version: DRAFT_SCHEMA_VERSION,
+      updatedAt: Date.now(),
+      data: draft,
+    })
+  );
+  setDraftSavedIndicator();
 }
 
 let _draftTimeout = null;
+function getCurrentDraftKey() {
+  const dateKey = currentDate.toISOString().split('T')[0];
+  const userKey = currentUser?.id || currentUser?.email || 'anon';
+  return `${DRAFT_KEY}:${userKey}:${dateKey}:new`;
+}
+
+function isMeaningfulDraft(draft) {
+  return Boolean(
+    (draft.text && draft.text.trim().length >= 3) ||
+      (draft.room && draft.room.trim()) ||
+      (draft.guestName && draft.guestName.trim()) ||
+      (draft.promiseText && draft.promiseText.trim()) ||
+      draft.followup ||
+      draft.promised ||
+      draft.dueDate ||
+      draft.dueTime
+  );
+}
+
+function clearDraftForCurrentContext() {
+  localStorage.removeItem(getCurrentDraftKey());
+  const indicator = document.getElementById('draft-indicator');
+  if (!indicator) {
+    return;
+  }
+  indicator.textContent = 'Draft saved';
+  indicator.classList.add('hidden');
+}
+
+function setDraftSavedIndicator(message = 'Draft saved') {
+  const indicator = document.getElementById('draft-indicator');
+  if (!indicator) {
+    return;
+  }
+  indicator.textContent = message;
+  indicator.classList.remove('hidden');
+}
+
+function renderDraftActions() {
+  const indicator = document.getElementById('draft-indicator');
+  if (!indicator) {
+    return;
+  }
+  indicator.innerHTML = `
+    <button type="button" class="btn-icon" id="draft-restore-btn">Use draft</button>
+    <button type="button" class="btn-icon btn-danger" id="draft-discard-btn">Discard draft</button>
+  `;
+  indicator.classList.remove('hidden');
+  document.getElementById('draft-restore-btn')?.addEventListener('click', () => {
+    loadDraftIntoForm({ force: true });
+    setDraftSavedIndicator();
+  });
+  document.getElementById('draft-discard-btn')?.addEventListener('click', clearDraftForCurrentContext);
+}
+
+function getDraftPayloadForCurrentContext() {
+  const key = getCurrentDraftKey();
+  const raw = localStorage.getItem(key) || localStorage.getItem(DRAFT_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const payload = parsed?.data ? parsed : { version: 0, updatedAt: Date.now(), data: parsed };
+    if (Date.now() - payload.updatedAt > DRAFT_TTL_MS) {
+      localStorage.removeItem(key);
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    return payload;
+  } catch (error) {
+    console.warn('Invalid draft payload', error);
+    localStorage.removeItem(key);
+    localStorage.removeItem(DRAFT_KEY);
+    return null;
+  }
+}
+
 function saveDraftDebounced() {
   if (_draftTimeout) {
     clearTimeout(_draftTimeout);
@@ -1491,27 +1582,28 @@ function saveDraftDebounced() {
   _draftTimeout = setTimeout(saveDraft, 500);
 }
 
-function loadDraftIntoForm() {
-  const raw = localStorage.getItem(DRAFT_KEY);
-  if (!raw) {
+function loadDraftIntoForm({ force = false } = {}) {
+  const payload = getDraftPayloadForCurrentContext();
+  if (!payload) {
     return;
   }
-  try {
-    const draft = JSON.parse(raw);
-    document.getElementById('note-category').value = draft.category || 'info';
-    document.getElementById('note-room').value = draft.room || '';
-    document.getElementById('note-guest').value = draft.guestName || '';
-    document.getElementById('note-text').value = draft.text || '';
-    document.getElementById('note-followup').checked = !!draft.followup;
-    document.getElementById('note-promised').checked = !!draft.promised;
-    document.getElementById('promise-text').value = draft.promiseText || '';
-    document.getElementById('note-due-date').value = draft.dueDate || '';
-    document.getElementById('note-due-time').value = draft.dueTime || '';
-    if (draft.promised) {
-      document.getElementById('promise-text-group').style.display = 'block';
-    }
-  } catch (e) {
-    console.warn('Invalid draft', e);
+  if (!force) {
+    renderDraftActions();
+    return;
+  }
+
+  const draft = payload.data;
+  document.getElementById('note-category').value = draft.category || 'info';
+  document.getElementById('note-room').value = draft.room || '';
+  document.getElementById('note-guest').value = draft.guestName || '';
+  document.getElementById('note-text').value = draft.text || '';
+  document.getElementById('note-followup').checked = !!draft.followup;
+  document.getElementById('note-promised').checked = !!draft.promised;
+  document.getElementById('promise-text').value = draft.promiseText || '';
+  document.getElementById('note-due-date').value = draft.dueDate || '';
+  document.getElementById('note-due-time').value = draft.dueTime || '';
+  if (draft.promised) {
+    document.getElementById('promise-text-group').style.display = 'block';
   }
 }
 
