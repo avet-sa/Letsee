@@ -588,12 +588,12 @@ function renderNote(note, shiftPeople = '') {
   topBadges.push(`<span class="category-badge ${catClass}">${safeCategory}</span>`);
   if (note.promised) {
     topBadges.push(
-      `<span class="warning-badge promise">${'promised To Guest'.toUpperCase()}</span>`
+      `<span class="warning-badge promise">${'promised'.toUpperCase()}</span>`
     );
   }
   if (note.followup) {
     topBadges.push(
-      `<span class="warning-badge followup">${'follow-up Required'.toUpperCase()}</span>`
+      `<span class="warning-badge followup">${'follow-up'.toUpperCase()}</span>`
     );
   }
 
@@ -754,7 +754,7 @@ function renderNote(note, shiftPeople = '') {
             </div>
             <div class="handover-text">${safeText}</div>
             ${inlineBadges.length > 0 ? `<div class="inline-badges">${inlineBadges.join('')}</div>` : ''}
-            ${note.promiseText ? `<div class="promise-text">→ ${safePromiseText}</div>` : ''}
+            ${note.promiseText ? `<div class="promise-text"><span style="color: var(--text-tertiary); font-style: italic; font-weight: normal;";>Promised to...</span> → ${safePromiseText}</div>` : ''}
             ${attachments}
             ${editInfo}
             <div class="handover-footer">
