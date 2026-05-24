@@ -13,8 +13,7 @@ backend/.venv/
 .pytest_cache/
 .coverage
 
-# UV package manager
-backend/uv.lock
+# UV package manager (lockfile is committed for reproducible Docker/CI builds)
 backend/requirements.txt
 
 # IDE
@@ -36,7 +35,6 @@ Thumbs.db
 .env.*.local
 
 # Docker
-.dockerignore
 docker-compose.override.yml
 
 # Database

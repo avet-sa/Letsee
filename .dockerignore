@@ -1,0 +1,14 @@
+.git/
+.gitignore
+**/__pycache__/
+**/.venv/
+backend/
+*.md
+.env
+.env.*
+!.env.example
+docker-compose*.yml
+traefik-config.yml
+loki-config.yaml
+promtail-config.yaml
+certs/

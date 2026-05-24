@@ -1,18 +1,41 @@
+# Development overrides. Includes the base stack — run with:
+#   docker compose -f docker-compose.dev.yml up
+# Do not also pass docker-compose.yml (it is included below).
+
+include:
+  - docker-compose.yml
+
 services:
   backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    init: false
     environment:
       DEBUG: "true"
       CORS_ORIGINS: '["http://localhost:3000", "http://localhost:8000"]'
-    working_dir: /app
     volumes:
       - ./backend:/app
+      - backend_venv:/opt/venv
     ports:
       - "8000:8000"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    command:
+      - /opt/venv/bin/uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
 
   frontend:
     image: python:3.11-slim
+    build: !reset null
     working_dir: /app
     volumes:
       - ./frontend:/app
@@ -21,7 +44,9 @@ services:
     command: python -m http.server 3000
     restart: "no"
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+    healthcheck: !reset null
 
   db:
     ports:
@@ -31,3 +56,6 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+
+volumes:
+  backend_venv:
