@@ -5,6 +5,7 @@ const STORAGE_KEY_HANDOVER = 'letsee_handover';
 const STORAGE_KEY_THEME = 'letsee_theme';
 
 let searchQuery = '';
+window.searchQuery = searchQuery;
 let currentSort = 'newest';
 let currentFilter = 'all';
 // Quick filter and selection state
@@ -180,6 +181,9 @@ function openPicker(inputId) {
 function handleLogout() {
   showConfirm('Sign Out', 'Are you sure you want to sign out?', async () => {
     try {
+      if (window.LetseeEvents) {
+        LetseeEvents.disconnect();
+      }
       await DB.logout();
     } catch (error) {
       console.warn('Server logout failed; clearing local session anyway.', error);
@@ -1712,6 +1716,9 @@ function updateDateDisplay() {
     'en-US',
     options
   );
+  if (window.LetseeEvents) {
+    LetseeEvents.reconnectForDate(currentDate);
+  }
   updatePeopleBlock();
   renderHandoverNotes();
 }
@@ -1938,6 +1945,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   await updatePeopleBlock();
   await renderHandoverNotes();
 
+  if (window.LetseeEvents && typeof toLocalDateKey === 'function') {
+    LetseeEvents.connect(toLocalDateKey(currentDate));
+  }
+
   document.getElementById('note-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'note-modal') {
       closeNoteModal();
@@ -1960,6 +1971,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Search handler
   document.getElementById('search-input')?.addEventListener('input', (e) => {
     searchQuery = e.target.value;
+    window.searchQuery = searchQuery;
     renderHandoverNotes();
   });
 

@@ -10,10 +10,12 @@ from app.core.database import engine
 from app.core.logging_config import get_logger, setup_logging
 from app.core.rate_limit import api_rate_limiter
 from app.core.request_logging import RequestLoggingMiddleware
+from app.core.realtime import realtime_hub
 from app.core.scheduler import backup_scheduler
 from app.routers import (
     auth,
     backups,
+    events,
     files,
     handovers,
     schedules,
@@ -45,9 +47,11 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Letsee Backend...")
     api_rate_limiter.start_cleanup()
     await backup_scheduler.start()
+    await realtime_hub.start()
     yield
     # Shutdown
     logger.info("Shutting down Letsee Backend...")
+    await realtime_hub.stop()
     await backup_scheduler.stop()
 
 
@@ -79,7 +83,7 @@ app.add_middleware(
 async def rate_limit_middleware(request: Request, call_next):
     """Apply rate limiting to all requests."""
     # Skip rate limiting for health checks
-    if request.url.path in ["/health", "/api/health"]:
+    if request.url.path in ["/health", "/api/health", "/api/events/stream"]:
         return await call_next(request)
 
     # Apply rate limiting with proper exception handling
@@ -100,6 +104,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(schedules.router)
 app.include_router(handovers.router)
+app.include_router(events.router)
 app.include_router(settings_router.router)
 app.include_router(files.router)
 app.include_router(backups.router)

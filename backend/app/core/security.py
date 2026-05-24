@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -150,6 +150,14 @@ async def get_current_user(
 ) -> str:
     """Get current authenticated user id from JWT token."""
     return str(current_user.id)
+
+
+async def get_current_user_from_query_token(
+    token: str = Query(..., description="JWT access token for EventSource"),
+    db: Session = Depends(get_db),
+) -> User:
+    """Authenticate SSE clients that pass the bearer token as a query parameter."""
+    return _get_user_from_token(token, db)
 
 
 async def require_admin(

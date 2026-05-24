@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.realtime import publish_event
 from app.core.security import get_current_user, get_current_user_record, require_admin
 from app.models import Schedule, User
 from app.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate
@@ -275,6 +276,7 @@ async def create_schedule(
     db.add(new_schedule)
     db.commit()
     db.refresh(new_schedule)
+    publish_event( "schedule.updated", date=new_schedule.date, entity_id=new_schedule.id)
     return new_schedule
 
 
@@ -318,6 +320,7 @@ async def upsert_schedule(
 
     db.commit()
     db.refresh(schedule)
+    publish_event( "schedule.updated", date=schedule.date, entity_id=schedule.id)
     return schedule
 
 
@@ -363,5 +366,8 @@ async def delete_schedule(
     if not schedule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
 
+    schedule_date = schedule.date
+    schedule_id = schedule.id
     db.delete(schedule)
     db.commit()
+    publish_event( "schedule.updated", date=schedule_date, entity_id=schedule_id)

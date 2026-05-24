@@ -63,6 +63,13 @@ http:
     compression:
       compress: {}
 
+    # SSE: disable response buffering so events flush immediately
+    sse-stream:
+      buffering:
+        maxResponseBodyBytes: -1
+        memRequestBodyBytes: 0
+        maxRequestBodyBytes: 0
+
     # Redirect HTTP to HTTPS (for production)
     redirect-https:
       redirectScheme:

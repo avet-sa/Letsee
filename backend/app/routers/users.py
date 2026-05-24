@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.realtime import publish_event
 from app.core.security import get_current_user, get_password_hash, require_admin
 from app.models import Schedule, User
 from app.schemas import UserCreate, UserResponse, UserUpdate
@@ -61,6 +62,7 @@ async def create_user(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    publish_event( "users.changed", entity_id=new_user.id)
     return new_user
 
 
@@ -98,6 +100,7 @@ async def update_user(
 
     db.commit()
     db.refresh(user)
+    publish_event( "users.changed", entity_id=user.id)
     return user
 
 
@@ -135,5 +138,7 @@ async def delete_user(
     # Soft delete - mark as deleted
     user.deleted_at = db.query(func.now()).scalar()
     user.is_active = False
+    user_id = user.id
     db.commit()
+    publish_event( "users.changed", entity_id=user_id)
     return None

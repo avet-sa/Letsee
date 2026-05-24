@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.realtime import publish_event
 from app.core.security import get_current_user, require_admin
 from app.models import Person
 from app.schemas import PersonCreate, PersonResponse, PersonUpdate
@@ -29,6 +30,7 @@ async def create_person(
     db.add(new_person)
     db.commit()
     db.refresh(new_person)
+    publish_event( "people.changed", entity_id=new_person.id)
     return new_person
 
 
@@ -64,6 +66,7 @@ async def update_person(
 
     db.commit()
     db.refresh(person)
+    publish_event( "people.changed", entity_id=person.id)
     return person
 
 
@@ -78,5 +81,7 @@ async def delete_person(
     if not person:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
 
+    person_id = person.id
     db.delete(person)
     db.commit()
+    publish_event( "people.changed", entity_id=person_id)

@@ -7,12 +7,20 @@ const API_BASE = (() => {
   const { protocol, hostname, port } = window.location;
 
   // Native frontend dev server: static files on :3000, FastAPI on :8000.
-  if (hostname === 'localhost' && port === '3000') {
+  if (port === '3000') {
     return `${protocol}//${hostname}:8000/api`;
   }
 
   return '/api';
 })();
+
+/** Calendar date in local timezone (matches handover note `date` field). */
+function toLocalDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 // UUID v4 generator for creating note IDs
 function generateUUID() {
@@ -127,6 +135,9 @@ const AuthAPI = {
   },
 
   async logout() {
+    if (window.LetseeEvents) {
+      LetseeEvents.disconnect();
+    }
     try {
       if (getToken()) {
         await apiFetch('/auth/logout', { method: 'POST' });
@@ -612,3 +623,5 @@ const DB = {
 
 // Make DB available globally for browser scripts
 window.DB = DB;
+window.API_BASE = API_BASE;
+window.toLocalDateKey = toLocalDateKey;

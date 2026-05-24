@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.realtime import publish_event
 from app.core.security import get_current_user
 from app.models import Handover
 from app.schemas import HandoverCreate, HandoverResponse, HandoverUpdate
@@ -56,6 +57,7 @@ async def create_handover(
     db.add(new_handover)
     db.commit()
     db.refresh(new_handover)
+    publish_event( "handover.created", date=new_handover.date, entity_id=new_handover.id)
     return new_handover
 
 
@@ -111,6 +113,7 @@ async def update_handover(
 
     db.commit()
     db.refresh(handover)
+    publish_event( "handover.updated", date=handover.date, entity_id=handover.id)
     return handover
 
 
@@ -130,4 +133,7 @@ async def delete_handover(
         return
 
     handover.deleted_at = datetime.now(UTC)
+    note_date = handover.date
+    note_id = handover.id
     db.commit()
+    publish_event( "handover.deleted", date=note_date, entity_id=note_id)

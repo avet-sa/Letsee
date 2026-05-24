@@ -253,6 +253,9 @@ async function init() {
   setInterval(updateClock, 1000);
   applyTheme();
   resetPersonForm();
+  if (window.LetseeEvents) {
+    LetseeEvents.connect(null);
+  }
 }
 
 // Load current user
@@ -293,6 +296,12 @@ async function loadSchedules() {
     scheduleData = {};
   }
 }
+
+/** Called by SSE client when another user updates a schedule. */
+window.refreshScheduleView = async function refreshScheduleView() {
+  await loadSchedules();
+  renderCalendar();
+};
 
 // Render calendar
 function renderCalendar() {
