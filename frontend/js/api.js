@@ -143,6 +143,13 @@ const AuthAPI = {
       clearTokens();
     }
   },
+
+  async changePassword(currentPassword, newPassword) {
+    return apiFetch('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+  },
 };
 
 // ============ Users API (Staff Management) ============
@@ -173,13 +180,24 @@ const UsersAPI = {
   async delete(id) {
     return apiFetch(`/users/${id}`, { method: 'DELETE' });
   },
+
+  async resetPassword(id, newPassword) {
+    return apiFetch(`/users/${id}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ new_password: newPassword }),
+    });
+  },
 };
 
 // ============ Schedules API ============
 
 const SchedulesAPI = {
-  async list(date = null) {
-    const query = date ? `?date=${date}` : '';
+  async list(date = null, fromDate = null, toDate = null) {
+    const params = new URLSearchParams();
+    if (date) params.set('date', date);
+    if (fromDate) params.set('from_date', fromDate);
+    if (toDate) params.set('to_date', toDate);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return apiFetch(`/schedules${query}`);
   },
 
@@ -433,9 +451,17 @@ const DB = {
     return UsersAPI.delete(id);
   },
 
+  async changeMyPassword(currentPassword, newPassword) {
+    return AuthAPI.changePassword(currentPassword, newPassword);
+  },
+
+  async resetUserPassword(id, newPassword) {
+    return UsersAPI.resetPassword(id, newPassword);
+  },
+
   // Schedule
-  async getSchedule() {
-    const schedules = await SchedulesAPI.list();
+  async getSchedule(fromDate = null, toDate = null) {
+    const schedules = await SchedulesAPI.list(null, fromDate, toDate);
     const result = {};
     for (const schedule of schedules) {
       result[schedule.date] = {
@@ -622,3 +648,85 @@ const DB = {
 window.DB = DB;
 window.API_BASE = API_BASE;
 window.toLocalDateKey = toLocalDateKey;
+
+window.openChangePasswordModal = function openChangePasswordModal() {
+  const modal = document.getElementById('password-modal');
+  if (!modal) return;
+
+  modal.style.display = 'flex';
+
+  // Clear fields
+  const currentEl = document.getElementById('current-password');
+  const newEl = document.getElementById('new-password');
+  const confirmEl = document.getElementById('confirm-password');
+  const errEl = document.getElementById('password-error');
+
+  if (currentEl) currentEl.value = '';
+  if (newEl) newEl.value = '';
+  if (confirmEl) confirmEl.value = '';
+  if (errEl) errEl.style.display = 'none';
+};
+
+window.closeChangePasswordModal = function closeChangePasswordModal() {
+  const modal = document.getElementById('password-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.submitChangePassword = async function submitChangePassword() {
+  const current = document.getElementById('current-password')?.value || '';
+  const newPass = document.getElementById('new-password')?.value || '';
+  const confirm = document.getElementById('confirm-password')?.value || '';
+  const errEl = document.getElementById('password-error');
+
+  if (errEl) errEl.style.display = 'none';
+
+  if (!current || !newPass || !confirm) {
+    if (errEl) {
+      errEl.textContent = 'All fields are required.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (newPass.length < 8) {
+    if (errEl) {
+      errEl.textContent = 'New password must be at least 8 characters.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (newPass !== confirm) {
+    if (errEl) {
+      errEl.textContent = 'New passwords do not match.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (newPass === current) {
+    if (errEl) {
+      errEl.textContent = 'New password cannot be the same as your current password.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  try {
+    await DB.changeMyPassword(current, newPass);
+    closeChangePasswordModal();
+    if (typeof showAlert === 'function') {
+      showAlert('Success', 'Password changed successfully. You may need to log in again on other devices.');
+    } else {
+      alert('Password changed successfully.');
+    }
+  } catch (e) {
+    if (errEl) {
+      errEl.textContent = e.message || 'Failed to change password. Check your current password.';
+      errEl.style.display = 'block';
+    }
+  }
+};
+
+// For backward compatibility with onclick="changeMyPassword()"
+window.changeMyPassword = window.openChangePasswordModal;

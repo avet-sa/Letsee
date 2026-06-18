@@ -286,8 +286,17 @@ async function getUsers() {
 }
 
 // Get schedule from database
-async function getSchedule() {
+async function getSchedule(date = null) {
   await ensureDB();
+  if (date) {
+    // load a small window around the date to reduce data
+    const d = new Date(date);
+    const from = d.toISOString().split('T')[0];
+    const toDate = new Date(d);
+    toDate.setDate(toDate.getDate() + 7); // small buffer
+    const to = toDate.toISOString().split('T')[0];
+    return await DB.getSchedule(from, to);
+  }
   return await DB.getSchedule();
 }
 
@@ -356,7 +365,7 @@ async function renderHandoverNotes(skipCache = false) {
 
   // Load data and cache it
   const dateData = await getNotesForDate(dateKey);
-  const schedule = await getSchedule();
+  const schedule = await getSchedule(currentDate);
   const daySchedule = schedule[dateKey] || {};
   const shiftPeople = await getCurrentShiftPeople();
 
@@ -2085,6 +2094,15 @@ async function savePerson() {
   try {
     if (editingPersonId) {
       await DB.updateUser(editingPersonId, { full_name: name, color });
+      const passwordInput = document.getElementById('new-person-password');
+      if (passwordInput && passwordInput.value) {
+        const newPass = passwordInput.value;
+        if (newPass.length < 8) {
+          showAlert('Validation Error', 'Password must be at least 8 characters long.');
+          return;
+        }
+        await DB.resetUserPassword(editingPersonId, newPass);
+      }
     } else {
       await UsersAPI.create({
         email: `${name.toLowerCase().replace(/\s+/g, '.')}@letsee.local`,
@@ -2099,7 +2117,12 @@ async function savePerson() {
     await refreshPeopleViews();
   } catch (error) {
     console.error('Error saving person:', error);
-    showAlert('Error', 'Failed to save staff member. Please try again.');
+    const msg = error.message || '';
+    if (msg.includes('same as the current') || msg.includes('New password cannot')) {
+      showAlert('Validation Error', msg);
+    } else {
+      showAlert('Error', 'Failed to save staff member. Please try again.');
+    }
   }
 }
 

@@ -66,6 +66,12 @@ class UserPasswordUpdate(BaseModel):
     new_password: str = Field(min_length=8)
 
 
+class AdminPasswordReset(BaseModel):
+    """Schema for an admin resetting another user's password."""
+
+    new_password: str = Field(min_length=8)
+
+
 # ============ Schedule Schemas ============
 
 

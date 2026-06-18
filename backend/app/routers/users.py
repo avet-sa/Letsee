@@ -5,9 +5,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_password_hash, require_admin
+from app.core.security import get_current_user, get_password_hash, require_admin, verify_password
 from app.models import Schedule, User
-from app.schemas import UserCreate, UserResponse, UserUpdate
+from app.schemas import AdminPasswordReset, UserCreate, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 DEFAULT_USER_COLOR = "#3498db"
@@ -99,6 +99,29 @@ async def update_user(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: UUID,
+    reset: AdminPasswordReset,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Reset another user's password (admin only)."""
+    user = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if verify_password(reset.new_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password cannot be the same as the current password",
+        )
+
+    user.hashed_password = get_password_hash(reset.new_password)
+    db.commit()
+    return {"detail": "Password reset successfully"}
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -22,7 +22,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models import RevokedToken, User
-from app.schemas import RefreshToken, Token, TokenPair, UserCreate, UserLogin, UserResponse
+from app.schemas import AdminPasswordReset, RefreshToken, Token, TokenPair, UserCreate, UserLogin, UserPasswordUpdate, UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 DEFAULT_USER_COLOR = "#3498db"
@@ -142,6 +142,30 @@ async def get_me(
 ):
     """Get current user info."""
     return current_user
+
+
+@router.post("/change-password")
+async def change_own_password(
+    password_update: UserPasswordUpdate,
+    current_user: User = Depends(get_current_user_record),
+    db: Session = Depends(get_db),
+):
+    """Change the current user's own password (requires knowing current password)."""
+    if not verify_password(password_update.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    if password_update.new_password == password_update.current_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password cannot be the same as your current password",
+        )
+
+    current_user.hashed_password = get_password_hash(password_update.new_password)
+    db.commit()
+    return {"detail": "Password changed successfully"}
 
 
 @router.post("/logout")

@@ -15,19 +15,16 @@ function setPersonAccountFormState(isEditing) {
   const adminGroup = document.getElementById('new-person-admin-group');
   const hint = document.getElementById('person-account-hint');
 
-  [emailInput, passwordInput, adminCheckbox].forEach((field) => {
-    if (field) {
-      field.disabled = isEditing;
-    }
-  });
+  if (emailInput) emailInput.disabled = isEditing;
+  if (adminCheckbox) adminCheckbox.disabled = isEditing;
+  if (passwordInput) passwordInput.disabled = false; // allow entering new password to reset on edit
 
   if (isEditing) {
     if (adminGroup) {
       adminGroup.style.opacity = '0.7';
     }
     if (hint) {
-      hint.textContent =
-        'Linked account details are only set when creating a staff member. Edit login state separately.';
+      hint.textContent = 'Enter a new password above to reset this user\'s password.';
     }
     return;
   }
@@ -181,6 +178,16 @@ async function savePerson() {
   try {
     if (editingPersonId) {
       await DB.updateUser(editingPersonId, { full_name: name, color });
+      // If admin entered a new password in edit mode, reset it
+      const passwordInput = document.getElementById('new-person-password');
+      if (passwordInput && passwordInput.value) {
+        const newPass = passwordInput.value;
+        if (newPass.length < 8) {
+          showAlert('Validation Error', 'Password must be at least 8 characters long.');
+          return;
+        }
+        await DB.resetUserPassword(editingPersonId, newPass);
+      }
     } else {
       if (email || password) {
         if (!email || !password) {
@@ -222,7 +229,12 @@ async function savePerson() {
     showAlert('Success', `Staff member "${name}" saved successfully`);
   } catch (error) {
     console.error('Error saving person:', error);
-    showAlert('Error', 'Failed to save staff member. Please try again.');
+    const msg = error.message || '';
+    if (msg.includes('same as the current') || msg.includes('New password cannot')) {
+      showAlert('Validation Error', msg);
+    } else {
+      showAlert('Error', 'Failed to save staff member. Please try again.');
+    }
   }
 }
 

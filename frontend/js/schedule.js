@@ -99,19 +99,16 @@ function setPersonAccountFormState(isEditing) {
   const adminGroup = document.getElementById('new-person-admin-group');
   const hint = document.getElementById('person-account-hint');
 
-  [emailInput, passwordInput, adminCheckbox].forEach((field) => {
-    if (field) {
-      field.disabled = isEditing;
-    }
-  });
+  if (emailInput) emailInput.disabled = isEditing;
+  if (adminCheckbox) adminCheckbox.disabled = isEditing;
+  if (passwordInput) passwordInput.disabled = false; // allow entering new password to reset on edit
 
   if (isEditing) {
     if (adminGroup) {
       adminGroup.style.opacity = '0.7';
     }
     if (hint) {
-      hint.textContent =
-        'Linked account details are only set when creating a staff member. Edit login state separately.';
+      hint.textContent = 'Enter a new password above to reset this user\'s password.';
     }
     return;
   }
@@ -312,8 +309,13 @@ async function loadPeople() {
 // Load schedules for current month
 async function loadSchedules() {
   try {
-    const allSchedules = await DB.getSchedule();
-    scheduleData = allSchedules;
+    // Load only the schedules for the current visible month (and adjacent for navigation)
+    const firstDay = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+    const lastDayDate = new Date(currentYear, currentMonth + 1, 0);
+    const lastDay = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+    const monthSchedules = await DB.getSchedule(firstDay, lastDay);
+    // Merge into existing (to support multi-month if needed, but prefer current)
+    scheduleData = { ...scheduleData, ...monthSchedules };
   } catch (error) {
     console.error('Error loading schedules:', error);
     scheduleData = {};
@@ -998,7 +1000,10 @@ function changeMonth(offset) {
     }
   }
 
-  renderCalendar();
+  // Load schedules for the newly selected month (instead of full history)
+  loadSchedules().then(() => {
+    renderCalendar();
+  });
 
   if (document.getElementById('custom-date-picker')?.style.display !== 'none') {
     syncDatePickerControls();
@@ -1286,6 +1291,15 @@ async function savePerson() {
   try {
     if (editingPersonId) {
       await DB.updateUser(editingPersonId, { full_name: name, color });
+      const passwordInput = document.getElementById('new-person-password');
+      if (passwordInput && passwordInput.value) {
+        const newPass = passwordInput.value;
+        if (newPass.length < 8) {
+          showAlert('Validation Error', 'Password must be at least 8 characters long.');
+          return;
+        }
+        await DB.resetUserPassword(editingPersonId, newPass);
+      }
     } else {
       if (email || password) {
         if (!email || !password) {
@@ -1326,7 +1340,12 @@ async function savePerson() {
     await refreshPeopleViews();
   } catch (error) {
     console.error('Error saving person:', error);
-    showAlert('Error', 'Failed to save staff member. Please try again.');
+    const msg = error.message || '';
+    if (msg.includes('same as the current') || msg.includes('New password cannot')) {
+      showAlert('Validation Error', msg);
+    } else {
+      showAlert('Error', 'Failed to save staff member. Please try again.');
+    }
   }
 }
 

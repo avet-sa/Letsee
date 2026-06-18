@@ -116,6 +116,7 @@
           Staff
         </button>
         <a href="/" class="btn-primary" title="Back to Handovers"> ← Back </a>
+        <button class="btn-primary" onclick="changeMyPassword()" title="Change your password" style="margin-right: 8px;">Change Password</button>
         <button class="btn-primary logout-btn" onclick="handleLogout()" title="Sign out">
           Sign Out
         </button>
@@ -188,6 +189,54 @@
           <button class="btn-danger" id="confirm-btn" onclick="executeConfirmAction()">
             Confirm
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="password-modal" class="modal-overlay" style="display: none" onclick="closeChangePasswordModal()">
+      <div class="modal-dialog" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Change Password</h2>
+        </div>
+        <div class="modal-body">
+          <form id="password-form" onsubmit="event.preventDefault(); submitChangePassword();">
+            <div class="form-row">
+              <input
+                type="password"
+                id="current-password"
+                placeholder="Current Password"
+                class="form-input"
+                autocomplete="current-password"
+                required
+              />
+            </div>
+            <div class="form-row">
+              <input
+                type="password"
+                id="new-password"
+                placeholder="New Password (min 8 characters)"
+                class="form-input"
+                autocomplete="new-password"
+                required
+              />
+            </div>
+            <div class="form-row">
+              <input
+                type="password"
+                id="confirm-password"
+                placeholder="Confirm New Password"
+                class="form-input"
+                autocomplete="new-password"
+                required
+              />
+            </div>
+            <div id="password-error" style="color: #e74c3c; font-size: 12px; margin-top: 4px; display: none;"></div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeChangePasswordModal()">Cancel</button>
+          <button type="button" class="btn-primary" onclick="submitChangePassword()">Change Password</button>
         </div>
       </div>
     </div>

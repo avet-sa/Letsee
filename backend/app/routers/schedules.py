@@ -147,15 +147,24 @@ def _auto_migrate_schedule_rows(schedules: list[Schedule], db: Session) -> None:
 @router.get("", response_model=list[ScheduleResponse])
 async def list_schedules(
     date: str | None = Query(None),
+    from_date: str | None = Query(None, description="Start date YYYY-MM-DD (inclusive)"),
+    to_date: str | None = Query(None, description="End date YYYY-MM-DD (inclusive)"),
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
-    """Get schedules. Optionally filter by date (YYYY-MM-DD)."""
+    """Get schedules. Optionally filter by single date or a date range."""
     date = _validate_schedule_date(date)
+    from_date = _validate_schedule_date(from_date)
+    to_date = _validate_schedule_date(to_date)
 
     query = db.query(Schedule)
     if date:
         query = query.filter(Schedule.date == date)
+    if from_date:
+        query = query.filter(Schedule.date >= from_date)
+    if to_date:
+        query = query.filter(Schedule.date <= to_date)
+
     schedules = query.order_by(Schedule.date.desc()).all()
     _auto_migrate_schedule_rows(schedules, db)
     return schedules
