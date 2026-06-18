@@ -135,9 +135,6 @@ const AuthAPI = {
   },
 
   async logout() {
-    if (window.LetseeEvents) {
-      LetseeEvents.disconnect();
-    }
     try {
       if (getToken()) {
         await apiFetch('/auth/logout', { method: 'POST' });

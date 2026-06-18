@@ -50,12 +50,6 @@ services:
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
       - "traefik.http.services.backend.loadbalancer.responseForwarding.flushInterval=100ms"
       - "traefik.http.routers.backend.middlewares=security-headers@file,rate-limit@file"
-      - "traefik.http.routers.backend-sse.rule=PathPrefix(`/api/events/stream`)"
-      - "traefik.http.routers.backend-sse.entrypoints=websecure"
-      - "traefik.http.routers.backend-sse.tls=true"
-      - "traefik.http.routers.backend-sse.priority=100"
-      - "traefik.http.routers.backend-sse.service=backend"
-      - "traefik.http.routers.backend-sse.middlewares=security-headers@file,sse-stream@file"
 
   frontend:
     labels:

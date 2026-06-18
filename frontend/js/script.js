@@ -181,9 +181,7 @@ function openPicker(inputId) {
 function handleLogout() {
   showConfirm('Sign Out', 'Are you sure you want to sign out?', async () => {
     try {
-      if (window.LetseeEvents) {
-        LetseeEvents.disconnect();
-      }
+      if (typeof window.stopDataPolling === 'function') window.stopDataPolling();
       await DB.logout();
     } catch (error) {
       console.warn('Server logout failed; clearing local session anyway.', error);
@@ -1716,9 +1714,6 @@ function updateDateDisplay() {
     'en-US',
     options
   );
-  if (window.LetseeEvents) {
-    LetseeEvents.reconnectForDate(currentDate);
-  }
   updatePeopleBlock();
   renderHandoverNotes();
 }
@@ -1945,9 +1940,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   await updatePeopleBlock();
   await renderHandoverNotes();
 
-  if (window.LetseeEvents && typeof toLocalDateKey === 'function') {
-    LetseeEvents.connect(toLocalDateKey(currentDate));
+  // Simple polling replacement for previous SSE live updates.
+  // Refresh current view (handovers + people block) every 30s.
+  const POLL_INTERVAL_MS = 30000;
+  let pollTimer = null;
+  function startDataPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(() => {
+      (async () => {
+        try {
+          if (typeof invalidateRenderCache === 'function') invalidateRenderCache();
+          if (typeof renderHandoverNotes === 'function') await renderHandoverNotes(true);
+          if (typeof updatePeopleBlock === 'function') await updatePeopleBlock();
+        } catch (e) {
+          console.warn('Background poll failed (will retry):', e?.message || e);
+        }
+      })();
+    }, POLL_INTERVAL_MS);
   }
+  function stopDataPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+  window.stopDataPolling = stopDataPolling;
+  startDataPolling();
+
+  // Ensure polling stops on unload
+  window.addEventListener('beforeunload', () => {
+    if (typeof window.stopDataPolling === 'function') window.stopDataPolling();
+  });
 
   document.getElementById('note-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'note-modal') {
