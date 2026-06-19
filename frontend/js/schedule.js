@@ -941,7 +941,7 @@ async function saveDaySchedule() {
     renderCalendar();
   } catch (error) {
     console.error('Error saving schedule:', error);
-    showAlert('Error', 'Failed to save schedule. Please try again.');
+    showAlert('Error', error.message || 'Failed to save schedule. Please try again.');
   }
 }
 
@@ -969,7 +969,7 @@ async function clearDaySchedule() {
         closeDayModal();
       } catch (error) {
         console.error('Error clearing schedule:', error);
-        showAlert('Error', 'Failed to clear schedule. Please try again.');
+        showAlert('Error', error.message || 'Failed to clear schedule. Please try again.');
       }
     }
   );
@@ -1344,7 +1344,7 @@ async function savePerson() {
     if (msg.includes('same as the current') || msg.includes('New password cannot')) {
       showAlert('Validation Error', msg);
     } else {
-      showAlert('Error', 'Failed to save staff member. Please try again.');
+      showAlert('Error', error.message || 'Failed to save staff member. Please try again.');
     }
   }
 }
@@ -1362,7 +1362,7 @@ async function deletePerson(id, name) {
         await refreshPeopleViews();
       } catch (error) {
         console.error('Error deleting person:', error);
-        showAlert('Error', 'Failed to delete staff member. Please try again.');
+        showAlert('Error', error.message || 'Failed to delete staff member. Please try again.');
       }
     }
   );

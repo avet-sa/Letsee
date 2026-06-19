@@ -233,7 +233,7 @@ async function savePerson() {
     if (msg.includes('same as the current') || msg.includes('New password cannot')) {
       showAlert('Validation Error', msg);
     } else {
-      showAlert('Error', 'Failed to save staff member. Please try again.');
+      showAlert('Error', error.message || 'Failed to save staff member. Please try again.');
     }
   }
 }
@@ -257,7 +257,7 @@ function deletePerson(id, name) {
         showAlert('Success', 'Staff member deleted successfully');
       } catch (error) {
         console.error('Error deleting person:', error);
-        showAlert('Error', 'Failed to delete staff member. Please try again.');
+        showAlert('Error', error.message || 'Failed to delete staff member. Please try again.');
       }
     }
   );

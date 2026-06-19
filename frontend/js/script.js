@@ -1645,10 +1645,14 @@ function attachAutosaveListeners() {
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   // Don't trigger shortcuts if user is typing in input fields
-  const isInputFocused =
-    document.activeElement.tagName === 'INPUT' ||
-    document.activeElement.tagName === 'TEXTAREA' ||
-    document.activeElement.tagName === 'SELECT';
+  const active = document.activeElement;
+  const isInputFocused = active && (
+    active.tagName === 'INPUT' ||
+    active.tagName === 'TEXTAREA' ||
+    active.tagName === 'SELECT' ||
+    active.isContentEditable ||
+    (active.getAttribute && active.getAttribute('contenteditable') === 'true')
+  );
 
   // Alt + N: Add new note
   if (e.altKey && e.key.toLowerCase() === 'n' && !isInputFocused) {
@@ -2121,7 +2125,7 @@ async function savePerson() {
     if (msg.includes('same as the current') || msg.includes('New password cannot')) {
       showAlert('Validation Error', msg);
     } else {
-      showAlert('Error', 'Failed to save staff member. Please try again.');
+      showAlert('Error', error.message || 'Failed to save staff member. Please try again.');
     }
   }
 }
@@ -2139,7 +2143,7 @@ async function deletePerson(id, name) {
         await refreshPeopleViews();
       } catch (error) {
         console.error('Error deleting person:', error);
-        showAlert('Error', 'Failed to delete staff member. Please try again.');
+        showAlert('Error', error.message || 'Failed to delete staff member. Please try again.');
       }
     }
   );

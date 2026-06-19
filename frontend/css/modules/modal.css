@@ -159,6 +159,13 @@
   z-index: 2000;
 }
 
+/* Error and special modals should appear above regular ones */
+#alert-modal,
+#confirm-modal,
+#password-modal {
+  z-index: 3000;
+}
+
 #day-modal {
   background: transparent !important;
   align-items: flex-start;
