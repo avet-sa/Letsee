@@ -13,6 +13,7 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8)
     full_name: str = Field(min_length=1)  # Required - display name for schedules
     color: str = Field(default="#3498db", pattern=r"^#[0-9A-Fa-f]{6}$")  # Staff color
+    theme: str = Field(default="light")  # 'light' or 'dark'
     is_admin: bool = False  # Admin flag (only used during bootstrap)
     position_id: UUID | None = None  # Optional staff position
 
@@ -45,6 +46,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     color: str  # Staff color for schedule visualization
+    theme: str  # 'light' or 'dark' - per-user preference
     is_active: bool
     is_admin: bool
     is_verified: bool
@@ -59,6 +61,7 @@ class UserUpdate(BaseModel):
 
     full_name: str | None = None
     color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    theme: str | None = None  # 'light' or 'dark'
     is_active: bool | None = None
     is_admin: bool | None = None
     position_id: UUID | None = None  # set or clear position

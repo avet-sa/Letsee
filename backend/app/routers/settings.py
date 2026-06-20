@@ -28,7 +28,6 @@ async def get_setting(
     if not setting:
         # Auto-create setting with default value for common keys
         defaults = {
-            "theme": "dark",
             "language": "en",
             "timezone": "UTC",
         }

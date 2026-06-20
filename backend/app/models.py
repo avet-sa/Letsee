@@ -34,6 +34,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)  # Display name for schedules
     color = Column(String(7), nullable=False, default="#3498db")  # Hex color for schedule visualization
+    theme = Column(String(10), nullable=False, default="light")  # 'light' or 'dark'
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)

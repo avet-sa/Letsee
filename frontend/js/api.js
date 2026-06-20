@@ -646,6 +646,13 @@ const DB = {
     return SettingsAPI.set(key, value);
   },
 
+  async updateMyTheme(theme) {
+    return apiFetch('/auth/me/theme', {
+      method: 'PUT',
+      body: JSON.stringify({ theme }),
+    });
+  },
+
   // Files
   async uploadFile(file) {
     return FilesAPI.uploadFile(file);

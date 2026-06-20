@@ -1892,8 +1892,19 @@ async function toggleTheme() {
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
 
   document.documentElement.setAttribute('data-theme', newTheme);
-  await DB.saveSetting(STORAGE_KEY_THEME, newTheme);
   updateThemeIcon(newTheme);
+
+  if (currentUser && currentUser.id) {
+    currentUser.theme = newTheme;
+    try {
+      await DB.updateMyTheme(newTheme);
+    } catch (e) {
+      console.warn('Failed to save theme to server, falling back to localStorage', e);
+      localStorage.setItem(STORAGE_KEY_THEME, newTheme);
+    }
+  } else {
+    localStorage.setItem(STORAGE_KEY_THEME, newTheme);
+  }
 }
 
 // Update theme icon
@@ -1919,8 +1930,15 @@ function updateThemeIcon(theme) {
 
 // Load theme on startup
 async function loadTheme() {
-  const savedTheme = (await DB.getSetting(STORAGE_KEY_THEME)) || 'light';
+  let savedTheme = 'light';
+  if (currentUser && currentUser.theme) {
+    savedTheme = currentUser.theme;
+  } else {
+    // fallback for logged-out or pre-migration
+    savedTheme = localStorage.getItem(STORAGE_KEY_THEME) || (await DB.getSetting(STORAGE_KEY_THEME)) || 'light';
+  }
   document.documentElement.setAttribute('data-theme', savedTheme);
+  if (currentUser) currentUser.theme = savedTheme;
   updateThemeIcon(savedTheme);
 }
 

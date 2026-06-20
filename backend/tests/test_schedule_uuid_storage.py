@@ -28,6 +28,7 @@ def create_user(
         hashed_password=get_password_hash(password),
         full_name=full_name,
         color=color,
+        theme="light",
         is_active=True,
         is_admin=is_admin,
     )

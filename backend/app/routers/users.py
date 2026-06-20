@@ -37,6 +37,7 @@ def _user_to_response(user: User) -> dict:
         "email": user.email,
         "full_name": user.full_name,
         "color": user.color,
+        "theme": user.theme,
         "is_active": user.is_active,
         "is_admin": user.is_admin,
         "is_verified": user.is_verified,
@@ -85,6 +86,7 @@ async def create_user(
         hashed_password=get_password_hash(user_create.password),
         full_name=display_name,
         color=user_create.color or DEFAULT_USER_COLOR,
+        theme=user_create.theme or "light",
         is_active=True,
         is_admin=user_create.is_admin,
         position_id=user_create.position_id,
@@ -193,6 +195,8 @@ async def update_user(
         user.full_name = user_update.full_name
     if user_update.color is not None:
         user.color = user_update.color
+    if user_update.theme is not None:
+        user.theme = user_update.theme
     if user_update.is_active is not None:
         user.is_active = user_update.is_active
     if user_update.is_admin is not None:

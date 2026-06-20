@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session, joinedload
@@ -22,6 +22,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models import RevokedToken, User
+from app.routers.users import _user_to_response
 from app.schemas import AdminPasswordReset, RefreshToken, Token, TokenPair, UserCreate, UserLogin, UserPasswordUpdate, UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -75,6 +76,7 @@ async def register(
         hashed_password=get_password_hash(user_create.password),
         full_name=display_name,
         color=user_create.color or DEFAULT_USER_COLOR,
+        theme=getattr(user_create, "theme", "light") or "light",
         is_active=True,
         is_admin=bootstrap_admin or user_create.is_admin,
         position_id=getattr(user_create, "position_id", None),
@@ -97,6 +99,7 @@ async def register(
         "email": user.email,
         "full_name": user.full_name,
         "color": user.color,
+        "theme": user.theme,
         "is_active": user.is_active,
         "is_admin": user.is_admin,
         "is_verified": user.is_verified,
@@ -161,9 +164,43 @@ async def login(user_login: UserLogin, request: Request, db: Session = Depends(g
 @router.get("/me", response_model=UserResponse)
 async def get_me(
     current_user: User = Depends(get_current_user_record),
+    db: Session = Depends(get_db),
 ):
     """Get current user info."""
-    return current_user
+    # Reload with joinedload so we can properly serialize position name (same as other user endpoints)
+    user = (
+        db.query(User)
+        .options(joinedload(User.position))
+        .filter(User.id == current_user.id)
+        .first()
+    )
+    if not user:
+        # Should never happen for a valid token
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    # Reuse the serialization helper to ensure 'position' is always a str|None
+    return _user_to_response(user)
+
+
+@router.put("/me/theme", response_model=UserResponse)
+async def update_my_theme(
+    theme: str = Body(..., embed=True),
+    current_user: User = Depends(get_current_user_record),
+    db: Session = Depends(get_db),
+):
+    """Update current user's theme preference (no admin required)."""
+    if theme not in ("light", "dark"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="theme must be 'light' or 'dark'")
+    current_user.theme = theme
+    db.commit()
+    db.refresh(current_user)
+    # reload with position for consistent response
+    user = (
+        db.query(User)
+        .options(joinedload(User.position))
+        .filter(User.id == current_user.id)
+        .first()
+    )
+    return _user_to_response(user)
 
 
 @router.post("/change-password")

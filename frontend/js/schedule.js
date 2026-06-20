@@ -1282,13 +1282,28 @@ function toggleTheme() {
   const currentTheme = html.getAttribute('data-theme');
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   html.setAttribute('data-theme', newTheme);
-  localStorage.setItem('letsee_theme', newTheme);
   updateThemeIcon(newTheme);
+
+  if (currentUser && currentUser.id) {
+    currentUser.theme = newTheme;
+    DB.updateMyTheme(newTheme).catch((e) => {
+      console.warn('Failed to save theme to server', e);
+      localStorage.setItem('letsee_theme', newTheme);
+    });
+  } else {
+    localStorage.setItem('letsee_theme', newTheme);
+  }
 }
 
 function applyTheme() {
-  const savedTheme = localStorage.getItem('letsee_theme') || 'light';
+  let savedTheme = 'light';
+  if (currentUser && currentUser.theme) {
+    savedTheme = currentUser.theme;
+  } else {
+    savedTheme = localStorage.getItem('letsee_theme') || 'light';
+  }
   document.documentElement.setAttribute('data-theme', savedTheme);
+  if (currentUser) currentUser.theme = savedTheme;
   updateThemeIcon(savedTheme);
 }
 
