@@ -22,7 +22,15 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS (expect JSON string or list in env)
-    CORS_ORIGINS: list[str] = ["https://localhost"]
+    # Include common dev ports for when running frontend/backend directly (not just via docker-compose.dev)
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "https://localhost",
+        "https://127.0.0.1",
+    ]
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     CORS_ALLOW_HEADERS: list[str] = ["Authorization", "Content-Type"]

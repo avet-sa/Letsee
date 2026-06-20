@@ -311,6 +311,17 @@ const SHIFT_COLORS = {
 };
 const SHIFT_ORDER = ['A', 'M', 'B', 'C'];
 
+function getLocalDateKey(d = new Date()) {
+  let date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) {
+    date = new Date();
+  }
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 let currentEditingNoteId = null;
 
 function getShiftEntries(daySchedule) {
@@ -318,16 +329,18 @@ function getShiftEntries(daySchedule) {
 }
 
 function getCurrentShiftCode(date = currentDate, daySchedule = null) {
-  const targetDate = date instanceof Date ? date : new Date(date);
-  const targetDateKey = targetDate.toISOString().split('T')[0];
-  const todayDateKey = new Date().toISOString().split('T')[0];
+  const targetDate = date instanceof Date ? new Date(date) : new Date(date);
+  const targetDateKey = getLocalDateKey(targetDate);
+  const todayDateKey = getLocalDateKey();
 
   if (targetDateKey !== todayDateKey) {
     const shifts = getShiftEntries(daySchedule);
     return SHIFT_ORDER.find((shift) => (shifts[shift] || []).length > 0) || 'A';
   }
 
-  const minutes = targetDate.getHours() * 60 + targetDate.getMinutes();
+  // Use real current time for live shift detection (the passed date may be noon-normalized)
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
   if (minutes < 8 * 60) {
     return 'C';
   }
@@ -402,10 +415,10 @@ async function getSchedule(date = null) {
   if (date) {
     // load a small window around the date to reduce data
     const d = new Date(date);
-    const from = d.toISOString().split('T')[0];
+    const from = getLocalDateKey(d);
     const toDate = new Date(d);
     toDate.setDate(toDate.getDate() + 7); // small buffer
-    const to = toDate.toISOString().split('T')[0];
+    const to = getLocalDateKey(toDate);
     return await DB.getSchedule(from, to);
   }
   return await DB.getSchedule();
@@ -446,7 +459,7 @@ async function getNotesForDate(dateKey) {
 }
 
 async function renderHandoverNotes(skipCache = false) {
-  const dateKey = currentDate.toISOString().split('T')[0];
+  const dateKey = getLocalDateKey(currentDate);
 
   // If searching, get all notes across all dates
   if (searchQuery && searchQuery.trim()) {
@@ -491,7 +504,7 @@ async function renderHandoverNotes(skipCache = false) {
 
 // Synchronous render that doesn't do any async calls
 function renderHandoverNotesSync(dateData, schedule, shiftPeople) {
-  const dateKey = currentDate.toISOString().split('T')[0];
+  const dateKey = getLocalDateKey(currentDate);
   let notes = dateData.notes || [];
   const sortOrder = dateData.sortOrder || [];
 
@@ -1108,7 +1121,7 @@ function closeShortcutsModal() {
 // Save note
 async function saveNote(event) {
   event.preventDefault();
-  const dateKey = currentDate.toISOString().split('T')[0];
+  const dateKey = getLocalDateKey(currentDate);
   const allNotes = await getHandoverNotes();
   let dateData = allNotes[dateKey];
   if (!dateData || Array.isArray(dateData)) {
@@ -1216,7 +1229,7 @@ async function editNote(noteId) {
   noteTextarea.focus();
 
   // Load data in background and populate
-  const dateKey = currentDate.toISOString().split('T')[0];
+  const dateKey = getLocalDateKey(currentDate);
   const dateData = await getNotesForDate(dateKey);
   const notes = Array.isArray(dateData) ? dateData : dateData.notes || [];
   const note = notes.find((n) => n.id === noteId);
@@ -1287,7 +1300,7 @@ async function deleteNote(noteId) {
     updateBulkUI();
 
     // Save in background
-    const dateKey = currentDate.toISOString().split('T')[0];
+    const dateKey = getLocalDateKey(currentDate);
     getHandoverNotes().then((allNotes) => {
       return getNotesForDate(dateKey).then((dateData) => {
         const notes = dateData.notes || [];
@@ -1340,7 +1353,7 @@ async function toggleComplete(noteId) {
   }
 
   // Save in background (no await to keep it fast)
-  const dateKey = currentDate.toISOString().split('T')[0];
+  const dateKey = getLocalDateKey(currentDate);
   getHandoverNotes().then((allNotes) => {
     return getNotesForDate(dateKey).then((dateData) => {
       const notes = dateData.notes || [];
@@ -1356,7 +1369,7 @@ async function toggleComplete(noteId) {
 
 // Update people block with gradient
 async function getCurrentShiftPeople() {
-  const dateKey = currentDate.toISOString().split('T')[0];
+  const dateKey = getLocalDateKey(currentDate);
   const schedule = await getSchedule();
   const daySchedule = schedule[dateKey] || {};
   const currentShift = getCurrentShiftCode(currentDate, daySchedule);
@@ -1369,12 +1382,20 @@ async function getCurrentShiftPeople() {
 }
 
 async function updatePeopleBlock() {
+  // Navbar always shows the *live current shift* people using today's data (ignores viewed currentDate for this block)
   const people = await getUsers();
-  const dateKey = currentDate.toISOString().split('T')[0];
-  const schedule = await getSchedule();
-  const daySchedule = schedule[dateKey] || {};
+  const todayKey = getLocalDateKey();
+  let schedule = await getSchedule();
+  let daySchedule = schedule[todayKey] || {};
+  if (!daySchedule.shifts) {
+    try {
+      const todayWin = await getSchedule(todayKey);
+      schedule = { ...schedule, ...todayWin };
+      daySchedule = schedule[todayKey] || {};
+    } catch (e) {}
+  }
 
-  const currentShift = getCurrentShiftCode(currentDate, daySchedule);
+  const currentShift = getCurrentShiftCode(new Date(), daySchedule);  // force live time + today schedule
   const assignedPeople = getAssignedPeopleForShift(daySchedule, currentShift);
 
   const peopleNames = document.getElementById('people-names');
@@ -1510,7 +1531,7 @@ async function bulkDelete() {
       updateBulkUI();
 
       // Save in background
-      const dateKey = currentDate.toISOString().split('T')[0];
+      const dateKey = getLocalDateKey(currentDate);
       getHandoverNotes().then((allNotes) => {
         return getNotesForDate(dateKey).then((dateData) => {
           const notes = dateData.notes || [];
@@ -1573,7 +1594,7 @@ async function bulkToggleComplete() {
   updateBulkUI();
 
   // Save in background
-  const dateKey = currentDate.toISOString().split('T')[0];
+  const dateKey = getLocalDateKey(currentDate);
   getHandoverNotes().then((allNotes) => {
     return getNotesForDate(dateKey).then((dateData) => {
       const notes = dateData.notes || [];
@@ -1619,7 +1640,7 @@ function saveDraft() {
 
 let _draftTimeout = null;
 function getCurrentDraftKey() {
-  const dateKey = currentDate.toISOString().split('T')[0];
+  const dateKey = getLocalDateKey(currentDate);
   const userKey = currentUser?.id || currentUser?.email || 'anon';
   return `${DRAFT_KEY}:${userKey}:${dateKey}:new`;
 }
@@ -1813,11 +1834,21 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Update time every second
+let lastPeopleUpdateMinute = -1;
 function updateTime() {
   const now = new Date();
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
   document.getElementById('current-time').textContent = `${hours}:${minutes}`;
+
+  // refresh navbar people block when the minute changes (in case shift boundary crossed)
+  const min = now.getMinutes();
+  if (min !== lastPeopleUpdateMinute) {
+    lastPeopleUpdateMinute = min;
+    if (typeof updatePeopleBlock === 'function') {
+      updatePeopleBlock().catch(() => {});
+    }
+  }
 }
 
 // Update footer date

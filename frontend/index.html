@@ -410,6 +410,8 @@
       </div>
       <div class="modal-body">
         <form id="password-form" class="password-form" onsubmit="event.preventDefault(); submitChangePassword();">
+          <!-- Hidden username for password manager / accessibility -->
+          <input type="text" autocomplete="username" style="display:none" />
           <div class="form-row">
             <input type="password" id="current-password" placeholder="Current Password" class="form-input"
               autocomplete="current-password" required />

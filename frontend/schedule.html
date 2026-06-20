@@ -70,9 +70,6 @@
           </div>
           <button class="nav-btn" onclick="changeMonth(1)" title="Next month">→</button>
         </div>
-        <div class="header-info">
-          <span>Schedule Management</span>
-        </div>
         <!-- <div class="calendar-legend">
                 <div class="legend-item"><span class="shift-badge shift-a">A</span> Morning</div>
                 <div class="legend-item"><span class="shift-badge shift-m">M</span> Middle</div>
@@ -81,6 +78,11 @@
             </div> -->
       </div>
       <div class="header-right">
+        <div class="header-info">
+          <span id="people-names"></span>
+          <span class="separator">|</span>
+          <span id="shift-name"></span>
+        </div>
         <div class="time-display" id="current-time">00:00</div>
         <button
           class="theme-toggle"
@@ -201,6 +203,8 @@
         </div>
         <div class="modal-body">
           <form id="password-form" class="password-form" onsubmit="event.preventDefault(); submitChangePassword();">
+            <!-- Hidden username for password manager / accessibility -->
+            <input type="text" autocomplete="username" style="display:none" />
             <div class="form-row">
               <input
                 type="password"

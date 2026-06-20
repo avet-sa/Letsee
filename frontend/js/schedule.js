@@ -45,6 +45,18 @@ const STAFF_COLOR_PRESETS = [
   '#e84393',
 ];
 const DEFAULT_PERSON_COLOR = STAFF_COLOR_PRESETS[0];
+const SHIFT_ORDER = ['A', 'M', 'B', 'C'];
+
+function getLocalDateKey(d = new Date()) {
+  let date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) {
+    date = new Date();
+  }
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 const MONTH_NAMES = [
   'January',
   'February',
@@ -69,6 +81,100 @@ function findPersonByScheduleEntry(entry) {
   }
 
   return peopleData.find((person) => String(person.id) === value || person.name === value) || null;
+}
+
+function getShiftEntries(daySchedule) {
+  return daySchedule?.shifts || { A: [], M: [], B: [], C: [] };
+}
+
+function getCurrentShiftCode(date = currentDate, daySchedule = null) {
+  const targetDate = date instanceof Date ? new Date(date) : new Date(date);
+  const targetDateKey = getLocalDateKey(targetDate);
+  const todayDateKey = getLocalDateKey();
+
+  if (targetDateKey !== todayDateKey) {
+    const shifts = getShiftEntries(daySchedule);
+    return SHIFT_ORDER.find((shift) => (shifts[shift] || []).length > 0) || 'A';
+  }
+
+  // real now for live shift, independent of viewed date's time component
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (minutes < 8 * 60) {
+    return 'C';
+  }
+  if (minutes < 11 * 60) {
+    return 'A';
+  }
+  if (minutes < 15 * 60) {
+    return 'M';
+  }
+  return 'B';
+}
+
+function getAssignedPeopleForShift(daySchedule, shiftCode) {
+  const shifts = getShiftEntries(daySchedule);
+  const entries = shifts[shiftCode];
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  const seen = new Set();
+  const names = [];
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'string' || !entry.trim()) {
+      continue;
+    }
+    const person = findPersonByScheduleEntry(entry);
+    const name = person ? person.name : String(entry).trim();
+    if (!seen.has(name)) {
+      seen.add(name);
+      names.push(name);
+    }
+  }
+  return names;
+}
+
+async function updatePeopleBlock() {
+  // Always show live current shift's assigned people using *today's* data, regardless of viewed month
+  const todayKey = getLocalDateKey();
+  let daySchedule = scheduleData[todayKey] || {};
+
+  if (!daySchedule.shifts || Object.keys(daySchedule.shifts || {}).length === 0) {
+    try {
+      const todayScheds = await DB.getSchedule(todayKey, todayKey);
+      scheduleData = { ...scheduleData, ...todayScheds };
+      daySchedule = scheduleData[todayKey] || {};
+    } catch (e) {
+      // no data
+    }
+  }
+
+  const currentShift = getCurrentShiftCode(new Date(), daySchedule);
+  const assignedPeople = getAssignedPeopleForShift(daySchedule, currentShift);
+
+  const peopleNames = document.getElementById('people-names');
+  const shiftName = document.getElementById('shift-name');
+  const headerInfo = document.querySelector('.header-info');
+
+  if (headerInfo) {
+    headerInfo.classList.toggle('hidden', assignedPeople.length === 0);
+  }
+
+  if (assignedPeople.length > 0) {
+    if (peopleNames) {
+      if (assignedPeople.length === 1) {
+        peopleNames.textContent = assignedPeople[0].toUpperCase();
+      } else {
+        peopleNames.textContent = assignedPeople.map((n) => n.toUpperCase()).join(' & ');
+      }
+    }
+  } else if (peopleNames) {
+    peopleNames.textContent = '';
+  }
+
+  if (shiftName) {
+    shiftName.textContent = assignedPeople.length > 0 ? currentShift.toUpperCase() + ' SHIFT' : '';
+  }
 }
 
 function personMatchesScheduleEntry(person, entry) {
@@ -340,6 +446,7 @@ async function refreshPeopleViews() {
   await loadPeople();
   await loadSchedules();
   renderCalendar();
+  await updatePeopleBlock();
 
   if (selectedDate && document.getElementById('day-modal').style.display !== 'none') {
     const dateParts = selectedDate.split('-');
@@ -361,10 +468,13 @@ async function init() {
   await loadPeople();
   await loadSchedules();
   renderCalendar();
+  await updatePeopleBlock();
   updateClock();
   setInterval(updateClock, 1000);
   applyTheme();
   resetPersonForm();
+  // keep navbar people/shift live
+  setInterval(() => { if (typeof updatePeopleBlock === 'function') updatePeopleBlock(); }, 60000);
 
   // Simple polling for live schedule/staff updates (30s)
   const POLL_INTERVAL_MS = 30000;
@@ -375,6 +485,7 @@ async function init() {
       try {
         await loadSchedules();
         renderCalendar();
+        await updatePeopleBlock();
         // Also keep people fresh
         if (typeof loadPeople === 'function') await loadPeople();
         if (typeof renderPeopleList === 'function') await renderPeopleList();
@@ -1054,6 +1165,7 @@ async function saveDaySchedule() {
     // Reload schedules and update calendar (keep modal open)
     await loadSchedules();
     renderCalendar();
+    await updatePeopleBlock();
   } catch (error) {
     console.error('Error saving schedule:', error);
     showAlert('Error', error.message || 'Failed to save schedule. Please try again.');
@@ -1116,8 +1228,9 @@ function changeMonth(offset) {
   }
 
   // Load schedules for the newly selected month (instead of full history)
-  loadSchedules().then(() => {
+  loadSchedules().then(async () => {
     renderCalendar();
+    await updatePeopleBlock();
   });
 
   if (document.getElementById('custom-date-picker')?.style.display !== 'none') {
@@ -1242,11 +1355,17 @@ document.addEventListener('click', (event) => {
 // Clock
 function updateClock() {
   const clockEl = document.getElementById('current-time');
+  const now = new Date();
   if (clockEl) {
-    const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     clockEl.textContent = `${hours}:${minutes}`;
+  }
+
+  // periodic navbar refresh for live shift/people
+  const min = now.getMinutes();
+  if (min % 5 === 0 && typeof updatePeopleBlock === 'function') {
+    updatePeopleBlock().catch(() => {});
   }
 }
 
