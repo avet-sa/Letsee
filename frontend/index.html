@@ -476,13 +476,9 @@
               <label>Position</label>
               <div class="position-input-row">
                 <div class="position-dropdown-wrapper">
-                  <div class="position-selected" id="position-selected" onclick="togglePositionDropdown()">
-                    <span id="position-selected-text">— No position —</span>
-                    <span class="dropdown-arrow">▼</span>
-                  </div>
-                  <div class="position-dropdown" id="position-dropdown">
-                    <input type="text" id="position-search" class="form-input" placeholder="Search positions..."
-                      oninput="filterPositionDropdown()" />
+                  <input type="text" id="position-search" class="form-input" placeholder="Search positions..."
+                    oninput="filterPositionDropdown()" onfocus="showPositionOptions()" />
+                  <div class="position-dropdown" id="position-dropdown" style="display: none;">
                     <div class="position-options" id="position-options"></div>
                   </div>
                 </div>

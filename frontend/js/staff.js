@@ -64,23 +64,35 @@
 
   function selectPosition(id, name) {
     const hidden = document.getElementById('new-person-position-id');
-    const textEl = document.getElementById('position-selected-text');
+    const search = document.getElementById('position-search');
     if (hidden) hidden.value = id || '';
-    if (textEl) textEl.textContent = name || '— No position —';
+    if (search) search.value = name || '';
+    // hide dropdown after selection
+    hidePositionOptions();
   }
 
+  function showPositionOptions() {
+    const dd = document.getElementById('position-dropdown');
+    if (!dd) return;
+    populatePositionOptions();
+    dd.style.display = 'flex';
+  }
+
+  // kept for backward compat if any old calls, but prefer showPositionOptions + focus search
   function togglePositionDropdown() {
     const dd = document.getElementById('position-dropdown');
-    const search = document.getElementById('position-search');
     if (!dd) return;
     const isOpen = dd.style.display === 'block' || dd.style.display === 'flex';
-    dd.style.display = isOpen ? 'none' : 'flex';
-    if (!isOpen && search) {
-      populatePositionOptions();
-      search.value = '';
-      filterPositionDropdown();
-      setTimeout(() => search.focus(), 10);
+    if (isOpen) {
+      dd.style.display = 'none';
+    } else {
+      showPositionOptions();
     }
+  }
+
+  function hidePositionOptions() {
+    const dd = document.getElementById('position-dropdown');
+    if (dd) dd.style.display = 'none';
   }
 
   function filterPositionDropdown() {
@@ -92,13 +104,17 @@
       const matches = !q || opt.textContent.toLowerCase().includes(q);
       opt.style.display = matches ? '' : 'none';
     });
+    // if user clears the search, treat as no position selected
+    if (!q) {
+      const hid = document.getElementById('new-person-position-id');
+      if (hid) hid.value = '';
+    }
   }
 
   function closePositionDropdownOnOutside(e) {
     const wrapper = document.querySelector('.position-dropdown-wrapper');
-    const dd = document.getElementById('position-dropdown');
-    if (dd && wrapper && !wrapper.contains(e.target)) {
-      dd.style.display = 'none';
+    if (wrapper && !wrapper.contains(e.target)) {
+      hidePositionOptions();
     }
   }
 
@@ -108,21 +124,84 @@
     window._positionDropdownListener = true;
   }
 
+  // Setup auto-hide for position dropdown (blur/focusout, ESC, TAB)
+  function setupPositionDropdownAutoHide() {
+    const search = document.getElementById('position-search');
+    const wrapper = document.querySelector('.position-dropdown-wrapper');
+    if (!search || !wrapper || search.dataset.autoHideSetup) return;
+    search.dataset.autoHideSetup = 'true';
+
+    // Hide when focus leaves the entire wrapper (click elsewhere or tab away)
+    wrapper.addEventListener('focusout', () => {
+      setTimeout(() => {
+        if (!wrapper.contains(document.activeElement)) {
+          hidePositionOptions();
+        }
+      }, 0);
+    });
+
+    // Keyboard: ESC and TAB should close the dropdown
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        hidePositionOptions();
+        e.preventDefault();
+      } else if (e.key === 'Tab') {
+        hidePositionOptions();
+      }
+    });
+  }
+
+  // Initialize the auto-hide setup
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupPositionDropdownAutoHide);
+  } else {
+    setupPositionDropdownAutoHide();
+  }
+
+  // Setup auto-hide for position dropdown on blur, ESC, TAB
+  function setupPositionDropdownAutoHide() {
+    const search = document.getElementById('position-search');
+    const wrapper = document.querySelector('.position-dropdown-wrapper');
+    if (!search || !wrapper || search.dataset.autoHideSetup) return;
+    search.dataset.autoHideSetup = 'true';
+
+    // Hide when focus leaves the wrapper entirely (handles clicks elsewhere + tab)
+    wrapper.addEventListener('focusout', () => {
+      setTimeout(() => {
+        if (!wrapper.contains(document.activeElement)) {
+          hidePositionOptions();
+        }
+      }, 0);
+    });
+
+    // Keyboard shortcuts
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        hidePositionOptions();
+        e.preventDefault();
+      } else if (e.key === 'Tab') {
+        // Let tab move focus, but hide the dropdown
+        hidePositionOptions();
+      }
+    });
+  }
+
+  // Run setup (safe even if elements not present yet)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupPositionDropdownAutoHide);
+  } else {
+    setupPositionDropdownAutoHide();
+  }
+
   async function addNewPositionFromInput() {
     let searchInput = document.getElementById('position-search');
     let name = '';
-    if (searchInput && searchInput.offsetParent !== null) {
+    if (searchInput) {
       name = (searchInput.value || '').trim();
     }
     if (!name) {
-      const selText = document.getElementById('position-selected-text');
-      if (selText && selText.textContent && !selText.textContent.includes('No position')) {
-        name = selText.textContent.trim();
-      }
-    }
-    if (!name) {
       if (typeof showAlert === 'function') {
-        showAlert('Error', 'Type a position name in the search box inside the dropdown, then click + New');
+        showAlert('Error', 'Type a position name in the search box, then click + New');
       }
       return;
     }
@@ -135,8 +214,6 @@
       }
       populatePositionOptions();
       selectPosition(created.id, created.name);
-      const dd = document.getElementById('position-dropdown');
-      if (dd) dd.style.display = 'none';
     } catch (err) {
       const msg = (err.message || '').toLowerCase();
       if (msg.includes('already exists')) {
@@ -241,9 +318,9 @@
     if (saveBtn) saveBtn.textContent = '+ Add Staff';
     if (cancelBtn) cancelBtn.style.display = 'none';
 
-    const posText = document.getElementById('position-selected-text');
+    const posSearch = document.getElementById('position-search');
     const posHid = document.getElementById('new-person-position-id');
-    if (posText) posText.textContent = '— No position —';
+    if (posSearch) posSearch.value = '';
     if (posHid) posHid.value = '';
 
     const adminHidden = document.getElementById('new-person-is-admin');
@@ -303,9 +380,9 @@
     if (person.position_id && person.position) {
       selectPosition(person.position_id, person.position);
     } else {
-      const textEl = document.getElementById('position-selected-text');
+      const search = document.getElementById('position-search');
       const hid = document.getElementById('new-person-position-id');
-      if (textEl) textEl.textContent = '— No position —';
+      if (search) search.value = '';
       if (hid) hid.value = '';
     }
 
@@ -580,6 +657,8 @@
   window.populatePositionOptions = populatePositionOptions;
   window.selectPosition = selectPosition;
   window.togglePositionDropdown = togglePositionDropdown;
+  window.showPositionOptions = showPositionOptions;
+  window.hidePositionOptions = hidePositionOptions;
   window.filterPositionDropdown = filterPositionDropdown;
   window.addNewPositionFromInput = addNewPositionFromInput;
 
@@ -603,6 +682,8 @@
     renderPeopleList,
     savePerson,
     startPersonEdit,
-    resetPersonForm
+    resetPersonForm,
+    showPositionOptions,
+    hidePositionOptions
   };
 })();
