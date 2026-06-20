@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -77,11 +77,33 @@ async def register(
         color=user_create.color or DEFAULT_USER_COLOR,
         is_active=True,
         is_admin=bootstrap_admin or user_create.is_admin,
+        position_id=getattr(user_create, "position_id", None),
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return new_user
+
+    # Reload with position for full response (includes position name)
+    user = (
+        db.query(User)
+        .options(joinedload(User.position))
+        .filter(User.id == new_user.id)
+        .first()
+    )
+    # Use the same serialization logic (lightweight here)
+    pos_name = user.position.name if user.position else None
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "color": user.color,
+        "is_active": user.is_active,
+        "is_admin": user.is_admin,
+        "is_verified": user.is_verified,
+        "position_id": user.position_id,
+        "position": pos_name,
+        "created_at": user.created_at,
+    }
 
 
 @router.post("/login", response_model=Token)

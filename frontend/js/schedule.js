@@ -211,6 +211,12 @@ function startPersonEdit(id) {
   document.getElementById('save-person-btn').textContent = 'Save';
   document.getElementById('cancel-person-edit').style.display = 'inline-flex';
   document.getElementById('new-person-name').value = person.name;
+
+  const posInput = document.getElementById('new-person-position');
+  const posHidden = document.getElementById('new-person-position-id');
+  if (posInput) posInput.value = person.position || '';
+  if (posHidden) posHidden.value = person.position_id || '';
+
   initPersonColorPicker();
   selectPersonColor(person.color);
   setPersonAccountFormState(true);
@@ -1282,6 +1288,16 @@ async function savePerson() {
   const email = emailInput?.value?.trim() || '';
   const password = passwordInput?.value || '';
   const isAdmin = Boolean(adminCheckbox?.checked);
+  const isActive = true; // legacy path
+
+  // basic resolution for legacy
+  let position_id = null;
+  const pIn = document.getElementById('new-person-position');
+  const pHid = document.getElementById('new-person-position-id');
+  if (pHid && pHid.value) position_id = pHid.value;
+  else if (pIn && pIn.value) {
+    // will be resolved in main path anyway
+  }
 
   if (!name) {
     showAlert('Validation Error', 'Please enter a name');
@@ -1290,7 +1306,7 @@ async function savePerson() {
 
   try {
     if (editingPersonId) {
-      await DB.updateUser(editingPersonId, { full_name: name, color });
+      await DB.updateUser(editingPersonId, { full_name: name, color, position_id, is_active: true, is_admin: isAdmin });
       const passwordInput = document.getElementById('new-person-password');
       if (passwordInput && passwordInput.value) {
         const newPass = passwordInput.value;
@@ -1324,6 +1340,7 @@ async function savePerson() {
           full_name: name,
           color,
           is_admin: isAdmin,
+          position_id,
         });
       } else {
         await UsersAPI.create({
@@ -1332,6 +1349,7 @@ async function savePerson() {
           full_name: name,
           color,
           is_admin: false,
+          position_id,
         });
       }
     }

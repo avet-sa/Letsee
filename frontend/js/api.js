@@ -187,6 +187,22 @@ const UsersAPI = {
       body: JSON.stringify({ new_password: newPassword }),
     });
   },
+
+  // Positions
+  async getPositions() {
+    return apiFetch('/users/positions');
+  },
+
+  async createPosition(name) {
+    return apiFetch('/users/positions', {
+      method: 'POST',
+      body: JSON.stringify({ name: name.trim() }),
+    });
+  },
+
+  async deletePosition(id) {
+    return apiFetch(`/users/positions/${id}`, { method: 'DELETE' });
+  },
 };
 
 // ============ Schedules API ============
@@ -426,14 +442,16 @@ const DB = {
       console.warn('UsersAPI.list() returned non-array:', users);
       return [];
     }
-    // Map to consistent format: id, name (full_name), color
+    // Map to consistent format: id, name, color + position support
     return users.map((u) => ({
       id: u.id,
-      name: u.full_name || u.email.split('@')[0],
+      name: u.full_name || (u.email ? u.email.split('@')[0] : 'Staff'),
       color: u.color,
       email: u.email,
       isActive: u.is_active,
       isAdmin: u.is_admin,
+      position: u.position || null,
+      position_id: u.position_id || null,
     }));
   },
 
@@ -457,6 +475,19 @@ const DB = {
 
   async resetUserPassword(id, newPassword) {
     return UsersAPI.resetPassword(id, newPassword);
+  },
+
+  // Positions
+  async getPositions() {
+    return UsersAPI.getPositions();
+  },
+
+  async createPosition(name) {
+    return UsersAPI.createPosition(name);
+  },
+
+  async deletePosition(id) {
+    return UsersAPI.deletePosition(id);
   },
 
   // Schedule

@@ -3,8 +3,21 @@ from datetime import datetime, UTC
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+
+
+class Position(Base):
+    """Staff position / role (e.g. Manager, Supervisor, Receptionist)."""
+
+    __tablename__ = "positions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(UTC), nullable=False)
+
+    users = relationship("User", back_populates="position")
 
 
 class User(Base):
@@ -32,6 +45,10 @@ class User(Base):
         nullable=False,
     )
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)  # Soft delete
+
+    # Position / role (FK)
+    position_id = Column(UUID(as_uuid=True), ForeignKey("positions.id"), nullable=True)
+    position = relationship("Position", back_populates="users")
 
     __table_args__ = (Index("idx_user_deleted", "deleted_at"),)
 

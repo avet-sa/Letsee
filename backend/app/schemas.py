@@ -14,6 +14,7 @@ class UserCreate(BaseModel):
     full_name: str = Field(min_length=1)  # Required - display name for schedules
     color: str = Field(default="#3498db", pattern=r"^#[0-9A-Fa-f]{6}$")  # Staff color
     is_admin: bool = False  # Admin flag (only used during bootstrap)
+    position_id: UUID | None = None  # Optional staff position
 
 
 class UserLogin(BaseModel):
@@ -47,6 +48,8 @@ class UserResponse(BaseModel):
     is_active: bool
     is_admin: bool
     is_verified: bool
+    position_id: UUID | None = None
+    position: str | None = None  # resolved position name
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -57,6 +60,8 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
     is_active: bool | None = None
+    is_admin: bool | None = None
+    position_id: UUID | None = None  # set or clear position
 
 
 class UserPasswordUpdate(BaseModel):
@@ -70,6 +75,24 @@ class AdminPasswordReset(BaseModel):
     """Schema for an admin resetting another user's password."""
 
     new_password: str = Field(min_length=8)
+
+
+# ============ Position Schemas ============
+
+
+class PositionCreate(BaseModel):
+    """Create a new staff position."""
+
+    name: str = Field(min_length=1, max_length=100)
+
+
+class PositionResponse(BaseModel):
+    """Position response."""
+
+    id: UUID
+    name: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============ Schedule Schemas ============

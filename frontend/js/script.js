@@ -83,19 +83,15 @@ function resetPersonForm() {
   const titleEl = document.getElementById('person-form-title');
   const saveBtn = document.getElementById('save-person-btn');
   const cancelBtn = document.getElementById('cancel-person-edit');
+  const posSel = document.getElementById('new-person-position');
+  const act = document.getElementById('new-person-is-active');
 
-  if (nameInput) {
-    nameInput.value = '';
-  }
-  if (titleEl) {
-    titleEl.textContent = 'Add New Staff Member';
-  }
-  if (saveBtn) {
-    saveBtn.textContent = '+ Add';
-  }
-  if (cancelBtn) {
-    cancelBtn.style.display = 'none';
-  }
+  if (nameInput) nameInput.value = '';
+  if (titleEl) titleEl.textContent = 'Add New Staff Member';
+  if (saveBtn) saveBtn.textContent = '+ Add Staff';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  if (posSel) posSel.value = '';
+  if (act) act.checked = true;
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
@@ -115,8 +111,21 @@ async function startPersonEdit(id) {
   document.getElementById('save-person-btn').textContent = 'Save';
   document.getElementById('cancel-person-edit').style.display = 'inline-flex';
   document.getElementById('new-person-name').value = person.name;
+
+  const posInput = document.getElementById('new-person-position');
+  const posHidden = document.getElementById('new-person-position-id');
+  if (posInput) posInput.value = person.position || '';
+  if (posHidden) posHidden.value = person.position_id || '';
+
   initPersonColorPicker();
   selectPersonColor(person.color);
+
+  const adminCb = document.getElementById('new-person-is-admin');
+  if (adminCb) adminCb.checked = !!person.isAdmin;
+
+  const act = document.getElementById('new-person-is-active');
+  if (act) act.checked = person.isActive !== false;
+
   document.getElementById('new-person-name').focus();
 }
 
