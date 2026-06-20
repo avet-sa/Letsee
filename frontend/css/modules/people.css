@@ -97,6 +97,16 @@
   flex-wrap: wrap;
 }
 
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.password-form .form-row input {
+  background: var(--bg-primary);
+}
+
 .form-input {
   flex: 1;
   padding: 10px 15px;
@@ -367,7 +377,7 @@
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
 }
 
 .staff-list-section {
@@ -395,7 +405,6 @@
 .staff-search {
   max-width: 240px;
   font-size: 13px;
-  padding: 6px 10px;
   background: var(--bg-primary);
 }
 

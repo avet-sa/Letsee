@@ -179,19 +179,17 @@ function resetPersonForm() {
   const titleEl = document.getElementById('person-form-title');
   const saveBtn = document.getElementById('save-person-btn');
   const cancelBtn = document.getElementById('cancel-person-edit');
+  const posInput = document.getElementById('new-person-position');
+  const posIdHidden = document.getElementById('new-person-position-id');
+  const activeCb = document.getElementById('new-person-is-active');
 
-  if (nameInput) {
-    nameInput.value = '';
-  }
-  if (titleEl) {
-    titleEl.textContent = 'Add New Staff Member';
-  }
-  if (saveBtn) {
-    saveBtn.textContent = '+ Add';
-  }
-  if (cancelBtn) {
-    cancelBtn.style.display = 'none';
-  }
+  if (nameInput) nameInput.value = '';
+  if (titleEl) titleEl.textContent = 'Add New Staff Member';
+  if (saveBtn) saveBtn.textContent = '+ Add Staff';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  if (posInput) posInput.value = '';
+  if (posIdHidden) posIdHidden.value = '';
+  if (activeCb) activeCb.checked = true;
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
@@ -219,6 +217,13 @@ function startPersonEdit(id) {
 
   initPersonColorPicker();
   selectPersonColor(person.color);
+
+  const adminCb = document.getElementById('new-person-is-admin');
+  if (adminCb) adminCb.checked = !!person.isAdmin;
+
+  const activeCb = document.getElementById('new-person-is-active');
+  if (activeCb) activeCb.checked = person.isActive !== false;
+
   setPersonAccountFormState(true);
   document.getElementById('new-person-name').focus();
 }
@@ -1200,13 +1205,23 @@ function handleLogout() {
 
 async function openPeopleModal() {
   if (!currentUser?.is_admin) {
-    showAlert('Access Denied', 'Only admins can manage staff or edit schedules.');
+    showAlert('Access Denied', 'Only admins can manage staff.');
     return;
   }
 
-  document.getElementById('people-modal').style.display = 'flex';
-  resetPersonForm();
-  await renderPeopleList();
+  const modal = document.getElementById('people-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+
+    await loadPositions();
+    populatePositionDatalist();
+
+    await renderPeopleList();
+    resetPersonForm();
+
+    const act = document.getElementById('new-person-is-active');
+    if (act) act.checked = true;
+  }
 }
 
 document.addEventListener('mousedown', (event) => {
@@ -1236,44 +1251,67 @@ window.addEventListener('resize', () => {
 });
 
 function closePeopleModal() {
-  document.getElementById('people-modal').style.display = 'none';
+  const modal = document.getElementById('people-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
   resetPersonForm();
-  // Reload people data
   loadPeople();
 }
 
 async function renderPeopleList() {
   await loadPeople();
   const peopleList = document.getElementById('people-list');
+  const countEl = document.getElementById('staff-count');
+  if (!peopleList) return;
+
+  if (countEl) countEl.textContent = `(${peopleData.length})`;
 
   if (peopleData.length === 0) {
-    peopleList.innerHTML = '<div class="empty-state">No staff members yet. Add one below!</div>';
+    peopleList.innerHTML = `
+      <div class="empty-state" style="padding: 28px 20px; text-align: center; color: var(--text-secondary);">
+        <p>No staff members yet</p>
+      </div>
+    `;
     return;
   }
 
-  peopleList.innerHTML = '';
+  // sort active first
+  const sorted = [...peopleData].sort((a, b) => {
+    if ((a.isActive === false) === (b.isActive === false)) return (a.name || '').localeCompare(b.name || '');
+    return a.isActive === false ? 1 : -1;
+  });
 
-  peopleData.forEach((person) => {
-    const personEl = document.createElement('div');
-    personEl.className = 'person-item';
+  peopleList.innerHTML = sorted.map((person) => {
     const safeName = escapeHtml(person.name);
     const safeColor = escapeHtml(person.color);
     const safeNameForJs = escapeJsString(person.name);
+    const pos = person.position ? `<span class="position-badge">${escapeHtml(person.position)}</span>` : '';
+    const isAdmin = person.isAdmin ? `<span class="admin-badge">ADMIN</span>` : '';
+    const isInactive = person.isActive === false ? ' (inactive)' : '';
 
-    personEl.innerHTML = `
-            <div class="person-color" style="background-color: ${safeColor}"></div>
-            <div class="person-info">
-                <div class="person-name">${safeName}</div>
-                <div class="person-color-code">${safeColor}</div>
-            </div>
-            <div class="person-actions">
-                <button class="btn-icon" onclick='startPersonEdit(${JSON.stringify(String(person.id))})'>Edit</button>
-                <button class="btn-icon btn-danger" onclick="deletePerson('${person.id}', '${safeNameForJs}')">Delete</button>
-            </div>
-        `;
-
-    peopleList.appendChild(personEl);
-  });
+    return `
+      <div class="person-item${person.isActive === false ? ' is-inactive' : ''}" data-id="${person.id}" data-name="${safeName.toLowerCase()}" data-pos="${(person.position || '').toLowerCase()}">
+        <div class="person-color" style="background-color: ${safeColor}"></div>
+        <div class="person-info">
+          <div class="person-name">${safeName}${isInactive}</div>
+          <div class="person-meta">
+            ${pos}
+            ${isAdmin}
+          </div>
+        </div>
+        <div class="person-actions">
+          <button class="btn-icon" onclick="startPersonEdit('${person.id}')" aria-label="Edit ${safeName}">Edit</button>
+          <button class="btn-icon btn-delete" onclick="deletePerson('${person.id}', '${safeNameForJs}')" aria-label="Delete ${safeName}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 async function savePerson() {
@@ -1282,13 +1320,14 @@ async function savePerson() {
   const emailInput = document.getElementById('new-person-email');
   const passwordInput = document.getElementById('new-person-password');
   const adminCheckbox = document.getElementById('new-person-is-admin');
+  const activeCb = document.getElementById('new-person-is-active');
 
   const name = nameInput.value.trim();
   const color = colorInput.value || DEFAULT_PERSON_COLOR;
   const email = emailInput?.value?.trim() || '';
   const password = passwordInput?.value || '';
   const isAdmin = Boolean(adminCheckbox?.checked);
-  const isActive = true; // legacy path
+  const isActive = activeCb ? activeCb.checked : true;
 
   // basic resolution for legacy
   let position_id = null;
@@ -1306,7 +1345,7 @@ async function savePerson() {
 
   try {
     if (editingPersonId) {
-      await DB.updateUser(editingPersonId, { full_name: name, color, position_id, is_active: true, is_admin: isAdmin });
+      await DB.updateUser(editingPersonId, { full_name: name, color, position_id, is_active: isActive, is_admin: isAdmin });
       const passwordInput = document.getElementById('new-person-password');
       if (passwordInput && passwordInput.value) {
         const newPass = passwordInput.value;
@@ -1341,6 +1380,7 @@ async function savePerson() {
           color,
           is_admin: isAdmin,
           position_id,
+          is_active: isActive,
         });
       } else {
         await UsersAPI.create({
@@ -1350,6 +1390,7 @@ async function savePerson() {
           color,
           is_admin: false,
           position_id,
+          is_active: isActive,
         });
       }
     }

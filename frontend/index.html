@@ -539,7 +539,7 @@
           <h2>Change Password</h2>
         </div>
         <div class="modal-body">
-          <form id="password-form" onsubmit="event.preventDefault(); submitChangePassword();">
+          <form id="password-form" class="password-form" onsubmit="event.preventDefault(); submitChangePassword();">
             <div class="form-row">
               <input
                 type="password"
@@ -647,7 +647,7 @@
 
               <!-- Login credentials -->
               <div class="form-field full credentials">
-                <label>Email (for login account)</label>
+                <label for="new-person-email">Email (for login account)</label>
                 <div class="form-row tight">
                   <input type="email" id="new-person-email" class="form-input" placeholder="name@company.com" autocomplete="email" />
                   <input type="password" id="new-person-password" class="form-input" placeholder="Password (min 8)" autocomplete="new-password" />

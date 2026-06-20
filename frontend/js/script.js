@@ -2049,16 +2049,25 @@ async function openPeopleModal() {
     return;
   }
 
-  document.getElementById('people-modal').style.display = 'flex';
-  resetPersonForm();
-  await renderPeopleList();
+  const modal = document.getElementById('people-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+
+    await loadPositions();
+    if (typeof populatePositionDatalist === 'function') populatePositionDatalist();
+
+    await renderPeopleList();
+    resetPersonForm();
+
+    const act = document.getElementById('new-person-is-active');
+    if (act) act.checked = true;
+  }
 }
 
 function closePeopleModal() {
-  document.getElementById('people-modal').style.display = 'none';
+  const modal = document.getElementById('people-modal');
+  if (modal) modal.style.display = 'none';
   resetPersonForm();
-  // Reload people data
-  getUsers();
 }
 
 async function renderPeopleList() {
