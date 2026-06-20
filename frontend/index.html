@@ -649,10 +649,15 @@
 
               <!-- Login credentials -->
               <div class="form-field full credentials">
-                <label for="new-person-email">Email (for login account)</label>
                 <div class="form-row tight">
-                  <input type="email" id="new-person-email" class="form-input" placeholder="name@company.com" autocomplete="email" />
-                  <input type="password" id="new-person-password" class="form-input" placeholder="Password (min 8)" autocomplete="new-password" />
+                  <div class="credential-pair">
+                    <label for="new-person-email">Email</label>
+                    <input type="email" id="new-person-email" class="form-input" placeholder="name@company.com" autocomplete="email" />
+                  </div>
+                  <div class="credential-pair">
+                    <label for="new-person-password">Password</label>
+                    <input type="password" id="new-person-password" class="form-input" placeholder="Password (min 8)" autocomplete="new-password" />
+                  </div>
                 </div>
                 <!-- <div class="field-hint" id="person-account-hint">Leave blank to create a non-login staff record. Password resets only on edit.</div> -->
               </div>

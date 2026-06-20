@@ -95,7 +95,11 @@ function resetPersonForm() {
   const adminHidden = document.getElementById('new-person-is-admin');
   const adminBtn = document.getElementById('admin-toggle-btn');
   if (adminHidden) adminHidden.value = 'false';
-  if (adminBtn) adminBtn.textContent = 'Make Admin';
+  if (adminBtn) {
+    const adminField = adminBtn.closest('.form-field') || adminBtn.parentElement;
+    if (adminField) adminField.style.display = 'none';
+    adminBtn.textContent = 'Make Admin';
+  }
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
@@ -218,7 +222,11 @@ async function startPersonEdit(id) {
   const adminBtn = document.getElementById('admin-toggle-btn');
   const isAdmin = !!person.isAdmin;
   if (adminHidden) adminHidden.value = isAdmin ? 'true' : 'false';
-  if (adminBtn) adminBtn.textContent = isAdmin ? 'Remove Admin' : 'Make Admin';
+  if (adminBtn) {
+    const adminField = adminBtn.closest('.form-field') || adminBtn.parentElement;
+    if (adminField) adminField.style.display = '';
+    adminBtn.textContent = isAdmin ? 'Remove Admin' : 'Make Admin';
+  }
 
   document.getElementById('new-person-name').focus();
 }
