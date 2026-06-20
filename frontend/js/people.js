@@ -9,34 +9,24 @@
 // All variables are defined in script.js - do NOT redeclare them here
 
 // Local caches (avoid polluting globals too much)
-let _positionsCache = [];
+window._positionsCache = window._positionsCache || [];
 let _filteredStaff = null; // for search filter
 
 function setPersonAccountFormState(isEditing) {
   const emailInput = document.getElementById('new-person-email');
   const passwordInput = document.getElementById('new-person-password');
-  const adminCheckbox = document.getElementById('new-person-is-admin');
-  const adminGroup = document.getElementById('new-person-admin-group');
   const hint = document.getElementById('person-account-hint');
-  const activeCb = document.getElementById('new-person-is-active');
 
   if (emailInput) emailInput.disabled = isEditing;
-  // admin flag can be changed during edit
-  if (adminCheckbox) adminCheckbox.disabled = false;
   if (passwordInput) passwordInput.disabled = false;
-  if (activeCb) activeCb.disabled = false;
 
   if (isEditing) {
-    if (adminGroup) adminGroup.style.opacity = '0.7';
     if (hint) hint.textContent = "Enter a new password above to reset this user's password.";
     return;
   }
 
   if (emailInput) emailInput.value = '';
   if (passwordInput) passwordInput.value = '';
-  if (adminCheckbox) adminCheckbox.checked = false;
-  if (adminGroup) adminGroup.style.opacity = '';
-  if (activeCb) activeCb.checked = true;
   if (hint) {
     hint.textContent = 'Leave email and password blank to create a staff record without a login account.';
   }
@@ -93,48 +83,117 @@ function selectPersonColor(color) {
 async function loadPositions() {
   try {
     const positions = await DB.getPositions();
-    _positionsCache = Array.isArray(positions) ? positions : [];
+    window._positionsCache = Array.isArray(positions) ? positions : [];
   } catch (e) {
-    _positionsCache = [];
+    window._positionsCache = [];
   }
-  return _positionsCache;
+  return window._positionsCache;
 }
 
-function populatePositionDatalist() {
-  const datalist = document.getElementById('position-datalist');
-  if (!datalist) return;
-  datalist.innerHTML = _positionsCache
-    .map((p) => `<option value="${escapeHtml(p.name)}"></option>`)
-    .join('');
+function populatePositionOptions() {
+  const container = document.getElementById('position-options');
+  if (!container) return;
+  container.innerHTML = '';
+
+  (window._positionsCache || []).forEach((p) => {
+    const opt = document.createElement('div');
+    opt.className = 'position-option';
+    opt.textContent = p.name;
+    opt.onclick = () => {
+      selectPosition(p.id, p.name);
+      const dd = document.getElementById('position-dropdown');
+      if (dd) dd.style.display = 'none';
+    };
+    container.appendChild(opt);
+  });
+}
+
+function selectPosition(id, name) {
+  const hidden = document.getElementById('new-person-position-id');
+  const textEl = document.getElementById('position-selected-text');
+  if (hidden) hidden.value = id;
+  if (textEl) textEl.textContent = name || '— No position —';
+}
+
+function togglePositionDropdown() {
+  const dd = document.getElementById('position-dropdown');
+  const search = document.getElementById('position-search');
+  if (!dd) return;
+  const isOpen = dd.style.display === 'block' || dd.style.display === 'flex';
+  dd.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen && search) {
+    populatePositionOptions();
+    search.value = '';
+    filterPositionDropdown();
+    setTimeout(() => search.focus(), 10);
+  }
+}
+
+function filterPositionDropdown() {
+  const search = document.getElementById('position-search');
+  const container = document.getElementById('position-options');
+  if (!search || !container) return;
+  const q = search.value.toLowerCase().trim();
+  Array.from(container.children).forEach((opt) => {
+    const matches = !q || opt.textContent.toLowerCase().includes(q);
+    opt.style.display = matches ? '' : 'none';
+  });
+}
+
+function closePositionDropdownOnOutside(e) {
+  const wrapper = document.querySelector('.position-dropdown-wrapper');
+  const dd = document.getElementById('position-dropdown');
+  if (dd && wrapper && !wrapper.contains(e.target)) {
+    dd.style.display = 'none';
+  }
+}
+
+// Attach once
+if (typeof window !== 'undefined' && !window._positionDropdownListener) {
+  document.addEventListener('click', closePositionDropdownOnOutside);
+  window._positionDropdownListener = true;
 }
 
 async function addNewPositionFromInput() {
-  const input = document.getElementById('new-person-position');
-  const hidden = document.getElementById('new-person-position-id');
-  if (!input) return;
-
-  const name = (input.value || '').trim();
+  // Try to get name from the dropdown search if open, else from selected text or prompt fallback (but avoid)
+  let searchInput = document.getElementById('position-search');
+  let name = '';
+  if (searchInput && searchInput.offsetParent !== null) { // visible
+    name = (searchInput.value || '').trim();
+  }
   if (!name) {
-    showAlert('Error', 'Enter a position name');
+    // fallback to current selected text if not "no position"
+    const selText = document.getElementById('position-selected-text');
+    if (selText && selText.textContent && !selText.textContent.includes('No position')) {
+      name = selText.textContent.trim();
+    }
+  }
+  if (!name) {
+    showAlert('Error', 'Type a position name in the search box inside the dropdown, then click + New');
     return;
   }
 
+  const hidden = document.getElementById('new-person-position-id');
   try {
     const created = await DB.createPosition(name);
-    if (!_positionsCache.some((p) => String(p.id) === String(created.id))) {
-      _positionsCache.push(created);
+    if (!(window._positionsCache || []).some((p) => String(p.id) === String(created.id))) {
+      window._positionsCache = window._positionsCache || [];
+      window._positionsCache.push(created);
     }
-    populatePositionDatalist();
+    populatePositionOptions();
 
-    input.value = created.name;
-    if (hidden) hidden.value = created.id;
+    // select it
+    selectPosition(created.id, created.name);
+    // close dropdown if open
+    const dd = document.getElementById('position-dropdown');
+    if (dd) dd.style.display = 'none';
   } catch (err) {
     const msg = (err.message || '').toLowerCase();
     if (msg.includes('already exists')) {
-      const match = _positionsCache.find((p) => p.name.toLowerCase() === name.toLowerCase());
+      const cache = window._positionsCache || [];
+      const match = cache.find((p) => p.name.toLowerCase() === name.toLowerCase());
       if (match) {
-        input.value = match.name;
-        if (hidden) hidden.value = match.id;
+        selectPosition(match.id, match.name);
       }
       showAlert('Info', 'That position already exists');
     } else {
@@ -156,17 +215,19 @@ function resetPersonForm() {
   const titleEl = document.getElementById('person-form-title');
   const saveBtn = document.getElementById('save-person-btn');
   const cancelBtn = document.getElementById('cancel-person-edit');
-  const posInput = document.getElementById('new-person-position');
-  const posIdHidden = document.getElementById('new-person-position-id');
-  const activeCb = document.getElementById('new-person-is-active');
 
   if (nameInput) nameInput.value = '';
   if (titleEl) titleEl.textContent = 'Add New Staff Member';
   if (saveBtn) saveBtn.textContent = '+ Add Staff';
   if (cancelBtn) cancelBtn.style.display = 'none';
-  if (posInput) posInput.value = '';
-  if (posIdHidden) posIdHidden.value = '';
-  if (activeCb) activeCb.checked = true;
+  const posText = document.getElementById('position-selected-text');
+  const posHid = document.getElementById('new-person-position-id');
+  if (posText) posText.textContent = '— No position —';
+  if (posHid) posHid.value = '';
+  const adminHidden = document.getElementById('new-person-is-admin');
+  const adminBtn = document.getElementById('admin-toggle-btn');
+  if (adminHidden) adminHidden.value = 'false';
+  if (adminBtn) adminBtn.textContent = 'Make Admin';
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
@@ -193,22 +254,29 @@ async function startPersonEdit(id) {
 
   document.getElementById('new-person-name').value = person.name || '';
 
-  // Position (text input + hidden id)
-  const posInput = document.getElementById('new-person-position');
-  const posIdHidden = document.getElementById('new-person-position-id');
-  if (posInput) posInput.value = person.position || '';
-  if (posIdHidden) posIdHidden.value = person.position_id || '';
+  // Position via custom dropdown
+  if (!window._positionsCache || window._positionsCache.length === 0) {
+    await loadPositions();
+  }
+  if (typeof populatePositionOptions === 'function') populatePositionOptions();
+  if (person.position_id && person.position) {
+    selectPosition(person.position_id, person.position);
+  } else {
+    const textEl = document.getElementById('position-selected-text');
+    if (textEl) textEl.textContent = '— No position —';
+    const hid = document.getElementById('new-person-position-id');
+    if (hid) hid.value = '';
+  }
 
   initPersonColorPicker();
   selectPersonColor(person.color);
 
-  // Admin checkbox - now editable on edit
-  const adminCb = document.getElementById('new-person-is-admin');
-  if (adminCb) adminCb.checked = !!person.isAdmin;
-
-  // Active state
-  const activeCb = document.getElementById('new-person-is-active');
-  if (activeCb) activeCb.checked = person.isActive !== false;
+  // Admin button state
+  const adminHidden = document.getElementById('new-person-is-admin');
+  const adminBtn = document.getElementById('admin-toggle-btn');
+  const isAdmin = !!person.isAdmin;
+  if (adminHidden) adminHidden.value = isAdmin ? 'true' : 'false';
+  if (adminBtn) adminBtn.textContent = isAdmin ? 'Remove Admin' : 'Make Admin';
 
   setPersonAccountFormState(true);
   document.getElementById('new-person-name').focus();
@@ -229,26 +297,20 @@ async function savePerson() {
   const colorInput = document.getElementById('new-person-color');
   const emailInput = document.getElementById('new-person-email');
   const passwordInput = document.getElementById('new-person-password');
-  const adminCheckbox = document.getElementById('new-person-is-admin');
-  const activeCb = document.getElementById('new-person-is-active');
+  const adminHidden = document.getElementById('new-person-is-admin');
 
   const name = nameInput?.value?.trim();
   const color = colorInput?.value || DEFAULT_PERSON_COLOR;
   const email = emailInput?.value?.trim() || '';
   const password = passwordInput?.value || '';
-  const isAdmin = Boolean(adminCheckbox?.checked);
-  const isActive = activeCb ? activeCb.checked : true;
+  const isAdmin = adminHidden ? adminHidden.value === 'true' : false;
+  const isActive = true; // default for new staff, active toggle is in list only
 
-  // Resolve position: prefer hidden id, else lookup by name from input
+  // Resolve position from hidden (set by dropdown or +New)
   let position_id = null;
-  const posInput = document.getElementById('new-person-position');
   const posIdHidden = document.getElementById('new-person-position-id');
   if (posIdHidden && posIdHidden.value) {
     position_id = posIdHidden.value;
-  } else if (posInput && posInput.value.trim()) {
-    const nameVal = posInput.value.trim();
-    const match = _positionsCache.find(p => p.name.toLowerCase() === nameVal.toLowerCase());
-    if (match) position_id = match.id;
   }
 
   if (!name) {
@@ -258,7 +320,7 @@ async function savePerson() {
 
   try {
     if (editingPersonId) {
-      const updatePayload = { full_name: name, color, position_id, is_active: isActive, is_admin: isAdmin };
+      const updatePayload = { full_name: name, color, position_id, is_admin: isAdmin };
       await DB.updateUser(editingPersonId, updatePayload);
 
       // password reset only on edit if provided
@@ -313,7 +375,7 @@ async function savePerson() {
 
     resetPersonForm();
     await loadPositions();
-    populatePositionDatalist();
+    populatePositionOptions();
     await refreshPeopleViews();
     showAlert('Success', `Staff member "${name}" saved successfully`);
   } catch (error) {
@@ -353,6 +415,36 @@ function deletePerson(id, name) {
 }
 
 /**
+ * Toggle admin status from the form button.
+ */
+function toggleFormAdmin() {
+  const hidden = document.getElementById('new-person-is-admin');
+  const btn = document.getElementById('admin-toggle-btn');
+  if (!hidden || !btn) return;
+
+  const isCurrentlyAdmin = hidden.value === 'true';
+  const newState = !isCurrentlyAdmin;
+  hidden.value = newState ? 'true' : 'false';
+  btn.textContent = newState ? 'Remove Admin' : 'Make Admin';
+}
+
+/**
+ * Toggle a user's active status directly from the list.
+ */
+async function toggleUserActive(id, currentActive, name) {
+  const newActive = !currentActive;
+  const action = newActive ? 'activate' : 'deactivate';
+  try {
+    await DB.updateUser(id, { is_active: newActive });
+    await refreshPeopleViews();
+    showAlert('Success', `Staff member "${name}" ${action}d`);
+  } catch (error) {
+    console.error('Error toggling active:', error);
+    showAlert('Error', error.message || `Failed to ${action} staff member.`);
+  }
+}
+
+/**
  * Render the people list in the modal (enhanced)
  */
 async function renderPeopleList() {
@@ -388,14 +480,15 @@ async function renderPeopleList() {
         const pos = person.position ? `<span class="position-badge">${escapeHtml(person.position)}</span>` : '';
         const isAdmin = person.isAdmin ? `<span class="admin-badge">ADMIN</span>` : '';
         const isInactive = person.isActive === false ? ' (inactive)' : '';
-        const emailShort = person.email && !person.email.includes('@letsee.local')
-          ? `<span class="email-short">${escapeHtml(person.email)}</span>` : '';
 
+        const initials = getInitials(person.name);
         return `
           <div class="person-item${person.isActive === false ? ' is-inactive' : ''}" data-id="${person.id}" data-name="${safeName.toLowerCase()}" data-pos="${(person.position || '').toLowerCase()}">
-            <div class="person-color" style="background-color: ${safeColor}"></div>
+            <div class="person-avatar" style="background:${safeColor}18;border:1px solid ${safeColor}44;color:${safeColor}">
+              ${initials}
+            </div>
             <div class="person-info">
-              <div class="person-name">${safeName}${isInactive} ${emailShort}</div>
+              <div class="person-name">${safeName}${isInactive}</div>
               <div class="person-meta">
                 ${pos}
                 ${isAdmin}
@@ -403,6 +496,9 @@ async function renderPeopleList() {
             </div>
             <div class="person-actions">
               <button class="btn-icon" onclick="startPersonEdit('${person.id}')" aria-label="Edit ${safeName}">Edit</button>
+              <button class="btn-icon btn-active-toggle" onclick="toggleUserActive('${person.id}', ${!!person.isActive}, '${safeNameForJs}')" aria-label="Toggle active for ${safeName}">
+                ${person.isActive !== false ? 'Deactivate' : 'Activate'}
+              </button>
               <button class="btn-icon btn-delete" onclick="deletePerson('${person.id}', '${safeNameForJs}')" aria-label="Delete ${safeName}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6"></polyline>
@@ -444,7 +540,7 @@ function filterStaffList() {
  */
 async function refreshPeopleViews() {
   await loadPositions();
-  populatePositionDatalist();
+  populatePositionOptions();
 
   if (typeof updatePeopleBlock === 'function') {
     await updatePeopleBlock();
@@ -470,14 +566,10 @@ async function openPeopleModal() {
 
     // Load positions for the form input (search + new)
     await loadPositions();
-    populatePositionDatalist();
+    populatePositionOptions();
 
     await renderPeopleList();
     resetPersonForm();
-
-    // Ensure the active checkbox default
-    const act = document.getElementById('new-person-is-active');
-    if (act) act.checked = true;
   }
 }
 

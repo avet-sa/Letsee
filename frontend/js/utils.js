@@ -192,6 +192,19 @@ function isInViewport(element) {
   );
 }
 
+/**
+ * Get up to 2 uppercase initials from a name.
+ */
+function getInitials(name) {
+  if (!name) return '?';
+  return name
+    .split(' ')
+    .map((part) => part[0] || '')
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 // Export for potential module usage
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {

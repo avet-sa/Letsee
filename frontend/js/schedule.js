@@ -187,14 +187,101 @@ function resetPersonForm() {
   if (titleEl) titleEl.textContent = 'Add New Staff Member';
   if (saveBtn) saveBtn.textContent = '+ Add Staff';
   if (cancelBtn) cancelBtn.style.display = 'none';
-  if (posInput) posInput.value = '';
-  if (posIdHidden) posIdHidden.value = '';
-  if (activeCb) activeCb.checked = true;
+  const posText = document.getElementById('position-selected-text');
+  const posHid = document.getElementById('new-person-position-id');
+  if (posText) posText.textContent = '— No position —';
+  if (posHid) posHid.value = '';
+  const adminHidden = document.getElementById('new-person-is-admin');
+  const adminBtn = document.getElementById('admin-toggle-btn');
+  if (adminHidden) adminHidden.value = 'false';
+  if (adminBtn) adminBtn.textContent = 'Make Admin';
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
   setPersonAccountFormState(false);
 }
+
+/**
+ * Toggle admin status from the form button.
+ */
+function toggleFormAdmin() {
+  const hidden = document.getElementById('new-person-is-admin');
+  const btn = document.getElementById('admin-toggle-btn');
+  if (!hidden || !btn) return;
+
+  const isCurrentlyAdmin = hidden.value === 'true';
+  const newState = !isCurrentlyAdmin;
+  hidden.value = newState ? 'true' : 'false';
+  btn.textContent = newState ? 'Remove Admin' : 'Make Admin';
+}
+
+function selectPosition(id, name) {
+  const hidden = document.getElementById('new-person-position-id');
+  const textEl = document.getElementById('position-selected-text');
+  if (hidden) hidden.value = id;
+  if (textEl) textEl.textContent = name || '— No position —';
+}
+
+function togglePositionDropdown() {
+  const dd = document.getElementById('position-dropdown');
+  const search = document.getElementById('position-search');
+  if (!dd) return;
+  const isOpen = dd.style.display === 'block' || dd.style.display === 'flex';
+  dd.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen && search) {
+    populatePositionOptions();
+    search.value = '';
+    filterPositionDropdown();
+    setTimeout(() => search.focus(), 10);
+  }
+}
+
+function filterPositionDropdown() {
+  const search = document.getElementById('position-search');
+  const container = document.getElementById('position-options');
+  if (!search || !container) return;
+  const q = search.value.toLowerCase().trim();
+  Array.from(container.children).forEach((opt) => {
+    const matches = !q || opt.textContent.toLowerCase().includes(q);
+    opt.style.display = matches ? '' : 'none';
+  });
+}
+
+function populatePositionOptions() {
+  const container = document.getElementById('position-options');
+  if (!container) return;
+  container.innerHTML = '';
+
+  (window._positionsCache || []).forEach((p) => {
+    const opt = document.createElement('div');
+    opt.className = 'position-option';
+    opt.textContent = p.name;
+    opt.onclick = () => {
+      selectPosition(p.id, p.name);
+      const dd = document.getElementById('position-dropdown');
+      if (dd) dd.style.display = 'none';
+    };
+    container.appendChild(opt);
+  });
+}
+
+/**
+ * Toggle a user's active status directly from the list.
+ */
+async function toggleUserActive(id, currentActive, name) {
+  const newActive = !currentActive;
+  const action = newActive ? 'activate' : 'deactivate';
+  try {
+    await DB.updateUser(id, { is_active: newActive });
+    await refreshPeopleViews();
+    showAlert('Success', `Staff member "${name}" ${action}d`);
+  } catch (error) {
+    console.error('Error toggling active:', error);
+    showAlert('Error', error.message || `Failed to ${action} staff member.`);
+  }
+}
+
+
 
 function startPersonEdit(id) {
   const person = peopleData.find((candidate) => String(candidate.id) === String(id));
@@ -210,19 +297,28 @@ function startPersonEdit(id) {
   document.getElementById('cancel-person-edit').style.display = 'inline-flex';
   document.getElementById('new-person-name').value = person.name;
 
-  const posInput = document.getElementById('new-person-position');
-  const posHidden = document.getElementById('new-person-position-id');
-  if (posInput) posInput.value = person.position || '';
-  if (posHidden) posHidden.value = person.position_id || '';
+  // Position via custom dropdown
+  if (!window._positionsCache || window._positionsCache.length === 0) {
+    loadPositions();
+  }
+  if (typeof populatePositionOptions === 'function') populatePositionOptions();
+  if (person.position_id && person.position) {
+    selectPosition(person.position_id, person.position);
+  } else {
+    const textEl = document.getElementById('position-selected-text');
+    if (textEl) textEl.textContent = '— No position —';
+    const hid = document.getElementById('new-person-position-id');
+    if (hid) hid.value = '';
+  }
 
   initPersonColorPicker();
   selectPersonColor(person.color);
 
-  const adminCb = document.getElementById('new-person-is-admin');
-  if (adminCb) adminCb.checked = !!person.isAdmin;
-
-  const activeCb = document.getElementById('new-person-is-active');
-  if (activeCb) activeCb.checked = person.isActive !== false;
+  const adminHidden = document.getElementById('new-person-is-admin');
+  const adminBtn = document.getElementById('admin-toggle-btn');
+  const isAdmin = !!person.isAdmin;
+  if (adminHidden) adminHidden.value = isAdmin ? 'true' : 'false';
+  if (adminBtn) adminBtn.textContent = isAdmin ? 'Remove Admin' : 'Make Admin';
 
   setPersonAccountFormState(true);
   document.getElementById('new-person-name').focus();
@@ -1214,13 +1310,10 @@ async function openPeopleModal() {
     modal.style.display = 'flex';
 
     await loadPositions();
-    populatePositionDatalist();
+    populatePositionOptions();
 
     await renderPeopleList();
     resetPersonForm();
-
-    const act = document.getElementById('new-person-is-active');
-    if (act) act.checked = true;
   }
 }
 
@@ -1290,9 +1383,12 @@ async function renderPeopleList() {
     const isAdmin = person.isAdmin ? `<span class="admin-badge">ADMIN</span>` : '';
     const isInactive = person.isActive === false ? ' (inactive)' : '';
 
+    const initials = getInitials(person.name);
     return `
       <div class="person-item${person.isActive === false ? ' is-inactive' : ''}" data-id="${person.id}" data-name="${safeName.toLowerCase()}" data-pos="${(person.position || '').toLowerCase()}">
-        <div class="person-color" style="background-color: ${safeColor}"></div>
+        <div class="person-avatar" style="background:${safeColor}18;border:1px solid ${safeColor}44;color:${safeColor}">
+          ${initials}
+        </div>
         <div class="person-info">
           <div class="person-name">${safeName}${isInactive}</div>
           <div class="person-meta">
@@ -1302,6 +1398,9 @@ async function renderPeopleList() {
         </div>
         <div class="person-actions">
           <button class="btn-icon" onclick="startPersonEdit('${person.id}')" aria-label="Edit ${safeName}">Edit</button>
+          <button class="btn-icon btn-active-toggle" onclick="toggleUserActive('${person.id}', ${!!person.isActive}, '${safeNameForJs}')" aria-label="Toggle active for ${safeName}">
+            ${person.isActive !== false ? 'Deactivate' : 'Activate'}
+          </button>
           <button class="btn-icon btn-delete" onclick="deletePerson('${person.id}', '${safeNameForJs}')" aria-label="Delete ${safeName}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -1319,24 +1418,19 @@ async function savePerson() {
   const colorInput = document.getElementById('new-person-color');
   const emailInput = document.getElementById('new-person-email');
   const passwordInput = document.getElementById('new-person-password');
-  const adminCheckbox = document.getElementById('new-person-is-admin');
-  const activeCb = document.getElementById('new-person-is-active');
+  const adminHidden = document.getElementById('new-person-is-admin');
 
   const name = nameInput.value.trim();
   const color = colorInput.value || DEFAULT_PERSON_COLOR;
   const email = emailInput?.value?.trim() || '';
   const password = passwordInput?.value || '';
-  const isAdmin = Boolean(adminCheckbox?.checked);
-  const isActive = activeCb ? activeCb.checked : true;
+  const isAdmin = adminHidden ? adminHidden.value === 'true' : false;
+  const isActive = true; // default for new staff
 
-  // basic resolution for legacy
+  // resolution from hidden
   let position_id = null;
-  const pIn = document.getElementById('new-person-position');
   const pHid = document.getElementById('new-person-position-id');
   if (pHid && pHid.value) position_id = pHid.value;
-  else if (pIn && pIn.value) {
-    // will be resolved in main path anyway
-  }
 
   if (!name) {
     showAlert('Validation Error', 'Please enter a name');
@@ -1345,7 +1439,7 @@ async function savePerson() {
 
   try {
     if (editingPersonId) {
-      await DB.updateUser(editingPersonId, { full_name: name, color, position_id, is_active: isActive, is_admin: isAdmin });
+      await DB.updateUser(editingPersonId, { full_name: name, color, position_id, is_admin: isAdmin });
       const passwordInput = document.getElementById('new-person-password');
       if (passwordInput && passwordInput.value) {
         const newPass = passwordInput.value;

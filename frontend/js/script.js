@@ -84,18 +84,104 @@ function resetPersonForm() {
   const saveBtn = document.getElementById('save-person-btn');
   const cancelBtn = document.getElementById('cancel-person-edit');
   const posSel = document.getElementById('new-person-position');
-  const act = document.getElementById('new-person-is-active');
-
   if (nameInput) nameInput.value = '';
   if (titleEl) titleEl.textContent = 'Add New Staff Member';
   if (saveBtn) saveBtn.textContent = '+ Add Staff';
   if (cancelBtn) cancelBtn.style.display = 'none';
-  if (posSel) posSel.value = '';
-  if (act) act.checked = true;
+  const posText = document.getElementById('position-selected-text');
+  const posHid = document.getElementById('new-person-position-id');
+  if (posText) posText.textContent = '— No position —';
+  if (posHid) posHid.value = '';
+  const adminHidden = document.getElementById('new-person-is-admin');
+  const adminBtn = document.getElementById('admin-toggle-btn');
+  if (adminHidden) adminHidden.value = 'false';
+  if (adminBtn) adminBtn.textContent = 'Make Admin';
 
   initPersonColorPicker();
   selectPersonColor(DEFAULT_PERSON_COLOR);
 }
+
+/**
+ * Toggle admin status from the form button.
+ */
+function toggleFormAdmin() {
+  const hidden = document.getElementById('new-person-is-admin');
+  const btn = document.getElementById('admin-toggle-btn');
+  if (!hidden || !btn) return;
+
+  const isCurrentlyAdmin = hidden.value === 'true';
+  const newState = !isCurrentlyAdmin;
+  hidden.value = newState ? 'true' : 'false';
+  btn.textContent = newState ? 'Remove Admin' : 'Make Admin';
+}
+
+function selectPosition(id, name) {
+  const hidden = document.getElementById('new-person-position-id');
+  const textEl = document.getElementById('position-selected-text');
+  if (hidden) hidden.value = id;
+  if (textEl) textEl.textContent = name || '— No position —';
+}
+
+function togglePositionDropdown() {
+  const dd = document.getElementById('position-dropdown');
+  const search = document.getElementById('position-search');
+  if (!dd) return;
+  const isOpen = dd.style.display === 'block' || dd.style.display === 'flex';
+  dd.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen && search) {
+    populatePositionOptions();
+    search.value = '';
+    filterPositionDropdown();
+    setTimeout(() => search.focus(), 10);
+  }
+}
+
+function filterPositionDropdown() {
+  const search = document.getElementById('position-search');
+  const container = document.getElementById('position-options');
+  if (!search || !container) return;
+  const q = search.value.toLowerCase().trim();
+  Array.from(container.children).forEach((opt) => {
+    const matches = !q || opt.textContent.toLowerCase().includes(q);
+    opt.style.display = matches ? '' : 'none';
+  });
+}
+
+function populatePositionOptions() {
+  const container = document.getElementById('position-options');
+  if (!container) return;
+  container.innerHTML = '';
+
+  (window._positionsCache || []).forEach((p) => {
+    const opt = document.createElement('div');
+    opt.className = 'position-option';
+    opt.textContent = p.name;
+    opt.onclick = () => {
+      selectPosition(p.id, p.name);
+      const dd = document.getElementById('position-dropdown');
+      if (dd) dd.style.display = 'none';
+    };
+    container.appendChild(opt);
+  });
+}
+
+/**
+ * Toggle a user's active status directly from the list.
+ */
+async function toggleUserActive(id, currentActive, name) {
+  const newActive = !currentActive;
+  const action = newActive ? 'activate' : 'deactivate';
+  try {
+    await DB.updateUser(id, { is_active: newActive });
+    await refreshPeopleViews();
+    showAlert('Success', `Staff member "${name}" ${action}d`);
+  } catch (error) {
+    console.error('Error toggling active:', error);
+    showAlert('Error', error.message || `Failed to ${action} staff member.`);
+  }
+}
+
+
 
 async function startPersonEdit(id) {
   const people = await getUsers();
@@ -112,19 +198,27 @@ async function startPersonEdit(id) {
   document.getElementById('cancel-person-edit').style.display = 'inline-flex';
   document.getElementById('new-person-name').value = person.name;
 
-  const posInput = document.getElementById('new-person-position');
-  const posHidden = document.getElementById('new-person-position-id');
-  if (posInput) posInput.value = person.position || '';
-  if (posHidden) posHidden.value = person.position_id || '';
+  if (!window._positionsCache || window._positionsCache.length === 0) {
+    await loadPositions();
+  }
+  if (typeof populatePositionOptions === 'function') populatePositionOptions();
+  if (person.position_id && person.position) {
+    if (typeof selectPosition === 'function') selectPosition(person.position_id, person.position);
+  } else {
+    const textEl = document.getElementById('position-selected-text');
+    if (textEl) textEl.textContent = '— No position —';
+    const hid = document.getElementById('new-person-position-id');
+    if (hid) hid.value = '';
+  }
 
   initPersonColorPicker();
   selectPersonColor(person.color);
 
-  const adminCb = document.getElementById('new-person-is-admin');
-  if (adminCb) adminCb.checked = !!person.isAdmin;
-
-  const act = document.getElementById('new-person-is-active');
-  if (act) act.checked = person.isActive !== false;
+  const adminHidden = document.getElementById('new-person-is-admin');
+  const adminBtn = document.getElementById('admin-toggle-btn');
+  const isAdmin = !!person.isAdmin;
+  if (adminHidden) adminHidden.value = isAdmin ? 'true' : 'false';
+  if (adminBtn) adminBtn.textContent = isAdmin ? 'Remove Admin' : 'Make Admin';
 
   document.getElementById('new-person-name').focus();
 }
@@ -2054,13 +2148,10 @@ async function openPeopleModal() {
     modal.style.display = 'flex';
 
     await loadPositions();
-    if (typeof populatePositionDatalist === 'function') populatePositionDatalist();
+    if (typeof populatePositionOptions === 'function') populatePositionOptions();
 
     await renderPeopleList();
     resetPersonForm();
-
-    const act = document.getElementById('new-person-is-active');
-    if (act) act.checked = true;
   }
 }
 
@@ -2085,14 +2176,18 @@ async function renderPeopleList() {
     const personEl = document.createElement('div');
     personEl.className = 'person-item';
 
+    const initials = getInitials(person.name);
     personEl.innerHTML = `
-            <div class="person-color" style="background-color: ${person.color}"></div>
+            <div class="person-avatar" style="background:${person.color}18;border:1px solid ${person.color}44;color:${person.color}">
+              ${initials}
+            </div>
             <div class="person-info">
                 <div class="person-name">${person.name}</div>
                 <div class="person-color-code">${person.color}</div>
             </div>
             <div class="person-actions">
                 <button class="btn-icon" onclick='startPersonEdit(${JSON.stringify(String(person.id))})'>Edit</button>
+                <button class="btn-icon btn-active-toggle" onclick='toggleUserActive(${JSON.stringify(String(person.id))}, ${!!person.isActive}, ${JSON.stringify(person.name)})'>${person.isActive !== false ? 'Deactivate' : 'Activate'}</button>
                 <button class="btn-icon btn-danger" onclick='deletePerson(${JSON.stringify(String(person.id))}, ${JSON.stringify(person.name)})'>Delete</button>
             </div>
         `;

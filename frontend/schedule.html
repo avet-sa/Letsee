@@ -282,18 +282,20 @@
                 <input type="text" id="new-person-name" class="form-input" placeholder="Full name" required />
               </div>
 
-              <!-- Position (text input + datalist for search + New) -->
+              <!-- Position (custom dropdown with built-in search) -->
               <div class="form-field">
-                <label for="new-person-position">Position</label>
+                <label>Position</label>
                 <div class="position-input-row">
-                  <input 
-                    type="text" 
-                    id="new-person-position" 
-                    class="form-input" 
-                    placeholder="Search existing or type to add" 
-                    list="position-datalist" 
-                  />
-                  <datalist id="position-datalist"></datalist>
+                  <div class="position-dropdown-wrapper">
+                    <div class="position-selected" id="position-selected" onclick="togglePositionDropdown()">
+                      <span id="position-selected-text">— No position —</span>
+                      <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="position-dropdown" id="position-dropdown">
+                      <input type="text" id="position-search" class="form-input" placeholder="Search positions..." oninput="filterPositionDropdown()" />
+                      <div class="position-options" id="position-options"></div>
+                    </div>
+                  </div>
                   <button type="button" class="btn-secondary btn-small" onclick="addNewPositionFromInput()">+ New</button>
                 </div>
                 <input type="hidden" id="new-person-position-id" />
@@ -313,22 +315,15 @@
                   <input type="email" id="new-person-email" class="form-input" placeholder="name@company.com" autocomplete="email" />
                   <input type="password" id="new-person-password" class="form-input" placeholder="Password (min 8)" autocomplete="new-password" />
                 </div>
-                <div class="field-hint" id="person-account-hint">Leave blank to create a non-login staff record. Password resets only on edit.</div>
+                <!-- <div class="field-hint" id="person-account-hint">Leave blank to create a non-login staff record. Password resets only on edit.</div> -->
               </div>
 
               <!-- Flags -->
               <div class="form-field">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="new-person-is-admin" />
-                  <span>Administrator</span>
-                </label>
+                <button type="button" id="admin-toggle-btn" class="btn-secondary btn-small" onclick="toggleFormAdmin()">Make Admin</button>
+                <input type="hidden" id="new-person-is-admin" value="false" />
               </div>
-              <div class="form-field">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="new-person-is-active" checked />
-                  <span>Active</span>
-                </label>
-              </div>
+              <!-- Active toggle is now in the list next to delete (per requirements) -->
             </div>
 
             <div class="staff-form-actions">
