@@ -25,8 +25,6 @@ const STAFF_COLOR_PRESETS = [
   '#e84393',
 ];
 const DEFAULT_PERSON_COLOR = STAFF_COLOR_PRESETS[0];
-let editingPersonId = null;
-let editingPersonOriginalName = '';
 let currentUser = null;
 
 // Cache for render performance
@@ -35,139 +33,11 @@ let cachedDateKey = null;
 let cachedSchedule = null;
 let cachedShiftPeople = null;
 
-function initPersonColorPicker() {
-  const picker = document.getElementById('new-person-color-picker');
-  const colorInput = document.getElementById('new-person-color');
+// Color picker helpers moved to staff.js
 
-  if (!picker || !colorInput) {
-    return;
-  }
+// resetPersonForm + toggleFormAdmin moved to staff.js (shared)
 
-  const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
-  colorInput.value = selectedColor;
-
-  picker.innerHTML = STAFF_COLOR_PRESETS.map(
-    (color) => `
-        <button
-            type="button"
-            class="color-swatch${color.toLowerCase() === selectedColor.toLowerCase() ? ' is-selected' : ''}"
-            style="--swatch-color: ${color}"
-            data-color="${color}"
-            onclick="selectPersonColor('${color}')"
-            aria-label="Select ${color}"
-            aria-pressed="${color.toLowerCase() === selectedColor.toLowerCase()}">
-        </button>
-    `
-  ).join('');
-}
-
-function selectPersonColor(color) {
-  const colorInput = document.getElementById('new-person-color');
-  if (!colorInput) {
-    return;
-  }
-
-  colorInput.value = color;
-  document.querySelectorAll('#new-person-color-picker .color-swatch').forEach((swatch) => {
-    const isSelected = swatch.dataset.color.toLowerCase() === color.toLowerCase();
-    swatch.classList.toggle('is-selected', isSelected);
-    swatch.setAttribute('aria-pressed', String(isSelected));
-  });
-}
-
-function resetPersonForm() {
-  editingPersonId = null;
-  editingPersonOriginalName = '';
-
-  const nameInput = document.getElementById('new-person-name');
-  const titleEl = document.getElementById('person-form-title');
-  const saveBtn = document.getElementById('save-person-btn');
-  const cancelBtn = document.getElementById('cancel-person-edit');
-  const posSel = document.getElementById('new-person-position');
-  if (nameInput) nameInput.value = '';
-  if (titleEl) titleEl.textContent = 'Add New Staff Member';
-  if (saveBtn) saveBtn.textContent = '+ Add Staff';
-  if (cancelBtn) cancelBtn.style.display = 'none';
-  const posText = document.getElementById('position-selected-text');
-  const posHid = document.getElementById('new-person-position-id');
-  if (posText) posText.textContent = '— No position —';
-  if (posHid) posHid.value = '';
-  const adminHidden = document.getElementById('new-person-is-admin');
-  const adminBtn = document.getElementById('admin-toggle-btn');
-  if (adminHidden) adminHidden.value = 'false';
-  if (adminBtn) {
-    const adminField = adminBtn.closest('.form-field') || adminBtn.parentElement;
-    if (adminField) adminField.style.display = 'none';
-    adminBtn.textContent = 'Make Admin';
-  }
-
-  initPersonColorPicker();
-  selectPersonColor(DEFAULT_PERSON_COLOR);
-}
-
-/**
- * Toggle admin status from the form button.
- */
-function toggleFormAdmin() {
-  const hidden = document.getElementById('new-person-is-admin');
-  const btn = document.getElementById('admin-toggle-btn');
-  if (!hidden || !btn) return;
-
-  const isCurrentlyAdmin = hidden.value === 'true';
-  const newState = !isCurrentlyAdmin;
-  hidden.value = newState ? 'true' : 'false';
-  btn.textContent = newState ? 'Remove Admin' : 'Make Admin';
-}
-
-function selectPosition(id, name) {
-  const hidden = document.getElementById('new-person-position-id');
-  const textEl = document.getElementById('position-selected-text');
-  if (hidden) hidden.value = id;
-  if (textEl) textEl.textContent = name || '— No position —';
-}
-
-function togglePositionDropdown() {
-  const dd = document.getElementById('position-dropdown');
-  const search = document.getElementById('position-search');
-  if (!dd) return;
-  const isOpen = dd.style.display === 'block' || dd.style.display === 'flex';
-  dd.style.display = isOpen ? 'none' : 'flex';
-  if (!isOpen && search) {
-    populatePositionOptions();
-    search.value = '';
-    filterPositionDropdown();
-    setTimeout(() => search.focus(), 10);
-  }
-}
-
-function filterPositionDropdown() {
-  const search = document.getElementById('position-search');
-  const container = document.getElementById('position-options');
-  if (!search || !container) return;
-  const q = search.value.toLowerCase().trim();
-  Array.from(container.children).forEach((opt) => {
-    const matches = !q || opt.textContent.toLowerCase().includes(q);
-    opt.style.display = matches ? '' : 'none';
-  });
-}
-
-function populatePositionOptions() {
-  const container = document.getElementById('position-options');
-  if (!container) return;
-  container.innerHTML = '';
-
-  (window._positionsCache || []).forEach((p) => {
-    const opt = document.createElement('div');
-    opt.className = 'position-option';
-    opt.textContent = p.name;
-    opt.onclick = () => {
-      selectPosition(p.id, p.name);
-      const dd = document.getElementById('position-dropdown');
-      if (dd) dd.style.display = 'none';
-    };
-    container.appendChild(opt);
-  });
-}
+// Position helpers moved to staff.js (loaded earlier)
 
 /**
  * Toggle a user's active status directly from the list.
@@ -187,53 +57,7 @@ async function toggleUserActive(id, currentActive, name) {
 
 
 
-async function startPersonEdit(id) {
-  const people = await getUsers();
-  const person = people.find((candidate) => String(candidate.id) === String(id));
-  if (!person) {
-    return;
-  }
-
-  editingPersonId = String(person.id);
-  editingPersonOriginalName = person.name;
-
-  document.getElementById('person-form-title').textContent = 'Edit Staff Member';
-  document.getElementById('save-person-btn').textContent = 'Save';
-  document.getElementById('cancel-person-edit').style.display = 'inline-flex';
-  document.getElementById('new-person-name').value = person.name;
-
-  if (!window._positionsCache || window._positionsCache.length === 0) {
-    await loadPositions();
-  }
-  if (typeof populatePositionOptions === 'function') populatePositionOptions();
-  if (person.position_id && person.position) {
-    if (typeof selectPosition === 'function') selectPosition(person.position_id, person.position);
-  } else {
-    const textEl = document.getElementById('position-selected-text');
-    if (textEl) textEl.textContent = '— No position —';
-    const hid = document.getElementById('new-person-position-id');
-    if (hid) hid.value = '';
-  }
-
-  initPersonColorPicker();
-  selectPersonColor(person.color);
-
-  const adminHidden = document.getElementById('new-person-is-admin');
-  const adminBtn = document.getElementById('admin-toggle-btn');
-  const isAdmin = !!person.isAdmin;
-  if (adminHidden) adminHidden.value = isAdmin ? 'true' : 'false';
-  if (adminBtn) {
-    const adminField = adminBtn.closest('.form-field') || adminBtn.parentElement;
-    if (adminField) adminField.style.display = '';
-    adminBtn.textContent = isAdmin ? 'Remove Admin' : 'Make Admin';
-  }
-
-  document.getElementById('new-person-name').focus();
-}
-
-function cancelPersonEdit() {
-  resetPersonForm();
-}
+// startPersonEdit + cancelPersonEdit now provided by staff.js
 
 async function refreshPeopleViews() {
   await _refreshPeopleCache();
@@ -2218,87 +2042,7 @@ function closePeopleModal() {
   resetPersonForm();
 }
 
-async function renderPeopleList() {
-  const people = await getUsers();
-  const peopleList = document.getElementById('people-list');
-
-  if (people.length === 0) {
-    peopleList.innerHTML = '<div class="empty-state">No staff members yet. Add one below!</div>';
-    return;
-  }
-
-  peopleList.innerHTML = '';
-
-  people.forEach((person) => {
-    const personEl = document.createElement('div');
-    personEl.className = 'person-item';
-
-    const initials = getInitials(person.name);
-    personEl.innerHTML = `
-            <div class="person-avatar" style="background:${person.color}18;border:1px solid ${person.color}44;color:${person.color}">
-              ${initials}
-            </div>
-            <div class="person-info">
-                <div class="person-name">${person.name}</div>
-                <div class="person-color-code">${person.color}</div>
-            </div>
-            <div class="person-actions">
-                <button class="btn-icon" onclick='startPersonEdit(${JSON.stringify(String(person.id))})'>Edit</button>
-                <button class="btn-icon btn-active-toggle" onclick='toggleUserActive(${JSON.stringify(String(person.id))}, ${!!person.isActive}, ${JSON.stringify(person.name)})'>${person.isActive !== false ? 'Deactivate' : 'Activate'}</button>
-                <button class="btn-icon btn-danger" onclick='deletePerson(${JSON.stringify(String(person.id))}, ${JSON.stringify(person.name)})'>Delete</button>
-            </div>
-        `;
-
-    peopleList.appendChild(personEl);
-  });
-}
-
-async function savePerson() {
-  const nameInput = document.getElementById('new-person-name');
-  const colorInput = document.getElementById('new-person-color');
-
-  const name = nameInput.value.trim();
-  const color = colorInput.value || DEFAULT_PERSON_COLOR;
-
-  if (!name) {
-    showAlert('Validation Error', 'Please enter a name');
-    return;
-  }
-
-  try {
-    if (editingPersonId) {
-      await DB.updateUser(editingPersonId, { full_name: name, color });
-      const passwordInput = document.getElementById('new-person-password');
-      if (passwordInput && passwordInput.value) {
-        const newPass = passwordInput.value;
-        if (newPass.length < 8) {
-          showAlert('Validation Error', 'Password must be at least 8 characters long.');
-          return;
-        }
-        await DB.resetUserPassword(editingPersonId, newPass);
-      }
-    } else {
-      await UsersAPI.create({
-        email: `${name.toLowerCase().replace(/\s+/g, '.')}@letsee.local`,
-        password: 'temppass123',
-        full_name: name,
-        color,
-        is_admin: false,
-      });
-    }
-
-    resetPersonForm();
-    await refreshPeopleViews();
-  } catch (error) {
-    console.error('Error saving person:', error);
-    const msg = error.message || '';
-    if (msg.includes('same as the current') || msg.includes('New password cannot')) {
-      showAlert('Validation Error', msg);
-    } else {
-      showAlert('Error', error.message || 'Failed to save staff member. Please try again.');
-    }
-  }
-}
+// renderPeopleList + savePerson now come from staff.js (includes proper position_id handling + badge rendering)
 
 async function deletePerson(id, name) {
   showConfirm(
@@ -2307,7 +2051,7 @@ async function deletePerson(id, name) {
     async () => {
       try {
         await UsersAPI.delete(id);
-        if (String(editingPersonId) === String(id)) {
+        if (String(window.editingPersonId) === String(id)) {
           resetPersonForm();
         }
         await refreshPeopleViews();

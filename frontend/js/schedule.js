@@ -71,8 +71,6 @@ const MONTH_NAMES = [
   'November',
   'December',
 ];
-let editingPersonId = null;
-let editingPersonOriginalName = '';
 
 function findPersonByScheduleEntry(entry) {
   const value = String(entry ?? '').trim();
@@ -198,70 +196,9 @@ function getAssignedStaff(schedule) {
   return assignedStaff;
 }
 
-function setPersonAccountFormState(isEditing) {
-  const emailInput = document.getElementById('new-person-email');
-  const passwordInput = document.getElementById('new-person-password');
-  const adminCheckbox = document.getElementById('new-person-is-admin');
-  const adminGroup = document.getElementById('new-person-admin-group');
-  const hint = document.getElementById('person-account-hint');
+// setPersonAccountFormState provided by staff.js (shared)
 
-  if (emailInput) emailInput.disabled = isEditing;
-  if (adminCheckbox) adminCheckbox.disabled = isEditing;
-  if (passwordInput) passwordInput.disabled = false; // allow entering new password to reset on edit
-
-  if (isEditing) {
-    if (adminGroup) {
-      adminGroup.style.opacity = '0.7';
-    }
-    if (hint) {
-      hint.textContent = 'Enter a new password above to reset this user\'s password.';
-    }
-    return;
-  }
-
-  if (emailInput) {
-    emailInput.value = '';
-  }
-  if (passwordInput) {
-    passwordInput.value = '';
-  }
-  if (adminCheckbox) {
-    adminCheckbox.checked = false;
-  }
-  if (adminGroup) {
-    adminGroup.style.opacity = '';
-  }
-  if (hint) {
-    hint.textContent =
-      'Leave email and password blank to create a staff record without a login account.';
-  }
-}
-
-function initPersonColorPicker() {
-  const picker = document.getElementById('new-person-color-picker');
-  const colorInput = document.getElementById('new-person-color');
-
-  if (!picker || !colorInput) {
-    return;
-  }
-
-  const selectedColor = colorInput.value || DEFAULT_PERSON_COLOR;
-  colorInput.value = selectedColor;
-
-  picker.innerHTML = STAFF_COLOR_PRESETS.map(
-    (color) => `
-        <button
-            type="button"
-            class="color-swatch${color.toLowerCase() === selectedColor.toLowerCase() ? ' is-selected' : ''}"
-            style="--swatch-color: ${color}"
-            data-color="${color}"
-            onclick="selectPersonColor('${color}')"
-            aria-label="Select ${color}"
-            aria-pressed="${color.toLowerCase() === selectedColor.toLowerCase()}">
-        </button>
-    `
-  ).join('');
-}
+// initPersonColorPicker provided by staff.js
 
 function selectPersonColor(color) {
   const colorInput = document.getElementById('new-person-color');
@@ -277,103 +214,9 @@ function selectPersonColor(color) {
   });
 }
 
-function resetPersonForm() {
-  editingPersonId = null;
-  editingPersonOriginalName = '';
+// resetPersonForm, toggleFormAdmin, startPersonEdit, renderPeopleList, savePerson moved to staff.js for sharing
 
-  const nameInput = document.getElementById('new-person-name');
-  const titleEl = document.getElementById('person-form-title');
-  const saveBtn = document.getElementById('save-person-btn');
-  const cancelBtn = document.getElementById('cancel-person-edit');
-  const posInput = document.getElementById('new-person-position');
-  const posIdHidden = document.getElementById('new-person-position-id');
-  const activeCb = document.getElementById('new-person-is-active');
-
-  if (nameInput) nameInput.value = '';
-  if (titleEl) titleEl.textContent = 'Add New Staff Member';
-  if (saveBtn) saveBtn.textContent = '+ Add Staff';
-  if (cancelBtn) cancelBtn.style.display = 'none';
-  const posText = document.getElementById('position-selected-text');
-  const posHid = document.getElementById('new-person-position-id');
-  if (posText) posText.textContent = '— No position —';
-  if (posHid) posHid.value = '';
-  const adminHidden = document.getElementById('new-person-is-admin');
-  const adminBtn = document.getElementById('admin-toggle-btn');
-  if (adminHidden) adminHidden.value = 'false';
-  if (adminBtn) {
-    const adminField = adminBtn.closest('.form-field') || adminBtn.parentElement;
-    if (adminField) adminField.style.display = 'none';
-    adminBtn.textContent = 'Make Admin';
-  }
-
-  initPersonColorPicker();
-  selectPersonColor(DEFAULT_PERSON_COLOR);
-  setPersonAccountFormState(false);
-}
-
-/**
- * Toggle admin status from the form button.
- */
-function toggleFormAdmin() {
-  const hidden = document.getElementById('new-person-is-admin');
-  const btn = document.getElementById('admin-toggle-btn');
-  if (!hidden || !btn) return;
-
-  const isCurrentlyAdmin = hidden.value === 'true';
-  const newState = !isCurrentlyAdmin;
-  hidden.value = newState ? 'true' : 'false';
-  btn.textContent = newState ? 'Remove Admin' : 'Make Admin';
-}
-
-function selectPosition(id, name) {
-  const hidden = document.getElementById('new-person-position-id');
-  const textEl = document.getElementById('position-selected-text');
-  if (hidden) hidden.value = id;
-  if (textEl) textEl.textContent = name || '— No position —';
-}
-
-function togglePositionDropdown() {
-  const dd = document.getElementById('position-dropdown');
-  const search = document.getElementById('position-search');
-  if (!dd) return;
-  const isOpen = dd.style.display === 'block' || dd.style.display === 'flex';
-  dd.style.display = isOpen ? 'none' : 'flex';
-  if (!isOpen && search) {
-    populatePositionOptions();
-    search.value = '';
-    filterPositionDropdown();
-    setTimeout(() => search.focus(), 10);
-  }
-}
-
-function filterPositionDropdown() {
-  const search = document.getElementById('position-search');
-  const container = document.getElementById('position-options');
-  if (!search || !container) return;
-  const q = search.value.toLowerCase().trim();
-  Array.from(container.children).forEach((opt) => {
-    const matches = !q || opt.textContent.toLowerCase().includes(q);
-    opt.style.display = matches ? '' : 'none';
-  });
-}
-
-function populatePositionOptions() {
-  const container = document.getElementById('position-options');
-  if (!container) return;
-  container.innerHTML = '';
-
-  (window._positionsCache || []).forEach((p) => {
-    const opt = document.createElement('div');
-    opt.className = 'position-option';
-    opt.textContent = p.name;
-    opt.onclick = () => {
-      selectPosition(p.id, p.name);
-      const dd = document.getElementById('position-dropdown');
-      if (dd) dd.style.display = 'none';
-    };
-    container.appendChild(opt);
-  });
-}
+// Position helpers (selectPosition, toggle..., populate...) now in staff.js
 
 /**
  * Toggle a user's active status directly from the list.
@@ -393,54 +236,7 @@ async function toggleUserActive(id, currentActive, name) {
 
 
 
-function startPersonEdit(id) {
-  const person = peopleData.find((candidate) => String(candidate.id) === String(id));
-  if (!person) {
-    return;
-  }
-
-  editingPersonId = String(person.id);
-  editingPersonOriginalName = person.name;
-
-  document.getElementById('person-form-title').textContent = 'Edit Staff Member';
-  document.getElementById('save-person-btn').textContent = 'Save';
-  document.getElementById('cancel-person-edit').style.display = 'inline-flex';
-  document.getElementById('new-person-name').value = person.name;
-
-  // Position via custom dropdown
-  if (!window._positionsCache || window._positionsCache.length === 0) {
-    loadPositions();
-  }
-  if (typeof populatePositionOptions === 'function') populatePositionOptions();
-  if (person.position_id && person.position) {
-    selectPosition(person.position_id, person.position);
-  } else {
-    const textEl = document.getElementById('position-selected-text');
-    if (textEl) textEl.textContent = '— No position —';
-    const hid = document.getElementById('new-person-position-id');
-    if (hid) hid.value = '';
-  }
-
-  initPersonColorPicker();
-  selectPersonColor(person.color);
-
-  const adminHidden = document.getElementById('new-person-is-admin');
-  const adminBtn = document.getElementById('admin-toggle-btn');
-  const isAdmin = !!person.isAdmin;
-  if (adminHidden) adminHidden.value = isAdmin ? 'true' : 'false';
-  if (adminBtn) {
-    const adminField = adminBtn.closest('.form-field') || adminBtn.parentElement;
-    if (adminField) adminField.style.display = '';
-    adminBtn.textContent = isAdmin ? 'Remove Admin' : 'Make Admin';
-  }
-
-  setPersonAccountFormState(true);
-  document.getElementById('new-person-name').focus();
-}
-
-function cancelPersonEdit() {
-  resetPersonForm();
-}
+// startPersonEdit + cancelPersonEdit provided by staff.js (shared)
 
 async function refreshPeopleViews() {
   await loadPeople();
@@ -989,6 +785,7 @@ function renderDayModalContent(dateStr, day, monthName) {
                         ${initials}
                     </div>
                     <span class="staff-name">${person.name}</span>
+                    ${person.position ? `<span class="position-badge">${escapeHtml ? escapeHtml(person.position) : person.position}</span>` : ''}
                     ${badgeHtml}
                 </div>
                 <div class="shift-opts">${optsHtml}</div>
@@ -1494,174 +1291,12 @@ function closePeopleModal() {
   loadPeople();
 }
 
-async function renderPeopleList() {
-  await loadPeople();
-  const peopleList = document.getElementById('people-list');
-  const countEl = document.getElementById('staff-count');
-  if (!peopleList) return;
+// renderPeopleList provided by staff.js (shared)
 
-  if (countEl) countEl.textContent = `(${peopleData.length})`;
+// savePerson (and renderPeopleList) now provided by staff.js
+// The shared version always captures position_id and supports both account creation styles.
 
-  if (peopleData.length === 0) {
-    peopleList.innerHTML = `
-      <div class="empty-state" style="padding: 28px 20px; text-align: center; color: var(--text-secondary);">
-        <p>No staff members yet</p>
-      </div>
-    `;
-    return;
-  }
-
-  // sort active first
-  const sorted = [...peopleData].sort((a, b) => {
-    if ((a.isActive === false) === (b.isActive === false)) return (a.name || '').localeCompare(b.name || '');
-    return a.isActive === false ? 1 : -1;
-  });
-
-  peopleList.innerHTML = sorted.map((person) => {
-    const safeName = escapeHtml(person.name);
-    const safeColor = escapeHtml(person.color);
-    const safeNameForJs = escapeJsString(person.name);
-    const pos = person.position ? `<span class="position-badge">${escapeHtml(person.position)}</span>` : '';
-    const isAdmin = person.isAdmin ? `<span class="admin-badge">ADMIN</span>` : '';
-    const isInactive = person.isActive === false ? ' (inactive)' : '';
-
-    const initials = getInitials(person.name);
-    return `
-      <div class="person-item${person.isActive === false ? ' is-inactive' : ''}" data-id="${person.id}" data-name="${safeName.toLowerCase()}" data-pos="${(person.position || '').toLowerCase()}">
-        <div class="person-avatar" style="background:${safeColor}18;border:1px solid ${safeColor}44;color:${safeColor}">
-          ${initials}
-        </div>
-        <div class="person-info">
-          <div class="person-name">${safeName}${isInactive}</div>
-          <div class="person-meta">
-            ${pos}
-            ${isAdmin}
-          </div>
-        </div>
-        <div class="person-actions">
-          <button class="btn-icon" onclick="startPersonEdit('${person.id}')" aria-label="Edit ${safeName}">Edit</button>
-          <button class="btn-icon btn-active-toggle" onclick="toggleUserActive('${person.id}', ${!!person.isActive}, '${safeNameForJs}')" aria-label="Toggle active for ${safeName}">
-            ${person.isActive !== false ? 'Deactivate' : 'Activate'}
-          </button>
-          <button class="btn-icon btn-delete" onclick="deletePerson('${person.id}', '${safeNameForJs}')" aria-label="Delete ${safeName}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-async function savePerson() {
-  const nameInput = document.getElementById('new-person-name');
-  const colorInput = document.getElementById('new-person-color');
-  const emailInput = document.getElementById('new-person-email');
-  const passwordInput = document.getElementById('new-person-password');
-  const adminHidden = document.getElementById('new-person-is-admin');
-
-  const name = nameInput.value.trim();
-  const color = colorInput.value || DEFAULT_PERSON_COLOR;
-  const email = emailInput?.value?.trim() || '';
-  const password = passwordInput?.value || '';
-  const isAdmin = adminHidden ? adminHidden.value === 'true' : false;
-  const isActive = true; // default for new staff
-
-  // resolution from hidden
-  let position_id = null;
-  const pHid = document.getElementById('new-person-position-id');
-  if (pHid && pHid.value) position_id = pHid.value;
-
-  if (!name) {
-    showAlert('Validation Error', 'Please enter a name');
-    return;
-  }
-
-  try {
-    if (editingPersonId) {
-      await DB.updateUser(editingPersonId, { full_name: name, color, position_id, is_admin: isAdmin });
-      const passwordInput = document.getElementById('new-person-password');
-      if (passwordInput && passwordInput.value) {
-        const newPass = passwordInput.value;
-        if (newPass.length < 8) {
-          showAlert('Validation Error', 'Password must be at least 8 characters long.');
-          return;
-        }
-        await DB.resetUserPassword(editingPersonId, newPass);
-      }
-    } else {
-      if (email || password) {
-        if (!email || !password) {
-          showAlert(
-            'Validation Error',
-            'Provide both email and password to create a login account, or leave both blank.'
-          );
-          return;
-        }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          showAlert('Validation Error', 'Please enter a valid email address.');
-          return;
-        }
-        if (password.length < 8) {
-          showAlert('Validation Error', 'Password must be at least 8 characters long.');
-          return;
-        }
-
-        await AuthAPI.register({
-          email,
-          password,
-          full_name: name,
-          color,
-          is_admin: isAdmin,
-          position_id,
-          is_active: isActive,
-        });
-      } else {
-        await UsersAPI.create({
-          email: `${name.toLowerCase().replace(/\s+/g, '.')}@letsee.local`,
-          password: 'temppass123', // Admin will need to reset
-          full_name: name,
-          color,
-          is_admin: false,
-          position_id,
-          is_active: isActive,
-        });
-      }
-    }
-
-    resetPersonForm();
-    await refreshPeopleViews();
-  } catch (error) {
-    console.error('Error saving person:', error);
-    const msg = error.message || '';
-    if (msg.includes('same as the current') || msg.includes('New password cannot')) {
-      showAlert('Validation Error', msg);
-    } else {
-      showAlert('Error', error.message || 'Failed to save staff member. Please try again.');
-    }
-  }
-}
-
-async function deletePerson(id, name) {
-  showConfirm(
-    'Delete Staff Member',
-    `Are you sure you want to delete ${name}? This will soft-delete the user and they will remain in historical records.`,
-    async () => {
-      try {
-        await UsersAPI.delete(id);
-        if (String(editingPersonId) === String(id)) {
-          resetPersonForm();
-        }
-        await refreshPeopleViews();
-      } catch (error) {
-        console.error('Error deleting person:', error);
-        showAlert('Error', error.message || 'Failed to delete staff member. Please try again.');
-      }
-    }
-  );
-}
+// deletePerson provided by staff.js (shared)
 
 // Initialize on load
 init();
