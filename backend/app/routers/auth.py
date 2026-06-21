@@ -252,7 +252,8 @@ async def logout(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
-    # Revoke the access token
+    # Revoke the access token (make idempotent to avoid duplicate key errors)
+    db.query(RevokedToken).filter(RevokedToken.token == access_token).delete()
     revoked_access = RevokedToken(
         token=access_token,
         token_type="access",
@@ -264,8 +265,15 @@ async def logout(
 
     # Also revoke any refresh tokens for this user (single session logout)
     # This prevents using refresh token to get new access token after logout
+    # Use delete-first to avoid UniqueViolation on the wildcard token
+    wildcard_refresh = build_wildcard_token(current_user_id, "refresh")
+    db.query(RevokedToken).filter(
+        RevokedToken.user_id == UUID(current_user_id),
+        RevokedToken.token == wildcard_refresh,
+        RevokedToken.token_type == "refresh",
+    ).delete()
     revoked_refresh = RevokedToken(
-        token=build_wildcard_token(current_user_id, "refresh"),
+        token=wildcard_refresh,
         token_type="refresh",
         user_id=UUID(current_user_id),
         revoked_at=datetime.now(UTC),
@@ -284,9 +292,11 @@ async def logout_all_sessions(
     db: Session = Depends(get_db),
 ):
     """Logout all sessions for current user (revoke all tokens)."""
-    # Revoke all tokens for this user using wildcard
+    # Revoke all tokens for this user using wildcard (idempotent)
+    wildcard_all = build_wildcard_token(current_user_id, "all")
+    db.query(RevokedToken).filter(RevokedToken.token == wildcard_all).delete()
     revoked = RevokedToken(
-        token=build_wildcard_token(current_user_id, "all"),
+        token=wildcard_all,
         token_type="all",
         user_id=UUID(current_user_id),
         revoked_at=datetime.now(UTC),
@@ -355,7 +365,7 @@ async def refresh_token(
     new_access_token = create_access_token(subject=user_id)
     new_refresh_token = create_refresh_token(subject=user_id)
 
-    # Revoke the old refresh token (token rotation)
+    # Revoke the old refresh token (token rotation) - idempotent delete first
     try:
         payload = jwt.decode(
             refresh_token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -368,6 +378,7 @@ async def refresh_token(
     except JWTError:
         old_expires_at = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
+    db.query(RevokedToken).filter(RevokedToken.token == refresh_token_str).delete()
     revoked = RevokedToken(
         token=refresh_token_str,
         token_type="refresh",

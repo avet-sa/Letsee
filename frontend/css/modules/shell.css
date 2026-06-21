@@ -16,7 +16,7 @@
 
 .header-right {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 20px;
 }
 
@@ -25,11 +25,15 @@
   border: 1px solid var(--border-primary);
   color: var(--text-primary);
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 0 12px;
   font-family: var(--primary-font);
   font-size: 18px;
   transition: opacity 0.2s;
   line-height: 1;
+}
+
+.theme-toggle svg path {
+  transform: translate(0, 2px);
 }
 
 .theme-toggle:hover {
@@ -39,6 +43,7 @@
 .logout-btn {
   transition: background 0.3s !important;
   font-size: 14px !important;
+  margin-left: 18px;
 }
 
 [data-theme='dark'] .logout-btn:hover {
@@ -77,7 +82,7 @@
 .nav-btn {
   background: var(--bg-primary);
   border: 1px solid var(--border-primary);
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
   padding: 8px 12px;
   font-family: var(--primary-font);
@@ -85,6 +90,9 @@
   line-height: 1;
   font-weight: 400;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-btn:hover:not(:disabled) {
@@ -125,13 +133,16 @@
 .date-picker-nav {
   background: var(--bg-primary);
   border: 1px solid var(--border-primary);
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 8px 12px;
   color: var(--text-primary);
   font-family: var(--primary-font);
   font-weight: 400;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .date-picker-nav:hover {
@@ -301,18 +312,6 @@
 .select-checkbox {
   display: none;
 }
-
-/* Polished icon button for bulk actions */
-/* .bulk-actions .btn-icon {
-    background: transparent;
-    border: 1px solid var(--border-secondary);
-    padding: 6px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-} */
 
 .btn-complete:hover {
   background: rgba(0, 255, 4, 0.09) !important;
@@ -519,7 +518,7 @@
   }
 
   .nav-btn {
-    font-size: 16px;
+    font-size: 14px;
     padding: 6px 10px;
   }
 
@@ -534,12 +533,17 @@
 
   .theme-toggle {
     padding: 6px 10px;
-    font-size: 16px;
+    font-size: 14px;
+  }
+
+  .date-picker-nav {
+    font-size: 14px;
+    padding: 6px 10px;
   }
 
   .btn-primary {
     font-size: 13px;
-    padding: 8px 12px;
+    padding: 6px 10px;
   }
 
   /* Hide less important buttons on mobile */
@@ -567,13 +571,21 @@
     padding: 4px 8px;
   }
 
+  .date-picker-nav {
+    padding: 4px 8px;
+  }
+
+  .theme-toggle {
+    padding: 4px 8px;
+  }
+
   .btn-primary.date-display-btn {
     min-width: 100px;
     font-size: 13px;
   }
 
   .header-right .btn-primary:not(.date-display-btn):not(.logout-btn) {
-    padding: 8px;
+    padding: 6px 10px;
     min-width: auto;
   }
 

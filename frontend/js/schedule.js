@@ -1225,7 +1225,7 @@ function applyTheme() {
 
 // Logout
 function handleLogout() {
-  showConfirm('Sign Out', 'Are you sure you want to sign out?', async () => {
+  showConfirm('Log Out', 'Are you sure you want to log out?', async () => {
     try {
       await DB.logout();
     } catch (error) {

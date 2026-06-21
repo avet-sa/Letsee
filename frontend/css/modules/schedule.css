@@ -622,9 +622,13 @@
   border-radius: 8px;
   max-width: 500px;
   width: 90%;
-  max-height: 90vh;
-  overflow: auto;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
+  scrollbar-color: var(--text-tertiary) var(--bg-primary);
+}
+
+.modal-dialog:not(.staff-modal) {
+  max-height: 93vh;
+  overflow: auto;
 }
 
 .modal-dialog.modal-compact {
@@ -643,6 +647,12 @@
   max-width: 700px;
 }
 
+.modal-dialog.staff-modal {
+  max-height: 93vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .modal-content {
   padding: 6px 8px;
 }
@@ -654,6 +664,7 @@
   justify-content: center;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -666,12 +677,12 @@
   padding: 20px;
 }
 
-.modal-footer {
-  padding: 15px 20px;
-  border-top: 1px solid var(--border-secondary);
+.modal-dialog.staff-modal .modal-body,
+.staff-modal-body {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  gap: 10px;
-  justify-content: flex-end;
+  flex-direction: column;
 }
 
 .close-btn {
@@ -765,9 +776,11 @@
 .people-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: 400px;
+  flex: 1;
+  min-height: 0;
+  max-height: 320px;
   overflow-y: auto;
+  scrollbar-color: var(--text-tertiary) var(--bg-primary);
 }
 
 .person-item {
@@ -816,6 +829,7 @@
   background: var(--bg-secondary);
   color: var(--text-primary);
   transition: all 0.2s ease;
+  font-family: var(--primary-font);
 }
 
 .btn-icon:hover {

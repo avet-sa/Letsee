@@ -114,7 +114,7 @@ function openPicker(inputId) {
 
 // Logout function
 function handleLogout() {
-  showConfirm('Sign Out', 'Are you sure you want to sign out?', async () => {
+  showConfirm('Log Out', 'Are you sure you want to log out?', async () => {
     try {
       if (typeof window.stopDataPolling === 'function') window.stopDataPolling();
       await DB.logout();
@@ -735,7 +735,8 @@ function openAddNote() {
   // Load draft if present
   loadDraftIntoForm();
   attachAutosaveListeners();
-  document.getElementById('note-modal').classList.remove('hidden');
+  const noteModal = document.getElementById('note-modal');
+  if (noteModal) noteModal.style.display = 'flex';
   // Focus note field and add Enter key handler
   const noteTextarea = document.getElementById('note-text');
   noteTextarea.focus();
@@ -928,7 +929,8 @@ async function downloadAttachment(fileKey, filename) {
 
 // Close note modal
 function closeNoteModal() {
-  document.getElementById('note-modal').classList.add('hidden');
+  const noteModal = document.getElementById('note-modal');
+  if (noteModal) noteModal.style.display = 'none';
   currentEditingNoteId = null;
 }
 
@@ -1046,7 +1048,7 @@ async function editNote(noteId) {
   // Show modal immediately
   currentEditingNoteId = noteId;
   document.getElementById('modal-title').textContent = 'Edit Note';
-  document.getElementById('note-modal').classList.remove('hidden');
+  const nm = document.getElementById('note-modal'); if (nm) nm.style.display = 'flex';
 
   // Focus note field immediately
   const noteTextarea = document.getElementById('note-text');
@@ -1059,7 +1061,7 @@ async function editNote(noteId) {
   const note = notes.find((n) => n.id === noteId);
 
   if (!note) {
-    document.getElementById('note-modal').classList.add('hidden');
+    const nm = document.getElementById('note-modal'); if (nm) nm.style.display = 'none';
     return;
   }
 
@@ -1632,7 +1634,7 @@ document.addEventListener('keydown', (e) => {
   if (
     e.altKey &&
     e.key.toLowerCase() === 's' &&
-    !document.getElementById('note-modal').classList.contains('hidden')
+    document.getElementById('note-modal')?.style.display === 'flex'
   ) {
     e.preventDefault();
     document.getElementById('note-form').dispatchEvent(new Event('submit'));

@@ -145,17 +145,6 @@
   justify-content: flex-end;
 }
 
-.btn-icon {
-  background: none;
-  border: 1px solid var(--border-primary);
-  padding: 8px 12px;
-  cursor: pointer;
-  font-family: var(--primary-font);
-  font-size: 12px;
-  transition: all 0.2s ease;
-  color: var(--text-primary);
-}
-
 .btn-danger {
   background: #e74c3c;
   color: white;
@@ -425,12 +414,6 @@
   flex-shrink: 0;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 0;
-  border-top: 1px solid var(--border-secondary);
-}
-
 .modal-actions button {
   flex: 1;
   padding: 8px;
@@ -461,18 +444,25 @@
 .staff-modal {
   max-width: 720px;
   width: 95%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .staff-modal-body {
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: 20px;
 }
 
 .staff-list-section {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: 10px;
 }
 
@@ -481,6 +471,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .staff-list-title {
@@ -508,10 +499,12 @@
 .people-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 240px;
+  flex: 1;
+  min-height: 0;
+  max-height: 280px;
   overflow-y: auto;
   padding-right: 4px;
+  scrollbar-color: var(--text-tertiary) var(--bg-primary);
 }
 
 .person-item {
@@ -596,16 +589,9 @@
   line-height: 1;
 }
 
-.btn-icon:hover {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-  border-color: var(--text-primary);
-}
-
 .btn-icon.btn-delete:hover {
   background: #c0392b;
   border-color: #c0392b;
-  color: white;
 }
 
 /* Positions manager (inline, beautiful pills) */

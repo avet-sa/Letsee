@@ -15,15 +15,7 @@
   display: none;
 }
 
-.note-modal-content {
-  background: var(--bg-secondary);
-  border-radius: 0;
-  max-width: 500px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  scrollbar-color: #9f9f9f #2a2a2a;
-}
+/* note modal now uses standard .modal-dialog */
 
 .attachment-modal-content {
   background: var(--bg-secondary);
@@ -77,6 +69,7 @@
   align-items: center;
   padding: 20px 25px;
   border-bottom: 1px solid var(--border-secondary);
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -112,6 +105,12 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
+.modal-dialog:not(.staff-modal) {
+  max-height: 93vh;
+  overflow-y: auto;
+  scrollbar-color: var(--text-tertiary) var(--bg-primary);
+}
+
 .modal-dialog.modal-large {
   max-width: 600px;
 }
@@ -122,6 +121,7 @@
   align-items: center;
   padding: 20px 25px;
   border-bottom: 1px solid var(--border-secondary);
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -140,10 +140,13 @@
 .modal-footer {
   display: flex;
   gap: 10px;
-  padding: 15px 25px;
+  padding: 15px 20px;
   border-top: 1px solid var(--border-secondary);
   background: var(--bg-primary);
   justify-content: flex-end;
+  flex-shrink: 0;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 .modal-overlay {
@@ -186,7 +189,7 @@
 }
 
 #note-form {
-  padding: 25px;
+  padding: 0;
 }
 
 .form-group {
@@ -408,12 +411,12 @@
     gap: 10px;
   }
 
-  .note-modal-content {
+  #note-modal .modal-dialog {
     width: 95%;
   }
 
   #note-form {
-    padding: 20px;
+    padding: 0;
   }
 
   .schedule-container {

@@ -598,27 +598,28 @@ const DB = {
           due_time: note.dueTime || null,
         };
 
-        // Decide if it's a new note or existing
-        const isNewNote =
-          !note.id ||
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            String(note.id)
-          );
+        // Decide create vs update using the list we fetched for this date.
+        // New notes get a client-generated UUID (for local tracking only) that
+        // will not be present in the server list → create.
+        // Existing notes loaded from server will be present → update.
+        // This avoids 404s from attempting UPDATE on a brand-new client id.
+        const noteIdStr = note.id ? String(note.id) : null;
+        const isNewNote = !noteIdStr || !existingIds.has(noteIdStr);
 
         try {
           if (isNewNote) {
-            // NEW NOTE → always use CREATE
+            // NEW NOTE → use CREATE (client id is temporary, server will assign real UUID)
             const created = await HandoversAPI.create(payload);
             console.log(`✅ Created new note on ${date}`);
           } else {
-            // EXISTING NOTE → use UPDATE
+            // EXISTING NOTE (id came from prior server list) → use UPDATE
             await HandoversAPI.update(note.id, payload);
             console.log(`✅ Updated note ${note.id}`);
           }
         } catch (error) {
+          // Only log real failures; normal new-note routing should not error now
           console.error(`Failed to save note ${note.id || 'new'}`, error);
 
-          // Last resort fallback
           if (isNewNote || String(error.message).toLowerCase().includes('not found')) {
             try {
               await HandoversAPI.create(payload);
